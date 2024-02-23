@@ -1,0 +1,52 @@
+version: '3'
+
+networks:
+  laravel-app:
+    driver: bridge
+
+services:
+  app:
+      build:
+        context: ./project
+        dockerfile: Dockerfile  # Specify the name of your Dockerfile if it's not named 'Dockerfile'
+      container_name: ${COINTAINER_NAME}-app
+      working_dir: /var/www/html
+      volumes:
+        - ./project/application:/var/www/html
+      ports:
+      - ${MYAPP_PORT}:80
+      networks:
+        - ${NETWORK_NAME}
+  # MySQL 8
+  mysql:
+    image: mysql:8
+    container_name: ${COINTAINER_NAME}-mysql
+    environment:
+      MYSQL_DATABASE: laravel_db
+      MYSQL_USER: laravel_user
+      MYSQL_PASSWORD: laravel_password
+      MYSQL_ROOT_PASSWORD: root_password
+    ports:
+      - "3306:3306"
+    networks:
+      - ${NETWORK_NAME}
+
+  # PHPMyAdmin
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: ${COINTAINER_NAME}-phpmyadmin
+    environment:
+      PMA_HOST: mysql
+      PMA_USER: laravel_user
+      PMA_PASSWORD: laravel_password
+    ports:
+      - ${PHPMYADMIN_PORT}:80
+    networks:
+      - ${NETWORK_NAME}
+
+  # Redis Server
+  redis:
+    image: redis:alpine
+    container_name: ${COINTAINER_NAME}-redis
+    networks:
+      - ${NETWORK_NAME}
