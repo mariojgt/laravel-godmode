@@ -10,6 +10,7 @@ PHPMYADMIN_PORT:= $(shell grep -E '^PHPMYADMIN_PORT' .env | cut -d '=' -f 2)
 MYAPP_PORT:= $(shell grep -E '^MYAPP_PORT' .env | cut -d '=' -f 2)
 MYSQL_PORT:= $(shell grep -E '^MYSQL_PORT' .env | cut -d '=' -f 2)
 REDIS_PORT:= $(shell grep -E '^REDIS_PORT' .env | cut -d '=' -f 2)
+CODE_PATH:= $(shell grep -E '^CODE_PATH' .env | cut -d '=' -f 2)
 
 network:
 	@$(DOCKER) network create $(NETWORK_NAME)
