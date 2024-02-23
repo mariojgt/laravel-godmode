@@ -26,6 +26,12 @@ build:
 list:
 	@$(COMPOSE) ps -a
 
+link:
+	@echo "Creating IP address and port list for services with '$(DOCKER_PREFIX)_' prefix..."
+	@SERVER_IP=$$(hostname -I | cut -d' ' -f1); \
+	$(DOCKER) ps --format "{{.Names}}\t{{.Ports}}" | \
+	awk -v serverip=$$SERVER_IP '/$(DOCKER_PREFIX)/ {split($$2, port, "[:>]"); print serverip":"port[2]}'
+
 composer:
-	@$(COMPOSE) exec app composer install
-	@$(COMPOSE) exec app chmod -R 777 storage bootstrap/cache
+	@$(COMPOSE) exec $(APP) composer install
+	@$(COMPOSE) exec $(APP) chmod -R 777 storage bootstrap/cache

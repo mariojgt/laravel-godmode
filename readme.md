@@ -7,3 +7,6 @@
 ### 2. *make build* command to build the docker images
 
 ### 3. *make start* command to run the containers
+
+
+# Note: this docker environment was design to work with umbrelOS
