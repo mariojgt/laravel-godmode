@@ -3,7 +3,13 @@
 COMPOSE =sudo docker-compose
 DOCKER = sudo docker
 # Load .env file
-NETWORK_NAME := $(shell grep -E '^NETWORK_NAME' .env | cut -d '=' -f 2)
+DOCKER_PREFIX:= $(shell grep -E '^DOCKER_PREFIX' .env | cut -d '=' -f 2)
+NETWORK_NAME:= $(shell grep -E '^NETWORK_NAME' .env | cut -d '=' -f 2)
+CONTAINER_NAME:= $(shell grep -E '^CONTAINER_NAME' .env | cut -d '=' -f 2)
+PHPMYADMIN_PORT:= $(shell grep -E '^PHPMYADMIN_PORT' .env | cut -d '=' -f 2)
+MYAPP_PORT:= $(shell grep -E '^MYAPP_PORT' .env | cut -d '=' -f 2)
+MYSQL_PORT:= $(shell grep -E '^MYSQL_PORT' .env | cut -d '=' -f 2)
+REDIS_PORT:= $(shell grep -E '^REDIS_PORT' .env | cut -d '=' -f 2)
 
 network:
 	@$(DOCKER) network create $(NETWORK_NAME)
@@ -32,6 +38,17 @@ link:
 	$(DOCKER) ps --format "{{.Names}}\t{{.Ports}}" | \
 	awk -v serverip=$$SERVER_IP '/$(DOCKER_PREFIX)/ {split($$2, port, "[:>]"); print serverip":"port[2]}'
 
+exe:
+	@$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}-app /bin/bash
+
 composer:
-	@$(COMPOSE) exec $(APP) composer install
-	@$(COMPOSE) exec $(APP) chmod -R 777 storage bootstrap/cache
+	@$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}-app /bin/bash -c 'composer install && chmod -R 777 storage bootstrap/cache'
+
+npm:
+	@$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}-app /bin/bash -c 'npm install && npm run dev'
+
+npm-upgrade:
+	@$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}-app /bin/bash -c 'npm upgrade'
+
+npm-update:
+	@$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}-app /bin/bash -c 'npm update'

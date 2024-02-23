@@ -1,5 +1,9 @@
 FROM php:8.2-apache
 
+# Install Node.js and npm
+RUN curl -sL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs
+
 RUN apt-get update
 
 # 1. development packages
@@ -54,6 +58,10 @@ RUN docker-php-ext-enable \
     mbstring \
     pdo_mysql \
     zip
+
+# Install Redis extension
+RUN pecl install redis \
+    && docker-php-ext-enable redis
 
 # 5. composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer

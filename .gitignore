@@ -1,0 +1,5 @@
+# Ignore .env file
+*.env
+
+# Ignore all files (not folders) from /project/application
+/project/application/*.*
