@@ -22,14 +22,16 @@ services:
     image: mysql:8
     container_name: ${DOCKER_PREFIX}_${CONTAINER_NAME}-mysql
     environment:
-      MYSQL_DATABASE: laravel_db
+      MYSQL_DATABASE: laravel
       MYSQL_USER: laravel_user
       MYSQL_PASSWORD: laravel_password
-      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_ROOT_PASSWORD: laravel_password
     ports:
       - ${MYSQL_PORT}:3306
     networks:
       - ${NETWORK_NAME}
+    volumes:
+      - mysql:/var/lib/mysql
 
   # PHPMyAdmin
   phpmyadmin:
@@ -52,3 +54,18 @@ services:
       - ${REDIS_PORT}:6379
     networks:
       - ${NETWORK_NAME}
+    volumes:
+      - redis:/data
+
+  # Redis redisinsight
+  redisinsight:
+    image: redis/redisinsight:latest
+    container_name: ${DOCKER_PREFIX}_${CONTAINER_NAME}-redis-insight
+    ports:
+      - ${REDIS_INSIGHT_PORT}:5540
+    networks:
+      - ${NETWORK_NAME}
+
+volumes:
+  mysql:
+  redis:
