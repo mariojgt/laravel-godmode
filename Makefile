@@ -1,4 +1,4 @@
-.PHONY: network remove-network list-network start stop destroy volume build list link exe composer npm npm-upgrade npm-update
+.PHONY: network remove-network list-network start stop destroy volume build list link exe composer bun bun-upgrade bun-update
 
 COMPOSE =sudo docker-compose
 DOCKER = sudo docker
@@ -70,13 +70,13 @@ exe:
 	@$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash
 
 composer:
-	@$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash -c 'composer install && chmod -R 777 storage bootstrap/cache'
+	@$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash -c 'composer update && chmod -R 777 storage bootstrap/cache'
 
-npm:
-	@$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash -c 'npm install && npm run dev'
+bun:
+	@$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash -c 'bun install && bun run dev'
 
-npm-upgrade:
-	@$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash -c 'npm upgrade'
+bun-upgrade:
+	@$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash -c 'bun upgrade'
 
-npm-update:
-	@$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash -c 'npm update'
+bun-update:
+	@$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash -c 'bun update'
