@@ -16,6 +16,7 @@ services:
         - ${PACKAGES_FOLDER}
       ports:
       - ${MYAPP_PORT}:80
+      - ${MYAPP_NODE_PORT}:${MYAPP_NODE_PORT_EXPOSE:-3000}  # Provide a default value of 3000 if NODE_PORT_EXPOSE is not set
       networks:
         - ${NETWORK_NAME}
   # MySQL 8
