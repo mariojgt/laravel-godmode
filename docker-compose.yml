@@ -5,11 +5,11 @@ networks:
     driver: bridge
 
 services:
-  app:
+  php-app:
       build:
         context: ./project
         dockerfile: Dockerfile  # Specify the name of your Dockerfile if it's not named 'Dockerfile'
-      container_name: ${DOCKER_PREFIX}_${CONTAINER_NAME}-app
+      container_name: ${DOCKER_PREFIX}_${CONTAINER_NAME}_app
       working_dir: /var/www/html
       volumes:
         - ./project/${CODE_PATH}:/var/www/html
@@ -20,14 +20,14 @@ services:
   # MySQL 8
   mysql:
     image: mysql:8
-    container_name: ${DOCKER_PREFIX}_${CONTAINER_NAME}-mysql
+    container_name: ${DOCKER_PREFIX}_${CONTAINER_NAME}_mysql
     environment:
       MYSQL_DATABASE: laravel
       MYSQL_USER: laravel_user
       MYSQL_PASSWORD: laravel_password
       MYSQL_ROOT_PASSWORD: laravel_password
     ports:
-      - ${MYSQL_PORT}:3306
+      - 3306:3306
     networks:
       - ${NETWORK_NAME}
     volumes:
@@ -36,7 +36,7 @@ services:
   # PHPMyAdmin
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
-    container_name: ${DOCKER_PREFIX}_${CONTAINER_NAME}-phpmyadmin
+    container_name: ${DOCKER_PREFIX}_${CONTAINER_NAME}_phpmyadmin
     environment:
       PMA_HOST: mysql
       PMA_USER: laravel_user
@@ -49,7 +49,7 @@ services:
   # Redis Server
   redis:
     image: redis:alpine
-    container_name: ${DOCKER_PREFIX}_${CONTAINER_NAME}-redis
+    container_name: ${DOCKER_PREFIX}_${CONTAINER_NAME}_redis
     ports:
       - ${REDIS_PORT}:6379
     networks:
@@ -60,7 +60,7 @@ services:
   # Redis redisinsight
   redisinsight:
     image: redis/redisinsight:latest
-    container_name: ${DOCKER_PREFIX}_${CONTAINER_NAME}-redis-insight
+    container_name: ${DOCKER_PREFIX}_${CONTAINER_NAME}_redis_insight
     ports:
       - ${REDIS_INSIGHT_PORT}:5540
     networks:

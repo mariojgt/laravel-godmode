@@ -63,7 +63,7 @@ RUN docker-php-ext-enable \
 RUN pecl install redis \
     && docker-php-ext-enable redis
 
-# 5. composer
+# 5. composer install
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 # 6. start script
