@@ -12,7 +12,7 @@
 # Note: this docker environment was design to work with umbrelOS
 
 
-# symlink example to make work with packages
+# symlink example so you can add external packages to the project in docker
 ```bash
 ln -s ~username/projects/laravel-projects/packages/skeleton-admin ~username/projects/laravel-projects/projects/skeleton-admin/project/laravel/packages/
 ```
