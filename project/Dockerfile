@@ -4,6 +4,9 @@ FROM php:8.2-apache
 RUN curl -sL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs
 
+# Install bun globally
+RUN npm install -g bun
+
 RUN apt-get update
 
 # 1. development packages
