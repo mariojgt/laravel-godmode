@@ -67,16 +67,16 @@ link:
 
 
 exe:
-	@$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}-app /bin/bash
+	@$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash
 
 composer:
-	@$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}-app /bin/bash -c 'composer install && chmod -R 777 storage bootstrap/cache'
+	@$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash -c 'composer install && chmod -R 777 storage bootstrap/cache'
 
 npm:
-	@$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}-app /bin/bash -c 'npm install && npm run dev'
+	@$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash -c 'npm install && npm run dev'
 
 npm-upgrade:
-	@$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}-app /bin/bash -c 'npm upgrade'
+	@$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash -c 'npm upgrade'
 
 npm-update:
-	@$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}-app /bin/bash -c 'npm update'
+	@$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash -c 'npm update'
