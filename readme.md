@@ -14,5 +14,5 @@
 
 # symlink example so you can add external packages to the project in docker
 ```bash
-ln -s ~username/projects/laravel-projects/packages/skeleton-admin ~username/projects/laravel-projects/projects/skeleton-admin/project/laravel/packages/
+ln -s ~userexaple/projects/laravel-projects/packages ~userexaple/projects/laravel-projects/projects/magnifier/project/laravel/packages/
 ```
