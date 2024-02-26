@@ -80,3 +80,7 @@ bun-upgrade:
 
 bun-update:
 	@$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash -c 'bun update'
+
+permission:
+	@$(eval CURRENT_USER := $(shell whoami))
+	@sudo chown -R $(CURRENT_USER):$(CURRENT_USER) *
