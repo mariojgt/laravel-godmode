@@ -84,3 +84,15 @@ bun-update:
 permission:
 	@$(eval CURRENT_USER := $(shell whoami))
 	@sudo chown -R $(CURRENT_USER):$(CURRENT_USER) *
+
+# /*
+# |--------------------------------------------------------------------------
+# | SYNC FOLDERS THE PACKAGES
+# |--------------------------------------------------------------------------
+# */
+USER := $(shell whoami)
+PROJECTS_DIR := /home/$(USER)/projects/laravel-projects
+CURRENT_DIR := $(shell basename $(CURDIR))
+
+link-folder:
+	ln -s $(PROJECTS_DIR)/packages $(PROJECTS_DIR)/projects/$(CURRENT_DIR)/project/laravel/packages
