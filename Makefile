@@ -67,19 +67,19 @@ link:
 
 
 exe:
-	@$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash
+	@$(DOCKER) exec -itu devuser ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash
 
 composer:
-	@$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash -c 'composer update && chmod -R 755 . && chmod -R 777 storage bootstrap/cache resources'
+	@$(DOCKER) exec -itu devuser ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash -c 'composer update && chmod -R 755 . && chmod -R 777 storage bootstrap/cache resources'
 
 bun:
-	@$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash -c 'bun install && bun run dev'
+	@$(DOCKER) exec -itu devuser ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash -c 'bun install && bun run dev'
 
 bun-upgrade:
-	@$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash -c 'bun upgrade'
+	@$(DOCKER) exec -itu devuser ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash -c 'bun upgrade'
 
 bun-update:
-	@$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash -c 'bun update'
+	@$(DOCKER) exec -itu devuser ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash -c 'bun update'
 
 permission:
 	@$(eval CURRENT_USER := $(shell whoami))
@@ -99,3 +99,7 @@ link-folder:
 
 install-laravel:
 	cd project && composer create-project laravel/laravel $(CODE_PATH)
+
+create-user:
+	@$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash -c "adduser --disabled-password --gecos '' --uid $(USER_ID) --gid $(GROUP_ID) devuser"
+	@$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash -c "chown -R devuser:devuser /var/www/html"
