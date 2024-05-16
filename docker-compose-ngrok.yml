@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  ngrok:
+    image: ngrok/ngrok
+    container_name: ngrok
+    command: http php-app:80
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
+    ports:
+      - "4040:4040"
+    networks:
+      - ${NETWORK_NAME}
+
+networks:
+  laravel-app:
+    driver: bridge
