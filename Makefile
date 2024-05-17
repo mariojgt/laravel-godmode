@@ -54,7 +54,7 @@ prune:
 	@$(DOCKER) system prune -a
 
 host:
-	$(COMPOSE) -f docker-node2.yml up
+	$(COMPOSE) -f docker-node2.yml up -d
 
 host-stop:
 	$(COMPOSE) -f docker-node2.yml down
