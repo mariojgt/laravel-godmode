@@ -54,10 +54,10 @@ prune:
 	@$(DOCKER) system prune -a
 
 host:
-	$(COMPOSE) -f docker-node2.yml up -d
+	$(COMPOSE) -f docker-compose-ngrok.yml up -d
 
 host-stop:
-	$(COMPOSE) -f docker-node2.yml down
+	$(COMPOSE) -f docker-compose-ngrok.yml down
 # /*
 # |--------------------------------------------------------------------------
 # | Utility cmds
