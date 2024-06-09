@@ -83,8 +83,8 @@ RUN mkdir -p /home/devuser/.composer && \
     chown -R devuser:devuser /home/devuser
 
 # Set correct permissions for Laravel storage and cache directories
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
-RUN chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/public /var/www/html/bootstrap/cache
+RUN chmod -R 775 /var/www/html/storage /var/www/html/public /var/www/html/bootstrap/cache
 
 # 8. Set the entrypoint to the start script
 ENTRYPOINT ["/scripts/start.sh"]
