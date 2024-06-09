@@ -9,7 +9,7 @@ RUN npm install -g bun
 
 RUN apt-get update
 
-# 1. development packages
+# Install development packages
 RUN apt-get install -y \
     nano \
     git \
@@ -26,18 +26,26 @@ RUN apt-get install -y \
     libfreetype6-dev \
     g++ \
     libonig-dev \
-    libzip-dev
+    libzip-dev \
+    libwebp-dev \
+    libjpeg62-turbo-dev \
+    libxpm-dev \
+    libgd-dev
 
-# 2. apache configs + document root
+# Set apache document root
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
-# 3. mod_rewrite for URL rewrite and mod_headers for .htaccess extra headers like Access-Control-Allow-Origin-
+# Enable apache modules
 RUN a2enmod rewrite headers
 
-# 4. start with base php config, then add extensions
+# Start with base php config, then add extensions
 RUN mv "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
+
+# Install PHP extensions
+RUN docker-php-ext-configure gd --with-jpeg --with-freetype --with-webp \
+    && docker-php-ext-install gd
 
 RUN docker-php-ext-install \
     bz2 \
@@ -48,10 +56,12 @@ RUN docker-php-ext-install \
     calendar \
     mbstring \
     pdo_mysql \
-    zip
+    zip \
+    exif
 
 # Enable additional extensions
 RUN docker-php-ext-enable \
+    gd \
     bz2 \
     intl \
     iconv \
@@ -60,31 +70,26 @@ RUN docker-php-ext-enable \
     calendar \
     mbstring \
     pdo_mysql \
-    zip
+    zip \
+    exif
 
 # Install Redis extension
 RUN pecl install redis \
     && docker-php-ext-enable redis
 
-# 5. composer install
+# Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# 6. Copy and set up the start script
+# Copy and set up the start script
 COPY ./start.sh /scripts/start.sh
 WORKDIR /scripts
 RUN chmod +x start.sh
 
-# 7. we need a user with the same UID/GID with host user
-# so when we execute CLI commands, all the host file's ownership remains intact
-# otherwise command from inside container will create root-owned files and directories
+# Create a user with the same UID/GID as the host user
 ARG uid
 RUN useradd -G www-data,root -u $uid -d /home/devuser devuser
 RUN mkdir -p /home/devuser/.composer && \
     chown -R devuser:devuser /home/devuser
 
-# Set correct permissions for Laravel storage and cache directories
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
-RUN chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
-
-# 8. Set the entrypoint to the start script
+# Set the entrypoint to the start script
 ENTRYPOINT ["/scripts/start.sh"]
