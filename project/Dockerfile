@@ -91,5 +91,14 @@ RUN useradd -G www-data,root -u $uid -d /home/devuser devuser
 RUN mkdir -p /home/devuser/.composer && \
     chown -R devuser:devuser /home/devuser
 
+# Set permissions for Laravel storage and cache directories if they exist
+RUN if [ -d /var/www/html/storage ]; then chown -R www-data:www-data /var/www/html/storage; fi \
+    && if [ -d /var/www/html/public ]; then chown -R www-data:www-data /var/www/html/public; fi \
+    && if [ -d /var/www/html/bootstrap/cache ]; then chown -R www-data:www-data /var/www/html/bootstrap/cache; fi
+
+RUN if [ -d /var/www/html/storage ]; then chmod -R 775 /var/www/html/storage; fi \
+    && if [ -d /var/www/html/public ]; then chmod -R 775 /var/www/html/public; fi \
+    && if [ -d /var/www/html/bootstrap/cache ]; then chmod -R 775 /var/www/html/bootstrap/cache; fi
+
 # Set the entrypoint to the start script
-ENTRYPOINT ["/scripts/start.sh"]
+# ENTRYPOINT ["/scripts/start.sh"]
