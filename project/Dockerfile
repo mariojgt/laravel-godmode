@@ -69,17 +69,22 @@ RUN pecl install redis \
 # 5. composer install
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# 6. start script
-RUN mkdir -p /scripts
-COPY ./start.sh /scripts
+# 6. Copy and set up the start script
+COPY ./start.sh /scripts/start.sh
 WORKDIR /scripts
 RUN chmod +x start.sh
-RUN ./start.sh
 
-# 6. we need a user with the same UID/GID with host user
+# 7. we need a user with the same UID/GID with host user
 # so when we execute CLI commands, all the host file's ownership remains intact
 # otherwise command from inside container will create root-owned files and directories
 ARG uid
 RUN useradd -G www-data,root -u $uid -d /home/devuser devuser
 RUN mkdir -p /home/devuser/.composer && \
     chown -R devuser:devuser /home/devuser
+
+# Set correct permissions for Laravel storage and cache directories
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+RUN chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
+
+# 8. Set the entrypoint to the start script
+ENTRYPOINT ["/scripts/start.sh"]

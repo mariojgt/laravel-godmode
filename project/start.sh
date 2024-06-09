@@ -1,4 +1,9 @@
 #!/bin/bash
+set -e
 
-# Add rules you may need to run before the project starts
+# Ensure the storage and cache directories have the correct permissions
+chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
+# Execute the original entrypoint command
+exec "$@"

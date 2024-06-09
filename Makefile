@@ -105,6 +105,10 @@ link-folder:
 install-laravel:
 	cd project && composer create-project laravel/laravel $(CODE_PATH)
 
+# case we need to reset laravel permissions
+# sudo chown -R $(id -u):$(id -g) ./project/storage ./project/bootstrap/cache
+# sudo chmod -R 775 ./project/storage ./project/bootstrap/cache
+
 create-user:
 	@$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash -c "adduser --disabled-password --gecos '' --uid $(USER_ID) --gid $(GROUP_ID) devuser"
 	@$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash -c "chown -R devuser:devuser /var/www/html"
