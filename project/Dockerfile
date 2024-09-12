@@ -57,7 +57,8 @@ RUN docker-php-ext-install \
     mbstring \
     pdo_mysql \
     zip \
-    exif
+    exif \
+    pcntl
 
 # Enable additional extensions
 RUN docker-php-ext-enable \
@@ -71,7 +72,8 @@ RUN docker-php-ext-enable \
     mbstring \
     pdo_mysql \
     zip \
-    exif
+    exif \
+    pcntl
 
 # Install Redis extension
 RUN pecl install redis \
