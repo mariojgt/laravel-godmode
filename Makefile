@@ -74,6 +74,9 @@ link:
 exe:
 	@$(DOCKER) exec -itu devuser ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash
 
+horizon:
+	@$(DOCKER) exec -itu devuser ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash -c 'php artisan horizon'
+
 composer:
 	@$(DOCKER) exec -itu devuser ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash -c 'composer update && chmod -R 755 . && chmod -R 777 storage bootstrap/cache resources'
 
