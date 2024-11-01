@@ -75,6 +75,33 @@ RUN docker-php-ext-enable \
     exif \
     pcntl
 
+# Install ImageMagick and Imagick extension
+RUN apt-get update && apt-get install -y \
+    imagemagick \
+    libmagickwand-dev \
+    ghostscript \
+    && pecl install imagick \
+    && docker-php-ext-enable imagick
+
+# Update ImageMagick security policy
+RUN if [ -f /etc/ImageMagick-6/policy.xml ]; then \
+        sed -i 's/rights="none" pattern="PDF"/rights="read|write" pattern="PDF"/' /etc/ImageMagick-6/policy.xml; \
+        sed -i 's/domain="coder" rights="none" pattern="PS"/domain="coder" rights="read|write" pattern="PS"/' /etc/ImageMagick-6/policy.xml; \
+        sed -i 's/domain="coder" rights="none" pattern="EPS"/domain="coder" rights="read|write" pattern="EPS"/' /etc/ImageMagick-6/policy.xml; \
+        sed -i 's/domain="coder" rights="none" pattern="XPS"/domain="coder" rights="read|write" pattern="XPS"/' /etc/ImageMagick-6/policy.xml; \
+    fi \
+    && if [ -f /etc/ImageMagick-7/policy.xml ]; then \
+        sed -i 's/rights="none" pattern="PDF"/rights="read|write" pattern="PDF"/' /etc/ImageMagick-7/policy.xml; \
+    fi
+
+# Verify ImageMagick installation and configuration
+RUN convert -version \
+    && identify -version \
+    && gs --version
+
+# Set proper memory limits for PHP
+RUN echo "memory_limit = 512M" >> /usr/local/etc/php/conf.d/docker-php-memory-limit.ini
+
 # Install Redis extension
 RUN pecl install redis \
     && docker-php-ext-enable redis

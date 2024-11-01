@@ -58,6 +58,9 @@ host:
 
 host-stop:
 	$(COMPOSE) -f docker-compose-ngrok.yml down
+
+clear-redis:
+	$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_redis redis-cli flushall
 # /*
 # |--------------------------------------------------------------------------
 # | Utility cmds
