@@ -98,6 +98,33 @@ permission:
 
 # /*
 # |--------------------------------------------------------------------------
+# | Supervisor
+# |--------------------------------------------------------------------------
+# */
+
+# Show processes running in container
+ps:
+	docker exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_app ps aux
+
+# Show supervisor status
+status-supervisor:
+	docker exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_app supervisorctl status
+
+# Stop all supervisor processes
+stop-supervisor:
+	docker exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_app supervisorctl stop all
+
+# Start all supervisor processes
+start-supervisor:
+	docker exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_app supervisorctl start all
+
+# Restart all supervisor processes
+restart-supervisor:
+	docker exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_app supervisorctl restart all
+
+
+# /*
+# |--------------------------------------------------------------------------
 # | SYNC FOLDERS THE PACKAGES
 # |--------------------------------------------------------------------------
 # */
