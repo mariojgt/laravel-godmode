@@ -129,5 +129,17 @@ RUN if [ -d /var/www/html/storage ]; then chmod -R 775 /var/www/html/storage; fi
     && if [ -d /var/www/html/public ]; then chmod -R 775 /var/www/html/public; fi \
     && if [ -d /var/www/html/bootstrap/cache ]; then chmod -R 775 /var/www/html/bootstrap/cache; fi
 
-# Set the entrypoint to the start script
-# ENTRYPOINT ["/scripts/start.sh"]
+# Install supervisor
+RUN apt-get update && apt-get install -y supervisor
+
+# Create supervisor directories
+RUN mkdir -p /var/log/supervisor /var/run/supervisor
+RUN chmod -R 777 /var/log/supervisor /var/run/supervisor
+
+# Copy supervisor configuration
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Make sure Apache can write to necessary directories
+RUN chown -R www-data:www-data /var/lock/apache2 /var/run/apache2 /var/log/apache2
+
+ENTRYPOINT ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
