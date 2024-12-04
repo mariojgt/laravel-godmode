@@ -1,6 +1,6 @@
 .PHONY: network remove-network list-network start stop destroy volume build list link exe composer bun bun-upgrade bun-update
 
-COMPOSE =sudo docker-compose
+COMPOSE =sudo docker compose
 DOCKER = sudo docker
 # Load .env file
 DOCKER_PREFIX:= $(shell grep -E '^DOCKER_PREFIX' .env | cut -d '=' -f 2)
@@ -54,10 +54,10 @@ prune:
 	@$(DOCKER) system prune -a
 
 host:
-	$(COMPOSE) -f docker-compose-ngrok.yml up -d
+	$(COMPOSE) -f docker compose-ngrok.yml up -d
 
 host-stop:
-	$(COMPOSE) -f docker-compose-ngrok.yml down
+	$(COMPOSE) -f docker compose-ngrok.yml down
 
 clear-redis:
 	$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_redis redis-cli flushall
