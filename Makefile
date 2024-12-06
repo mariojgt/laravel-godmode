@@ -77,6 +77,16 @@ link:
 exe:
 	@$(DOCKER) exec -itu devuser ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash
 
+# New command to run tests with code coverage
+coverage: ## Run PHPUnit tests with code coverage
+	@$(DOCKER) exec -itu devuser ${DOCKER_PREFIX}_${CONTAINER_NAME}_app \
+		vendor/bin/phpunit --coverage-html=coverage/
+
+# New command to run tests with text-based coverage report
+coverage-text: ## Run PHPUnit tests with text-based coverage report
+	@$(DOCKER) exec -itu devuser ${DOCKER_PREFIX}_${CONTAINER_NAME}_app \
+		vendor/bin/phpunit --coverage-text
+
 horizon:
 	@$(DOCKER) exec -itu devuser ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash -c 'php artisan horizon'
 
