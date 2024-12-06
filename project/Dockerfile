@@ -30,7 +30,9 @@ RUN apt-get install -y \
     libwebp-dev \
     libjpeg62-turbo-dev \
     libxpm-dev \
-    libgd-dev
+    libgd-dev \
+    default-mysql-client \
+    lcov # Added lcov for code coverage reports
 
 # Set apache document root
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
@@ -74,6 +76,10 @@ RUN docker-php-ext-enable \
     zip \
     exif \
     pcntl
+
+# Install Xdebug for code coverage
+RUN pecl install xdebug \
+    && docker-php-ext-enable xdebug
 
 # Install ImageMagick and Imagick extension
 RUN apt-get update && apt-get install -y \
@@ -128,6 +134,10 @@ RUN if [ -d /var/www/html/storage ]; then chown -R www-data:www-data /var/www/ht
 RUN if [ -d /var/www/html/storage ]; then chmod -R 775 /var/www/html/storage; fi \
     && if [ -d /var/www/html/public ]; then chmod -R 775 /var/www/html/public; fi \
     && if [ -d /var/www/html/bootstrap/cache ]; then chmod -R 775 /var/www/html/bootstrap/cache; fi
+
+# Xdebug configuration for code coverage
+RUN echo "xdebug.mode=coverage" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini \
+    && echo "xdebug.start_with_request=yes" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
 
 # Install supervisor
 RUN apt-get update && apt-get install -y supervisor
