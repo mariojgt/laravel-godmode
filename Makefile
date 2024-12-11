@@ -1,6 +1,6 @@
 .PHONY: network remove-network list-network start stop destroy volume build list link exe composer bun bun-upgrade bun-update
 
-COMPOSE =sudo docker compose
+COMPOSE =sudo docker-compose
 DOCKER = sudo docker
 # Load .env file
 DOCKER_PREFIX:= $(shell grep -E '^DOCKER_PREFIX' .env | cut -d '=' -f 2)
