@@ -143,7 +143,7 @@ PROJECTS_DIR := /home/$(USER)/projects/laravel-projects
 CURRENT_DIR := $(shell basename $(CURDIR))
 
 link-folder:
-	ln -s $(PROJECTS_DIR)/packages $(PROJECTS_DIR)/projects/$(CURRENT_DIR)/project/$(CODE_PATH)/packages
+	ln -s $(PROJECTS_DIR)/repo $(PROJECTS_DIR)/projects/$(CURRENT_DIR)/project/$(CODE_PATH)/repo
 
 install-laravel:
 	cd project && composer create-project laravel/laravel $(CODE_PATH)
