@@ -82,12 +82,16 @@ RUN pecl install xdebug \
     && docker-php-ext-enable xdebug
 
 # Install ImageMagick and Imagick extension
-RUN apt-get update && apt-get install -y \
+RUN set -eux; \
+    apt-get update && apt-get install -y \
     imagemagick \
     libmagickwand-dev \
     ghostscript \
-    && pecl install imagick \
-    && docker-php-ext-enable imagick
+    && mkdir -p /usr/src/php/ext/imagick \
+    && curl -fsSL https://github.com/Imagick/imagick/archive/refs/tags/3.7.0.tar.gz | tar xvz -C "/usr/src/php/ext/imagick" --strip-components=1 \
+    && docker-php-ext-configure imagick \
+    && docker-php-ext-install imagick \
+    && rm -rf /var/lib/apt/lists/*
 
 # Update ImageMagick security policy
 RUN if [ -f /etc/ImageMagick-6/policy.xml ]; then \

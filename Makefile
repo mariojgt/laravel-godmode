@@ -1,7 +1,7 @@
 .PHONY: network remove-network list-network start stop destroy volume build list link exe composer bun bun-upgrade bun-update
 
-COMPOSE =sudo docker-compose
-DOCKER = sudo docker
+COMPOSE = docker compose
+DOCKER = docker
 # Load .env file
 DOCKER_PREFIX:= $(shell grep -E '^DOCKER_PREFIX' .env | cut -d '=' -f 2)
 NETWORK_NAME:= $(shell grep -E '^NETWORK_NAME' .env | cut -d '=' -f 2)
@@ -12,6 +12,9 @@ REDIS_PORT:= $(shell grep -E '^REDIS_PORT' .env | cut -d '=' -f 2)
 PHPMYADMIN_PORT:= $(shell grep -E '^PHPMYADMIN_PORT' .env | cut -d '=' -f 2)
 MYAPP_PORT:= $(shell grep -E '^MYAPP_PORT' .env | cut -d '=' -f 2)
 REDIS_INSIGHT_PORT:= $(shell grep -E '^REDIS_INSIGHT_PORT' .env | cut -d '=' -f 2)
+
+DOMAIN := example.com
+EMAIL := example@example.com
 
 # /*
 # |--------------------------------------------------------------------------
@@ -105,6 +108,21 @@ bun-update:
 permission:
 	@$(eval CURRENT_USER := $(shell whoami))
 	@sudo chown -R $(CURRENT_USER):$(CURRENT_USER) *
+	@$(COMPOSE) exec -u root php-app chown -R devuser:devuser /var/www/html
+
+fix-permissions:
+	@echo "Setting correct permissions for Laravel directories..."
+	@docker exec -it --user root ${DOCKER_PREFIX}_${CONTAINER_NAME}_app bash -c '\
+		chown -R www-data:www-data /var/www/html/storage && \
+		chown -R www-data:www-data /var/www/html/bootstrap/cache && \
+		chmod -R 775 /var/www/html/storage && \
+		chmod -R 775 /var/www/html/bootstrap/cache && \
+		chown -R www-data:www-data /var/www/html/public && \
+		find /var/www/html/storage -type f -exec chmod 664 {} \; && \
+		find /var/www/html/storage -type d -exec chmod 775 {} \; && \
+		find /var/www/html/bootstrap/cache -type f -exec chmod 664 {} \; && \
+		find /var/www/html/bootstrap/cache -type d -exec chmod 775 {} \; && \
+		echo "Permissions have been set"'
 
 # /*
 # |--------------------------------------------------------------------------
@@ -155,3 +173,46 @@ install-laravel:
 create-user:
 	@$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash -c "adduser --disabled-password --gecos '' --uid $(USER_ID) --gid $(GROUP_ID) devuser"
 	@$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash -c "chown -R devuser:devuser /var/www/html"
+
+ssl-cert:
+	@mkdir -p project/ssl
+	@openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+		-keyout project/ssl/server.key \
+		-out project/ssl/server.crt \
+		-subj "/C=US/ST=State/L=City/O=Organization/CN=localhost"
+	@echo "SSL certificates generated in project/ssl/"
+	@echo "server.key and server.crt have been created"
+	@chmod 644 project/ssl/server.crt
+	@chmod 600 project/ssl/server.key
+
+# SSL and Domain Management
+.PHONY: ssl-setup ssl-renew ssl-status domain-setup
+
+DOMAIN := thedevrealm.com
+EMAIL := thedevrealm@thedevrealm.com
+
+ssl-setup: ## Install and configure Let's Encrypt SSL
+	@echo "Setting up SSL for $(DOMAIN)..."
+	@docker exec -it --user root ${DOCKER_PREFIX}_${CONTAINER_NAME}_app bash -c '\
+		apt-get update && \
+		apt-get install -y certbot python3-certbot-apache && \
+		certbot --apache \
+			--non-interactive \
+			--agree-tos \
+			--email ${EMAIL} \
+			--domains ${DOMAIN} \
+			--redirect && \
+		apache2ctl -t && \
+		service apache2 reload'
+
+ssl-status:
+	@echo "Checking SSL certificate status..."
+	@docker exec -it --user root ${DOCKER_PREFIX}_${CONTAINER_NAME}_app bash -c '\
+		if ! command -v certbot &> /dev/null; then \
+			apt-get update && \
+			apt-get install -y certbot python3-certbot-apache; \
+		fi && \
+		certbot certificates'
+
+apache-logs: ## View Apache error logs
+	@docker exec -it --user root ${DOCKER_PREFIX}_${CONTAINER_NAME}_app tail -f /var/log/apache2/error.log
