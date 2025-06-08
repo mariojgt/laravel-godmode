@@ -1,4 +1,4 @@
-FROM php:8.3-apache
+FROM php:8.4-apache
 
 # Install Node.js and npm
 RUN curl -sL https://deb.nodesource.com/setup_20.x | bash - \
