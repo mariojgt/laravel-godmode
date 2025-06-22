@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laravel Docker Control Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.5.0/axios.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            200: '#bbf7d0',
+                            300: '#86efac',
+                            400: '#4ade80',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            800: '#166534',
+                            900: '#14532d',
+                        },
+                        dark: {
+                            50: '#f9fafb',
+                            100: '#f3f4f6',
+                            200: '#e5e7eb',
+                            300: '#d1d5db',
+                            400: '#9ca3af',
+                            500: '#6b7280',
+                            600: '#4b5563',
+                            700: '#374151',
+                            800: '#1f2937',
+                            900: '#111827',
+                            950: '#0a0f1a',
+                        }
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'bounce-slow': 'bounce 2s infinite',
+                        'glow': 'glow 2s ease-in-out infinite alternate',
+                    },
+                    keyframes: {
+                        glow: {
+                            '0%': { boxShadow: '0 0 5px #22c55e, 0 0 10px #22c55e, 0 0 15px #22c55e' },
+                            '100%': { boxShadow: '0 0 10px #22c55e, 0 0 20px #22c55e, 0 0 30px #22c55e' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+        }
+        .command-card {
+            @apply bg-gradient-to-br from-dark-800 to-dark-900 border border-dark-600 rounded-xl p-4 hover:border-primary-500 transition-all duration-300 cursor-pointer group;
+        }
+        .command-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(34, 197, 94, 0.1);
+        }
+        .status-indicator {
+            @apply w-3 h-3 rounded-full;
+        }
+        .status-running {
+            @apply bg-primary-500;
+            animation: pulse 2s infinite;
+        }
+        .status-stopped {
+            @apply bg-red-500;
+        }
+        .sidebar-item {
+            @apply flex items-center px-4 py-3 text-gray-300 hover:text-white hover:bg-dark-700 rounded-lg transition-all duration-200 cursor-pointer group;
+        }
+        .sidebar-item.active {
+            @apply text-white bg-gradient-to-r from-primary-600 to-primary-700;
+        }
+        .code-block {
+            @apply bg-black rounded-lg p-4 font-mono text-sm overflow-x-auto;
+        }
+        .terminal-line {
+            @apply py-1 hover:bg-dark-800 rounded px-2 transition-colors;
+        }
+    </style>
+</head>
+<body class="dark bg-dark-950 text-white min-h-screen">
+    <!-- Header -->
+    <header class="border-b border-dark-800 bg-dark-900/50 backdrop-blur-sm sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <div class="w-10 h-10 bg-gradient-to-br from-primary-400 to-primary-600 rounded-xl flex items-center justify-center">
+                        <i class="fab fa-laravel text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold bg-gradient-to-r from-primary-400 to-primary-600 bg-clip-text text-transparent">
+                            Laravel Docker Control Panel
+                        </h1>
+                        <p class="text-sm text-gray-400">Modern development environment</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div id="status-indicator" class="flex items-center px-3 py-2 rounded-lg bg-dark-800">
+                        <div class="w-2 h-2 bg-gray-500 rounded-full mr-2"></div>
+                        <span class="text-sm">Connecting...</span>
+                    </div>
+                    <button onclick="refreshStatus()" class="px-4 py-2 bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors duration-200 flex items-center">
+                        <i class="fas fa-sync-alt mr-2"></i>
+                        Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex min-h-screen">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-dark-900 border-r border-dark-800 p-6">
+            <nav class="space-y-2">
+                <div class="sidebar-item active" onclick="switchSection('overview')" data-section="overview">
+                    <i class="fas fa-tachometer-alt mr-3"></i>
+                    <span>Overview</span>
+                </div>
+                <div class="sidebar-item" onclick="switchSection('docker')" data-section="docker">
+                    <i class="fab fa-docker mr-3"></i>
+                    <span>Docker</span>
+                </div>
+                <div class="sidebar-item" onclick="switchSection('laravel')" data-section="laravel">
+                    <i class="fab fa-laravel mr-3"></i>
+                    <span>Laravel</span>
+                </div>
+                <div class="sidebar-item" onclick="switchSection('dependencies')" data-section="dependencies">
+                    <i class="fas fa-cubes mr-3"></i>
+                    <span>Dependencies</span>
+                </div>
+                <div class="sidebar-item" onclick="switchSection('database')" data-section="database">
+                    <i class="fas fa-database mr-3"></i>
+                    <span>Database</span>
+                </div>
+                <div class="sidebar-item" onclick="switchSection('testing')" data-section="testing">
+                    <i class="fas fa-flask mr-3"></i>
+                    <span>Testing</span>
+                </div>
+                <div class="sidebar-item" onclick="switchSection('monitoring')" data-section="monitoring">
+                    <i class="fas fa-chart-line mr-3"></i>
+                    <span>Monitoring</span>
+                </div>
+                <div class="sidebar-item" onclick="switchSection('paths')" data-section="paths">
+                    <i class="fas fa-folder mr-3"></i>
+                    <span>Project Paths</span>
+                </div>
+                <div class="sidebar-item" onclick="switchSection('maintenance')" data-section="maintenance">
+                    <i class="fas fa-tools mr-3"></i>
+                    <span>Maintenance</span>
+                </div>
+                <div class="sidebar-item" onclick="switchSection('terminal')" data-section="terminal">
+                    <i class="fas fa-terminal mr-3"></i>
+                    <span>Terminal</span>
+                </div>
+                <div class="sidebar-item" onclick="switchSection('logs')" data-section="logs">
+                    <i class="fas fa-file-alt mr-3"></i>
+                    <span>Logs</span>
+                </div>
+            </nav>
+
+            <!-- Quick Actions -->
+            <div class="mt-8">
+                <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Quick Actions</h3>
+                <div class="space-y-2">
+                    <button onclick="executeCommand('up')" class="w-full px-3 py-2 bg-primary-600 hover:bg-primary-700 rounded-lg text-sm transition-colors duration-200">
+                        <i class="fas fa-play mr-2"></i>Start All
+                    </button>
+                    <button onclick="executeCommand('down')" class="w-full px-3 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-sm transition-colors duration-200">
+                        <i class="fas fa-stop mr-2"></i>Stop All
+                    </button>
+                    <button onclick="executeCommand('shell')" class="w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm transition-colors duration-200">
+                        <i class="fas fa-terminal mr-2"></i>Shell
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-8">
+            <!-- Overview Section -->
+            <div id="overview-section" class="section">
+                <!-- Status Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-gradient-to-br from-dark-800 to-dark-900 rounded-xl p-6 border border-dark-700">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-400 text-sm mb-1">Running Containers</p>
+                                <p id="running-containers" class="text-3xl font-bold text-primary-400">-</p>
+                            </div>
+                            <div class="w-12 h-12 bg-primary-500/20 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-play-circle text-primary-400 text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-gradient-to-br from-dark-800 to-dark-900 rounded-xl p-6 border border-dark-700">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-400 text-sm mb-1">Total Services</p>
+                                <p id="total-containers" class="text-3xl font-bold text-blue-400">-</p>
+                            </div>
+                            <div class="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-cubes text-blue-400 text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-gradient-to-br from-dark-800 to-dark-900 rounded-xl p-6 border border-dark-700">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-400 text-sm mb-1">Project Path</p>
+                                <p id="code-path" class="text-lg font-bold text-purple-400">-</p>
+                            </div>
+                            <div class="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-folder text-purple-400 text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-gradient-to-br from-dark-800 to-dark-900 rounded-xl p-6 border border-dark-700">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-400 text-sm mb-1">App Port</p>
+                                <p id="app-port" class="text-3xl font-bold text-yellow-400">-</p>
+                            </div>
+                            <div class="w-12 h-12 bg-yellow-500/20 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-network-wired text-yellow-400 text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Services Grid -->
+                <div class="mb-8">
+                    <h2 class="text-2xl font-bold mb-6">Services</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div class="bg-gradient-to-br from-dark-800 to-dark-900 rounded-xl p-6 border border-dark-700 hover:border-primary-500 transition-all duration-300">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="w-12 h-12 bg-red-500/20 rounded-lg flex items-center justify-center">
+                                    <i class="fab fa-laravel text-red-400 text-xl"></i>
+                                </div>
+                                <div class="status-indicator status-running"></div>
+                            </div>
+                            <h3 class="font-semibold mb-2">Laravel App</h3>
+                            <p class="text-gray-400 text-sm mb-4">Main application</p>
+                            <a id="app-url" href="#" target="_blank" class="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-sm transition-colors duration-200">
+                                <i class="fas fa-external-link-alt mr-2"></i>Open
+                            </a>
+                        </div>
+
+                        <div class="bg-gradient-to-br from-dark-800 to-dark-900 rounded-xl p-6 border border-dark-700 hover:border-primary-500 transition-all duration-300">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-database text-blue-400 text-xl"></i>
+                                </div>
+                                <div class="status-indicator status-running"></div>
+                            </div>
+                            <h3 class="font-semibold mb-2">PHPMyAdmin</h3>
+                            <p class="text-gray-400 text-sm mb-4">Database management</p>
+                            <a id="phpmyadmin-url" href="#" target="_blank" class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm transition-colors duration-200">
+                                <i class="fas fa-external-link-alt mr-2"></i>Open
+                            </a>
+                        </div>
+
+                        <div class="bg-gradient-to-br from-dark-800 to-dark-900 rounded-xl p-6 border border-dark-700 hover:border-primary-500 transition-all duration-300">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="w-12 h-12 bg-red-500/20 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-memory text-red-400 text-xl"></i>
+                                </div>
+                                <div class="status-indicator status-running"></div>
+                            </div>
+                            <h3 class="font-semibold mb-2">Redis Insight</h3>
+                            <p class="text-gray-400 text-sm mb-4">Cache management</p>
+                            <a id="redis-url" href="#" target="_blank" class="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-sm transition-colors duration-200">
+                                <i class="fas fa-external-link-alt mr-2"></i>Open
+                            </a>
+                        </div>
+
+                        <div class="bg-gradient-to-br from-dark-800 to-dark-900 rounded-xl p-6 border border-dark-700 hover:border-primary-500 transition-all duration-300">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-envelope text-purple-400 text-xl"></i>
+                                </div>
+                                <div class="status-indicator status-running"></div>
+                            </div>
+                            <h3 class="font-semibold mb-2">Mailhog</h3>
+                            <p class="text-gray-400 text-sm mb-4">Email testing</p>
+                            <a id="mailhog-url" href="#" target="_blank" class="inline-flex items-center px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-sm transition-colors duration-200">
+                                <i class="fas fa-external-link-alt mr-2"></i>Open
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Container Status -->
+                <div>
+                    <h2 class="text-2xl font-bold mb-6">Container Status</h2>
+                    <div id="containers-list" class="space-y-4">
+                        <!-- Containers will be populated here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Docker Section -->
+            <div id="docker-section" class="section hidden">
+                <h2 class="text-2xl font-bold mb-6">Docker Management</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="docker-commands">
+                    <!-- Commands will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Laravel Section -->
+            <div id="laravel-section" class="section hidden">
+                <h2 class="text-2xl font-bold mb-6">Laravel Commands</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="laravel-commands">
+                    <!-- Commands will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Dependencies Section -->
+            <div id="dependencies-section" class="section hidden">
+                <h2 class="text-2xl font-bold mb-6">Dependency Management</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="dependencies-commands">
+                    <!-- Commands will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Database Section -->
+            <div id="database-section" class="section hidden">
+                <h2 class="text-2xl font-bold mb-6">Database Management</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="database-commands">
+                    <!-- Commands will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Testing Section -->
+            <div id="testing-section" class="section hidden">
+                <h2 class="text-2xl font-bold mb-6">Testing & Quality</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="testing-commands">
+                    <!-- Commands will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Monitoring Section -->
+            <div id="monitoring-section" class="section hidden">
+                <h2 class="text-2xl font-bold mb-6">Monitoring & Debugging</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="monitoring-commands">
+                    <!-- Commands will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Project Paths Section -->
+            <div id="paths-section" class="section hidden">
+                <h2 class="text-2xl font-bold mb-6">Project Path Management</h2>
+
+                <!-- Current Path Info -->
+                <div class="bg-gradient-to-br from-dark-800 to-dark-900 rounded-xl p-6 border border-dark-700 mb-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="font-semibold mb-2">Current Laravel Path</h3>
+                            <p class="text-gray-400">Your Laravel application is located at:</p>
+                            <code id="current-path-display" class="text-primary-400 bg-black px-2 py-1 rounded mt-2 inline-block">src</code>
+                        </div>
+                        <div class="w-16 h-16 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-folder text-purple-400 text-2xl"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Path Commands -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="paths-commands">
+                    <!-- Commands will be populated by JavaScript -->
+                </div>
+
+                <!-- Switch Path Form -->
+                <div class="mt-8 bg-gradient-to-br from-dark-800 to-dark-900 rounded-xl p-6 border border-dark-700">
+                    <h3 class="font-semibold mb-4">Switch Project Path</h3>
+                    <div class="flex space-x-4">
+                        <input type="text" id="new-path-input" placeholder="Enter new path (e.g., projects/my-app)"
+                               class="flex-1 bg-dark-700 border border-dark-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary-500">
+                        <button onclick="switchProjectPath()" class="px-6 py-2 bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors duration-200">
+                            Switch Path
+                        </button>
+                    </div>
+                    <p class="text-gray-400 text-sm mt-2">Examples: src/laravel, projects/client-a, apps/main</p>
+                </div>
+            </div>
+
+            <!-- Maintenance Section -->
+            <div id="maintenance-section" class="section hidden">
+                <h2 class="text-2xl font-bold mb-6">Maintenance & Utilities</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="maintenance-commands">
+                    <!-- Commands will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Terminal Section -->
+            <div id="terminal-section" class="section hidden">
+                <h2 class="text-2xl font-bold mb-6">Interactive Terminal</h2>
+
+                <!-- Command Input -->
+                <div class="mb-6">
+                    <div class="flex space-x-4">
+                        <div class="flex-1 relative">
+                            <input type="text" id="terminal-input" placeholder="Enter make command (e.g., migrate, shell, composer-install)"
+                                   class="w-full bg-dark-700 border border-dark-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary-500 pr-12">
+                            <div class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                                <kbd class="px-2 py-1 bg-dark-600 rounded text-xs">Enter</kbd>
+                            </div>
+                        </div>
+                        <button onclick="executeTerminalCommand()" class="px-6 py-3 bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors duration-200 flex items-center">
+                            <i class="fas fa-play mr-2"></i>
+                            Execute
+                        </button>
+                        <button onclick="clearTerminal()" class="px-6 py-3 bg-gray-600 hover:bg-gray-700 rounded-lg transition-colors duration-200 flex items-center">
+                            <i class="fas fa-eraser mr-2"></i>
+                            Clear
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Terminal Output -->
+                <div class="code-block h-96 overflow-y-auto" id="terminal-output">
+                    <div class="text-primary-400">$ Laravel Docker Control Panel Terminal</div>
+                    <div class="text-gray-400">Type make commands and press Enter or click Execute</div>
+                    <div class="text-gray-400">Available commands: up, down, shell, migrate, test, etc.</div>
+                </div>
+            </div>
+
+            <!-- Logs Section -->
+            <div id="logs-section" class="section hidden">
+                <h2 class="text-2xl font-bold mb-6">Real-time Logs</h2>
+
+                <!-- Log Controls -->
+                <div class="mb-6 flex items-center space-x-4">
+                    <select id="log-service" class="bg-dark-700 border border-dark-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary-500">
+                        <option value="app">Application</option>
+                        <option value="mysql">MySQL</option>
+                        <option value="redis">Redis</option>
+                        <option value="phpmyadmin">PHPMyAdmin</option>
+                        <option value="mailhog">Mailhog</option>
+                    </select>
+                    <button onclick="startLogs()" class="px-4 py-2 bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors duration-200 flex items-center">
+                        <i class="fas fa-play mr-2"></i>Start Logs
+                    </button>
+                    <button onclick="stopLogs()" class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors duration-200 flex items-center">
+                        <i class="fas fa-stop mr-2"></i>Stop
+                    </button>
+                    <button onclick="clearLogs()" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg transition-colors duration-200 flex items-center">
+                        <i class="fas fa-eraser mr-2"></i>Clear
+                    </button>
+                </div>
+
+                <!-- Log Output -->
+                <div class="code-block h-96 overflow-y-auto" id="logs-container">
+                    <div class="text-gray-400">Select a service and click "Start Logs" to view real-time logs...</div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center hidden z-50">
+        <div class="bg-dark-800 rounded-xl p-8 border border-dark-700 max-w-md w-full mx-4">
+            <div class="flex items-center justify-center mb-4">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+            </div>
+            <div class="text-center">
+                <h3 class="text-lg font-semibold mb-2">Executing Command</h3>
+                <p class="text-gray-400">Please wait while the command is being executed...</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
