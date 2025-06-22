@@ -1,76 +1,103 @@
-version: '3'
-
-networks:
-  laravel-app:
-    driver: bridge
-
 services:
-  php-app:
+  # Laravel Application with Nginx + PHP-FPM
+  app:
     build:
-      context: ./project
-      dockerfile: Dockerfile  # Specify the name of your Dockerfile if it's not named 'Dockerfile'
+      context: .
+      dockerfile: Dockerfile
       args:
         uid: ${UID:-1000}
-    container_name: ${DOCKER_PREFIX}_${CONTAINER_NAME}_app
+    container_name: ${APP_NAME:-laravel}_app
     working_dir: /var/www/html
     volumes:
-      - ./project/${CODE_PATH}:/var/www/html
-      - ${PACKAGES_FOLDER}
-    user: devuser
+      - ./${CODE_PATH:-src}:/var/www/html
+      - ./logs/nginx:/var/log/nginx
+      - ./logs/supervisor:/var/log/supervisor
     ports:
-      - ${MYAPP_PORT:-8001}:80
-      - ${MYAPP_NODE_PORT:-3001}:${MYAPP_NODE_PORT_EXPOSE:-3000}  # Provide default values if variables are not set
+      - "${APP_PORT:-8000}:80"
+      - "${VITE_PORT:-5173}:5173"
     networks:
-      - ${NETWORK_NAME:-laravel-app}
-  # MySQL 8
-  mysql:
-    image: mysql:8
-    container_name: ${DOCKER_PREFIX}_${CONTAINER_NAME}_mysql
+      - laravel
+    depends_on:
+      - mysql
+      - redis
     environment:
-      MYSQL_DATABASE: laravel
-      MYSQL_USER: laravel_user
-      MYSQL_PASSWORD: laravel_password
-      MYSQL_ROOT_PASSWORD: laravel_password
+      - PHP_IDE_CONFIG=serverName=laravel
+
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: ${APP_NAME:-laravel}_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-password}
+      MYSQL_DATABASE: ${DB_DATABASE:-laravel}
+      MYSQL_USER: ${DB_USERNAME:-laravel}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-password}
     ports:
-      - 3306:3306
-    networks:
-      - ${NETWORK_NAME:-laravel-app}
+      - "${DB_PORT:-3306}:3306"
     volumes:
-      - mysql:/var/lib/mysql
+      - mysql_data:/var/lib/mysql
+      - ./mysql/my.cnf:/etc/mysql/my.cnf
+    networks:
+      - laravel
+    command: --default-authentication-plugin=mysql_native_password
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: ${APP_NAME:-laravel}_redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - laravel
+    sysctls:
+      - net.core.somaxconn=65535
+    command: redis-server --appendonly yes
 
   # PHPMyAdmin
   phpmyadmin:
-    image: phpmyadmin/phpmyadmin
-    container_name: ${DOCKER_PREFIX}_${CONTAINER_NAME}_phpmyadmin
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: ${APP_NAME:-laravel}_phpmyadmin
     environment:
       PMA_HOST: mysql
-      PMA_USER: laravel_user
-      PMA_PASSWORD: laravel_password
+      PMA_USER: ${DB_USERNAME:-laravel}
+      PMA_PASSWORD: ${DB_PASSWORD:-password}
+      UPLOAD_LIMIT: 100M
     ports:
-      - ${PHPMYADMIN_PORT:-8080}:80
+      - "${PHPMYADMIN_PORT:-8080}:80"
     networks:
-      - ${NETWORK_NAME:-laravel-app}
+      - laravel
+    depends_on:
+      - mysql
 
-  # Redis Server
-  redis:
-    image: redis:alpine
-    container_name: ${DOCKER_PREFIX}_${CONTAINER_NAME}_redis
-    ports:
-      - ${REDIS_PORT:-6379}:6379
-    networks:
-      - ${NETWORK_NAME:-laravel-app}
-    volumes:
-      - redis:/data
-
-  # Redis redisinsight
-  redisinsight:
+  # Redis Insight
+  redis-insight:
     image: redis/redisinsight:latest
-    container_name: ${DOCKER_PREFIX}_${CONTAINER_NAME}_redis_insight
+    container_name: ${APP_NAME:-laravel}_redis_insight
     ports:
-      - ${REDIS_INSIGHT_PORT:-8001}:5540
+      - "${REDIS_INSIGHT_PORT:-8001}:5540"
     networks:
-      - ${NETWORK_NAME:-laravel-app}
+      - laravel
+    depends_on:
+      - redis
+
+  # Mailhog (for email testing)
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: ${APP_NAME:-laravel}_mailhog
+    ports:
+      - "${MAILHOG_PORT:-8025}:8025"
+      - "1025:1025"
+    networks:
+      - laravel
+
+networks:
+  laravel:
+    driver: bridge
 
 volumes:
-  mysql:
-  redis:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local

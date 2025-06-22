@@ -1,218 +1,272 @@
-.PHONY: network remove-network list-network start stop destroy volume build list link exe composer bun bun-upgrade bun-update
+.PHONY: help install up down build rebuild shell logs clean test npm composer artisan fresh optimize backup restore
 
+# Load environment variables
+include .env
+
+# Docker commands
 COMPOSE = docker compose
-DOCKER = docker
-# Load .env file
-DOCKER_PREFIX:= $(shell grep -E '^DOCKER_PREFIX' .env | cut -d '=' -f 2)
-NETWORK_NAME:= $(shell grep -E '^NETWORK_NAME' .env | cut -d '=' -f 2)
-CONTAINER_NAME:= $(shell grep -E '^CONTAINER_NAME' .env | cut -d '=' -f 2)
-CODE_PATH:= $(shell grep -E '^CODE_PATH' .env | cut -d '=' -f 2)
+EXEC = $(COMPOSE) exec app
+EXEC_ROOT = $(COMPOSE) exec -u root app
 
-REDIS_PORT:= $(shell grep -E '^REDIS_PORT' .env | cut -d '=' -f 2)
-PHPMYADMIN_PORT:= $(shell grep -E '^PHPMYADMIN_PORT' .env | cut -d '=' -f 2)
-MYAPP_PORT:= $(shell grep -E '^MYAPP_PORT' .env | cut -d '=' -f 2)
-REDIS_INSIGHT_PORT:= $(shell grep -E '^REDIS_INSIGHT_PORT' .env | cut -d '=' -f 2)
+# Get CODE_PATH from environment, default to src
+CODE_PATH ?= src
 
-DOMAIN := example.com
-EMAIL := example@example.com
+# Default target
+help: ## Show this help message
+	@echo "Laravel Docker Development Commands:"
+	@echo ""
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-# /*
-# |--------------------------------------------------------------------------
-# | network cmds
-# |--------------------------------------------------------------------------
-# */
-network:
-	@$(DOCKER) network create $(NETWORK_NAME)
+# ==============================================================================
+# DOCKER COMMANDS
+# ==============================================================================
 
-remove-network:
-	@$(DOCKER) network rm $(NETWORK_NAME)
+install: ## Create Laravel project and setup environment
+	@if [ ! -f "$(CODE_PATH)/composer.json" ]; then \
+		echo "Creating new Laravel project in $(CODE_PATH)..."; \
+		mkdir -p $(CODE_PATH); \
+		$(COMPOSE) run --rm app composer create-project laravel/laravel .; \
+		$(MAKE) setup; \
+	else \
+		echo "Laravel project already exists in $(CODE_PATH). Running setup..."; \
+		$(MAKE) setup; \
+	fi
 
-list-network:
-	@$(DOCKER) network ls
+setup: ## Setup Laravel application
+	@echo "Setting up Laravel application in $(CODE_PATH)..."
+	$(EXEC) composer install
+	@if [ ! -f "$(CODE_PATH)/.env" ]; then \
+		$(EXEC) cp .env.example .env; \
+		$(EXEC) php artisan key:generate; \
+	fi
+	$(EXEC) php artisan storage:link
+	$(MAKE) permissions
+	@echo "Setup complete! Visit http://localhost:${APP_PORT}"
 
-# /*
-# |--------------------------------------------------------------------------
-# | docker cmds
-# |--------------------------------------------------------------------------
-# */
-start:
-	@$(COMPOSE) up -d
+up: ## Start all containers
+	$(COMPOSE) up -d
 
-stop:
-	@$(COMPOSE) down
+down: ## Stop all containers
+	$(COMPOSE) down
 
-destroy:
-	@$(COMPOSE) rm -v -s -f
+build: ## Build containers
+	$(COMPOSE) build --no-cache
 
-volume:
-	@$(DOCKER) volume ls
+rebuild: ## Rebuild and restart containers
+	$(COMPOSE) down
+	$(COMPOSE) build --no-cache
+	$(COMPOSE) up -d
 
-build:
-	@$(COMPOSE) build
+restart: ## Restart all containers
+	$(COMPOSE) restart
 
-list:
-	@$(COMPOSE) ps -a
+list: ## List all containers
+	$(COMPOSE) ps
 
-prune:
-	@$(DOCKER) system prune -a
+# ==============================================================================
+# DEVELOPMENT COMMANDS
+# ==============================================================================
 
-host:
-	$(COMPOSE) -f docker compose-ngrok.yml up -d
+shell: ## Access application container shell
+	$(EXEC) bash
 
-host-stop:
-	$(COMPOSE) -f docker compose-ngrok.yml down
+shell-root: ## Access application container as root
+	$(EXEC_ROOT) bash
 
-clear-redis:
-	$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_redis redis-cli flushall
-# /*
-# |--------------------------------------------------------------------------
-# | Utility cmds
-# |--------------------------------------------------------------------------
-# */
-link:
-	@echo "Creating URLs for services with '$(DOCKER_PREFIX)_' prefix..."
-	@SERVER_IP=$$(hostname -I | cut -d' ' -f1); \
-	echo "http://$$SERVER_IP:$(PHPMYADMIN_PORT)"; \
-	echo "http://$$SERVER_IP:$(REDIS_INSIGHT_PORT)"; \
-	echo "http://$$SERVER_IP:$(MYAPP_PORT)"
+logs: ## Show application logs
+	$(COMPOSE) logs -f app
 
+logs-nginx: ## Show nginx logs
+	$(EXEC) tail -f /var/log/nginx/error.log
 
-exe:
-	@$(DOCKER) exec -itu devuser ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash
+logs-all: ## Show all container logs
+	$(COMPOSE) logs -f
 
-# New command to run tests with code coverage
-coverage: ## Run PHPUnit tests with code coverage
-	@$(DOCKER) exec -itu devuser ${DOCKER_PREFIX}_${CONTAINER_NAME}_app \
-		vendor/bin/phpunit --coverage-html=coverage/
+# ==============================================================================
+# LARAVEL COMMANDS
+# ==============================================================================
 
-# New command to run tests with text-based coverage report
-coverage-text: ## Run PHPUnit tests with text-based coverage report
-	@$(DOCKER) exec -itu devuser ${DOCKER_PREFIX}_${CONTAINER_NAME}_app \
-		vendor/bin/phpunit --coverage-text
+artisan: ## Run artisan command (usage: make artisan cmd="migrate")
+	$(EXEC) php artisan $(cmd)
 
-horizon:
-	@$(DOCKER) exec -itu devuser ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash -c 'php artisan horizon'
+migrate: ## Run database migrations
+	$(EXEC) php artisan migrate
 
-composer:
-	@$(DOCKER) exec -itu devuser ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash -c 'composer update && chmod -R 755 . && chmod -R 777 storage bootstrap/cache resources'
+migrate-fresh: ## Fresh migration with seed
+	$(EXEC) php artisan migrate:fresh --seed
 
-bun:
-	@$(DOCKER) exec -itu devuser ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash -c 'bun install && bun run dev'
+seed: ## Run database seeders
+	$(EXEC) php artisan db:seed
 
-bun-upgrade:
-	@$(DOCKER) exec -itu devuser ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash -c 'bun upgrade'
+tinker: ## Open Laravel Tinker
+	$(EXEC) php artisan tinker
 
-bun-update:
-	@$(DOCKER) exec -itu devuser ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash -c 'bun update'
+queue: ## Start queue worker
+	$(EXEC) php artisan queue:work
 
-permission:
-	@$(eval CURRENT_USER := $(shell whoami))
-	@sudo chown -R $(CURRENT_USER):$(CURRENT_USER) *
-	@$(COMPOSE) exec -u root php-app chown -R devuser:devuser /var/www/html
+schedule: ## Run scheduled tasks (for testing)
+	$(EXEC) php artisan schedule:run
 
-fix-permissions:
-	@echo "Setting correct permissions for Laravel directories..."
-	@docker exec -it --user root ${DOCKER_PREFIX}_${CONTAINER_NAME}_app bash -c '\
-		chown -R www-data:www-data /var/www/html/storage && \
-		chown -R www-data:www-data /var/www/html/bootstrap/cache && \
-		chmod -R 775 /var/www/html/storage && \
-		chmod -R 775 /var/www/html/bootstrap/cache && \
-		chown -R www-data:www-data /var/www/html/public && \
-		find /var/www/html/storage -type f -exec chmod 664 {} \; && \
-		find /var/www/html/storage -type d -exec chmod 775 {} \; && \
-		find /var/www/html/bootstrap/cache -type f -exec chmod 664 {} \; && \
-		find /var/www/html/bootstrap/cache -type d -exec chmod 775 {} \; && \
-		echo "Permissions have been set"'
+cache-clear: ## Clear all caches
+	$(EXEC) php artisan cache:clear
+	$(EXEC) php artisan config:clear
+	$(EXEC) php artisan route:clear
+	$(EXEC) php artisan view:clear
 
-# /*
-# |--------------------------------------------------------------------------
-# | Supervisor
-# |--------------------------------------------------------------------------
-# */
+optimize: ## Optimize Laravel application
+	$(EXEC) php artisan config:cache
+	$(EXEC) php artisan route:cache
+	$(EXEC) php artisan view:cache
+	$(EXEC) php artisan event:cache
 
-# Show processes running in container
-ps:
-	docker exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_app ps aux
+# ==============================================================================
+# DEPENDENCY MANAGEMENT
+# ==============================================================================
 
-# Show supervisor status
-status-supervisor:
-	docker exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_app supervisorctl status
+composer: ## Run composer command (usage: make composer cmd="require package")
+	$(EXEC) composer $(cmd)
 
-# Stop all supervisor processes
-stop-supervisor:
-	docker exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_app supervisorctl stop all
+composer-install: ## Install PHP dependencies
+	$(EXEC) composer install
 
-# Start all supervisor processes
-start-supervisor:
-	docker exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_app supervisorctl start all
+composer-update: ## Update PHP dependencies
+	$(EXEC) composer update
 
-# Restart all supervisor processes
-restart-supervisor:
-	docker exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_app supervisorctl restart all
+npm: ## Run npm command (usage: make npm cmd="install")
+	$(EXEC) npm $(cmd)
 
+npm-install: ## Install Node.js dependencies
+	$(EXEC) npm install
 
-# /*
-# |--------------------------------------------------------------------------
-# | SYNC FOLDERS THE PACKAGES
-# |--------------------------------------------------------------------------
-# */
-USER := $(shell whoami)
-PROJECTS_DIR := /home/$(USER)/projects/laravel-projects
-CURRENT_DIR := $(shell basename $(CURDIR))
+npm-dev: ## Run npm development server
+	$(EXEC) npm run dev
 
-link-folder:
-	ln -s $(PROJECTS_DIR)/repo $(PROJECTS_DIR)/projects/$(CURRENT_DIR)/project/$(CODE_PATH)/repo
+npm-build: ## Build assets for production
+	$(EXEC) npm run build
 
-install-laravel:
-	cd project && composer create-project laravel/laravel $(CODE_PATH)
+npm-watch: ## Watch files for changes
+	$(EXEC) npm run dev -- --watch
 
-# case we need to reset laravel permissions
-# sudo chown -R $(id -u):$(id -g) ./project/storage ./project/bootstrap/cache
-# sudo chmod -R 775 ./project/storage ./project/bootstrap/cache
+bun: ## Run bun command (usage: make bun cmd="install")
+	$(EXEC) bun $(cmd)
 
-create-user:
-	@$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash -c "adduser --disabled-password --gecos '' --uid $(USER_ID) --gid $(GROUP_ID) devuser"
-	@$(DOCKER) exec -it ${DOCKER_PREFIX}_${CONTAINER_NAME}_app /bin/bash -c "chown -R devuser:devuser /var/www/html"
+bun-install: ## Install dependencies with Bun
+	$(EXEC) bun install
 
-ssl-cert:
-	@mkdir -p project/ssl
-	@openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-		-keyout project/ssl/server.key \
-		-out project/ssl/server.crt \
-		-subj "/C=US/ST=State/L=City/O=Organization/CN=localhost"
-	@echo "SSL certificates generated in project/ssl/"
-	@echo "server.key and server.crt have been created"
-	@chmod 644 project/ssl/server.crt
-	@chmod 600 project/ssl/server.key
+bun-dev: ## Run development server with Bun
+	$(EXEC) bun run dev
 
-# SSL and Domain Management
-.PHONY: ssl-setup ssl-renew ssl-status domain-setup
+bun-build: ## Build assets with Bun
+	$(EXEC) bun run build
 
-DOMAIN := thedevrealm.com
-EMAIL := thedevrealm@thedevrealm.com
+# ==============================================================================
+# TESTING
+# ==============================================================================
 
-ssl-setup: ## Install and configure Let's Encrypt SSL
-	@echo "Setting up SSL for $(DOMAIN)..."
-	@docker exec -it --user root ${DOCKER_PREFIX}_${CONTAINER_NAME}_app bash -c '\
-		apt-get update && \
-		apt-get install -y certbot python3-certbot-apache && \
-		certbot --apache \
-			--non-interactive \
-			--agree-tos \
-			--email ${EMAIL} \
-			--domains ${DOMAIN} \
-			--redirect && \
-		apache2ctl -t && \
-		service apache2 reload'
+test: ## Run PHPUnit tests
+	$(EXEC) vendor/bin/phpunit
 
-ssl-status:
-	@echo "Checking SSL certificate status..."
-	@docker exec -it --user root ${DOCKER_PREFIX}_${CONTAINER_NAME}_app bash -c '\
-		if ! command -v certbot &> /dev/null; then \
-			apt-get update && \
-			apt-get install -y certbot python3-certbot-apache; \
-		fi && \
-		certbot certificates'
+test-coverage: ## Run tests with coverage report
+	$(EXEC) vendor/bin/phpunit --coverage-html coverage
 
-apache-logs: ## View Apache error logs
-	@docker exec -it --user root ${DOCKER_PREFIX}_${CONTAINER_NAME}_app tail -f /var/log/apache2/error.log
+test-filter: ## Run specific test (usage: make test-filter name="TestName")
+	$(EXEC) vendor/bin/phpunit --filter $(name)
+
+pest: ## Run Pest tests
+	$(EXEC) vendor/bin/pest
+
+pest-coverage: ## Run Pest tests with coverage
+	$(EXEC) vendor/bin/pest --coverage
+
+# ==============================================================================
+# MAINTENANCE
+# ==============================================================================
+
+permissions: ## Fix file permissions
+	$(EXEC_ROOT) chown -R devuser:www-data /var/www/html
+	$(EXEC_ROOT) chmod -R 775 /var/www/html/storage
+	$(EXEC_ROOT) chmod -R 775 /var/www/html/bootstrap/cache
+	$(EXEC_ROOT) chmod -R 775 /var/www/html/public
+
+clean: ## Clean up containers and volumes
+	$(COMPOSE) down -v --remove-orphans
+	docker system prune -f
+
+clean-all: ## Clean everything including images
+	$(COMPOSE) down -v --remove-orphans --rmi all
+	docker system prune -a -f
+
+fresh: ## Fresh installation
+	$(MAKE) clean
+	$(MAKE) build
+	$(MAKE) install
+
+# ==============================================================================
+# DATABASE COMMANDS
+# ==============================================================================
+
+db-shell: ## Access MySQL shell
+	$(COMPOSE) exec mysql mysql -u $(DB_USERNAME) -p$(DB_PASSWORD) $(DB_DATABASE)
+
+db-dump: ## Dump database to file
+	$(COMPOSE) exec mysql mysqldump -u $(DB_USERNAME) -p$(DB_PASSWORD) $(DB_DATABASE) > backup.sql
+
+db-restore: ## Restore database from backup.sql
+	$(COMPOSE) exec -T mysql mysql -u $(DB_USERNAME) -p$(DB_PASSWORD) $(DB_DATABASE) < backup.sql
+
+# ==============================================================================
+# UTILITY COMMANDS
+# ==============================================================================
+
+# UTILITY COMMANDS
+# ==============================================================================
+
+path: ## Show current Laravel application path
+	@echo "Current Laravel application path: $(CODE_PATH)"
+	@echo "Full path: $(shell pwd)/$(CODE_PATH)"
+	@if [ -f "$(CODE_PATH)/composer.json" ]; then \
+		echo "✅ Laravel project found"; \
+	else \
+		echo "❌ No Laravel project found in $(CODE_PATH)"; \
+	fi
+
+switch-path: ## Switch to different Laravel path (usage: make switch-path path="new/path")
+	@if [ -z "$(path)" ]; then \
+		echo "Usage: make switch-path path=\"your/new/path\""; \
+		echo "Example: make switch-path path=\"src/laravel\""; \
+		exit 1; \
+	fi
+	@echo "Switching CODE_PATH from $(CODE_PATH) to $(path)"
+	@sed -i.bak 's|^CODE_PATH=.*|CODE_PATH=$(path)|' .env
+	@echo "✅ Updated .env file. New path: $(path)"
+	@echo "🔄 Run 'make restart' to apply changes"
+
+create-project: ## Create Laravel project in specific path (usage: make create-project path="projects/myapp")
+	@if [ -z "$(path)" ]; then \
+		echo "Usage: make create-project path=\"your/project/path\""; \
+		echo "Example: make create-project path=\"projects/myapp\""; \
+		exit 1; \
+	fi
+	@echo "Creating Laravel project in $(path)..."
+	@mkdir -p $(path)
+	@sed -i.bak 's|^CODE_PATH=.*|CODE_PATH=$(path)|' .env
+	@$(COMPOSE) run --rm -v ./$(path):/var/www/html app composer create-project laravel/laravel .
+	@echo "✅ Laravel project created in $(path)"
+	@echo "🔄 Run 'make up && make setup' to start"
+
+urls: ## Show application URLs
+	@echo "Application URLs:"
+	@echo "  Main App:       http://localhost:$(APP_PORT)"
+	@echo "  Vite Dev:       http://localhost:$(VITE_PORT)"
+	@echo "  PHPMyAdmin:     http://localhost:$(PHPMYADMIN_PORT)"
+	@echo "  Redis Insight:  http://localhost:$(REDIS_INSIGHT_PORT)"
+	@echo "  Mailhog:        http://localhost:$(MAILHOG_PORT)"
+
+status: ## Show container status
+	$(COMPOSE) ps
+
+top: ## Show running processes
+	$(COMPOSE) top
+
+stats: ## Show container resource usage
+	docker stats --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}\t{{.BlockIO}}"
