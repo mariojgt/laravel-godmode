@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laravel Docker Control Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" xintegrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="style.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        'forge-bg': '#1e293b', /* Dark Slate */
+                        'forge-card': '#2d3748', /* Slightly lighter dark for cards */
+                        'forge-border': '#4a5568', /* Border color */
+                        'forge-text-light': '#cbd5e1', /* Light gray text */
+                        'forge-text-dark': '#a0aec0', /* Darker gray text */
+                        'forge-primary': {
+                            DEFAULT: '#4299e1', /* Blue */
+                            'hover': '#3182ce'
+                        },
+                        'forge-success': {
+                            DEFAULT: '#38a169', /* Green */
+                            'hover': '#2f855a'
+                        },
+                        'forge-danger': {
+                            DEFAULT: '#e53e3e', /* Red */
+                            'hover': '#c53030'
+                        },
+                        'forge-warning': {
+                            DEFAULT: '#dd6b20', /* Orange */
+                            'hover': '#c05621'
+                        },
+                        'forge-info': {
+                            DEFAULT: '#3182ce', /* Blue info */
+                            'hover': '#2b6cb0'
+                        }
+                    },
+                    boxShadow: {
+                        'soft': '0 4px 10px rgba(0, 0, 0, 0.1)',
+                        'md': '0 6px 12px rgba(0, 0, 0, 0.15)',
+                    }
+                }
+            }
+        };
+    </script>
+</head>
+<body class="bg-forge-bg text-forge-text-light font-sans antialiased flex h-screen">
+    <!-- Sidebar Navigation -->
+    <aside class="w-64 bg-forge-card p-6 flex flex-col shadow-md border-r border-forge-border">
+        <div class="flex items-center mb-10">
+            <i class="fas fa-hammer text-forge-primary text-3xl mr-3"></i>
+            <h1 class="text-2xl font-bold text-white">Lara Docker CP</h1>
+        </div>
+
+        <nav class="flex-grow">
+            <ul>
+                <li class="mb-4">
+                    <a href="#" class="sidebar-item active flex items-center p-3 rounded-lg text-lg font-medium hover:bg-forge-border transition-colors duration-200"
+                       onclick="switchSection('overview')" data-section="overview">
+                        <i class="fas fa-tachometer-alt mr-4 text-forge-primary"></i>Overview
+                    </a>
+                </li>
+                <li class="mb-4">
+                    <a href="#" class="sidebar-item flex items-center p-3 rounded-lg text-lg font-medium hover:bg-forge-border transition-colors duration-200"
+                       onclick="switchSection('commands')" data-section="commands">
+                        <i class="fas fa-terminal mr-4 text-forge-primary"></i>Commands
+                    </a>
+                </li>
+                <li class="mb-4">
+                    <a href="#" class="sidebar-item flex items-center p-3 rounded-lg text-lg font-medium hover:bg-forge-border transition-colors duration-200"
+                       onclick="switchSection('logs')" data-section="logs">
+                        <i class="fas fa-file-alt mr-4 text-forge-primary"></i>Logs
+                    </a>
+                </li>
+                <li class="mb-4">
+                    <a href="#" class="sidebar-item flex items-center p-3 rounded-lg text-lg font-medium hover:bg-forge-border transition-colors duration-200"
+                       onclick="switchSection('urls')" data-section="urls">
+                        <i class="fas fa-globe mr-4 text-forge-primary"></i>Application URLs
+                    </a>
+                </li>
+                <li class="mb-4">
+                    <a href="#" class="sidebar-item flex items-center p-3 rounded-lg text-lg font-medium hover:bg-forge-border transition-colors duration-200"
+                       onclick="switchSection('paths')" data-section="paths">
+                        <i class="fas fa-folder-open mr-4 text-forge-primary"></i>Project Paths
+                    </a>
+                </li>
+                <li class="mb-4">
+                    <a href="#" class="sidebar-item flex items-center p-3 rounded-lg text-lg font-medium hover:bg-forge-border transition-colors duration-200"
+                       onclick="switchSection('env')" data-section="env">
+                        <i class="fas fa-cogs mr-4 text-forge-primary"></i>Environment
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <div class="mt-8 text-center text-forge-text-dark text-sm">
+            <p>&copy; 2024 Lara Docker CP</p>
+            <p>Version 2.0.0</p>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 p-8 overflow-y-auto relative">
+        <!-- Notification Container -->
+        <div id="notification-container" class="fixed top-4 right-4 z-50 flex flex-col items-end space-y-3"></div>
+
+        <!-- Overview Section -->
+        <section id="overview-section" class="section p-8 pt-4">
+            <h2 class="text-3xl font-bold text-white mb-6">Overview</h2>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <!-- Docker Status Card -->
+                <div class="forge-card rounded-xl p-6 shadow-soft">
+                    <h3 class="text-xl font-semibold text-white mb-4 flex items-center">
+                        <i class="fab fa-docker text-forge-primary mr-3"></i>Docker Status
+                    </h3>
+                    <div class="mb-4">
+                        <p class="text-forge-text-dark text-lg">Engine: <span id="docker-engine-status" class="font-bold text-white">Loading...</span></p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-sm text-forge-text-dark">
+                        <p><i class="fas fa-play-circle text-forge-success mr-2"></i>Running: <span id="running-containers" class="font-semibold text-white">0</span></p>
+                        <p><i class="fas fa-pause-circle text-forge-warning mr-2"></i>Paused: <span id="paused-containers" class="font-semibold text-white">0</span></p>
+                        <p><i class="fas fa-stop-circle text-forge-danger mr-2"></i>Stopped: <span id="stopped-containers" class="font-semibold text-white">0</span></p>
+                        <p><i class="fas fa-cube text-forge-primary mr-2"></i>Images: <span id="total-images" class="font-semibold text-white">0</span></p>
+                        <p><i class="fas fa-hdd text-purple-400 mr-2"></i>Volumes: <span id="total-volumes" class="font-semibold text-white">0</span></p>
+                    </div>
+
+                    <h4 class="text-lg font-semibold text-white mt-6 mb-3">Service Status</h4>
+                    <div id="services-container" class="flex flex-wrap gap-2">
+                        <p class="text-forge-text-dark">Loading service status...</p>
+                    </div>
+                </div>
+
+                <!-- Project Information Card -->
+                <div class="forge-card rounded-xl p-6 shadow-soft">
+                    <h3 class="text-xl font-semibold text-white mb-4 flex items-center">
+                        <i class="fas fa-project-diagram text-forge-primary mr-3"></i>Project Information
+                    </h3>
+                    <div class="space-y-3">
+                        <p class="text-forge-text-dark">Name: <span id="project-name" class="font-semibold text-white">Loading...</span></p>
+                        <p class="text-forge-text-dark">Path: <span id="project-path" class="font-semibold text-white">Loading...</span></p>
+                        <p class="text-forge-text-dark">Laravel Version: <span id="laravel-version" class="font-semibold text-white">Loading...</span></p>
+                        <p class="text-forge-text-dark">PHP Version: <span id="php-version" class="font-semibold text-white">Loading...</span></p>
+                    </div>
+
+                    <h4 class="text-lg font-semibold text-white mt-6 mb-3">Common Environment Variables</h4>
+                    <div id="env-list" class="code-block p-3 max-h-48 overflow-y-auto border border-forge-border">
+                        <p class="text-forge-text-dark">Loading environment variables...</p>
+                    </div>
+                </div>
+            </div>
+
+            <h3 class="text-2xl font-bold text-white mb-6">Quick Actions</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <button onclick="executeCommand('up')" class="forge-button forge-button-primary">
+                    <i class="fas fa-play mr-2"></i> Start All Containers
+                </button>
+                <button onclick="executeCommand('down')" class="forge-button forge-button-danger">
+                    <i class="fas fa-stop mr-2"></i> Stop All Containers
+                </button>
+                <button onclick="executeCommand('rebuild')" class="forge-button forge-button-warning">
+                    <i class="fas fa-redo mr-2"></i> Rebuild & Restart
+                </button>
+                <button onclick="executeCommand('artisan cmd=&quot;migrate&quot;')" class="forge-button forge-button-info">
+                    <i class="fas fa-database mr-2"></i> Run Migrations
+                </button>
+                <button onclick="executeCommand('composer-install')" class="forge-button forge-button-success">
+                    <i class="fas fa-download mr-2"></i> Composer Install
+                </button>
+                <button onclick="executeCommand('npm-dev')" class="forge-button forge-button-primary">
+                    <i class="fab fa-node-js mr-2"></i> NPM Dev Server
+                </button>
+            </div>
+        </section>
+
+        <!-- Commands Section -->
+        <section id="commands-section" class="section hidden p-8 pt-4">
+            <h2 class="text-3xl font-bold text-white mb-6"><i class="fas fa-terminal mr-3"></i> Commands</h2>
+
+            <div class="mb-6">
+                <input type="text" id="command-search-input" placeholder="Search commands (e.g., 'artisan', 'up', 'migrate')"
+                       class="forge-input w-full"
+                       aria-label="Search commands">
+            </div>
+
+            <div id="commands-container">
+                <p class="text-forge-text-dark text-center text-lg mt-8">Loading commands...</p>
+            </div>
+        </section>
+
+        <!-- URLs Section -->
+        <section id="urls-section" class="section hidden p-8 pt-4">
+            <h2 class="text-3xl font-bold text-white mb-6"><i class="fas fa-globe mr-3"></i> Application URLs</h2>
+            <div id="urls-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <p class="text-forge-text-dark">Loading URLs and checking status...</p>
+            </div>
+        </section>
+
+        <!-- Paths Section -->
+        <section id="paths-section" class="section hidden p-8 pt-4">
+            <h2 class="text-3xl font-bold text-white mb-6"><i class="fas fa-folder-open mr-3"></i> Project Paths</h2>
+
+            <div class="forge-card rounded-xl p-6 shadow-soft mb-6">
+                <h3 class="text-xl font-semibold text-white mb-4 flex items-center">
+                    <i class="fas fa-info-circle text-forge-primary mr-3"></i>Path Information
+                </h3>
+                <div class="space-y-3">
+                    <p class="text-forge-text-dark">Current Project Path: <span id="current-project-path" class="font-semibold text-white">Loading...</span></p>
+                    <p class="text-forge-text-dark">CODE_PATH in .env: <span id="code-path-env" class="font-semibold text-white">Loading...</span></p>
+                    <p class="text-forge-text-dark">Default Project Path: <span id="default-project-path" class="font-semibold text-white">Loading...</span></p>
+                    <p id="path-status-message" class="text-sm text-forge-text-dark mt-2"></p>
+                </div>
+            </div>
+
+            <h3 class="text-2xl font-bold text-white mb-6">Action: Switch Project Path</h3>
+            <div class="forge-card rounded-xl p-6 shadow-soft">
+                <p class="text-forge-text-dark mb-4">Update the `CODE_PATH` variable in your root `.env` file. This tells Docker Compose where your Laravel project code is located relative to the `docker-compose.yml` file.</p>
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center space-y-4 sm:space-y-0 sm:space-x-4">
+                    <input type="text" id="switch-path-input" placeholder="e.g., my-project-folder"
+                           class="forge-input flex-grow">
+                    <button onclick="executeCommandWithInput('switch-path', 'switch-path-input')"
+                            class="forge-button forge-button-primary w-full sm:w-auto">
+                        <i class="fas fa-exchange-alt mr-2"></i> Update Path
+                    </button>
+                </div>
+                <p class="text-xs text-forge-text-dark mt-2">After updating, you might need to run `make rebuild` to apply changes to Docker containers.</p>
+            </div>
+        </section>
+
+        <!-- Environment Section -->
+        <section id="env-section" class="section hidden p-8 pt-4">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-3xl font-bold text-white mb-6"><i class="fas fa-cogs mr-3"></i> Environment Variables</h2>
+                <button onclick="refreshEnvFiles()" class="forge-button forge-button-secondary">
+                    <i class="fas fa-sync-alt mr-2"></i> Refresh
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="forge-card rounded-xl p-6 shadow-soft">
+                    <h3 class="text-xl font-semibold text-white mb-4 flex items-center">
+                        <i class="fas fa-folder-open text-forge-primary mr-3"></i> Root `.env`
+                    </h3>
+                    <textarea id="root-env-content" rows="15" class="forge-textarea w-full"></textarea>
+                    <button onclick="saveEnvFile('root')" class="forge-button forge-button-success mt-4">
+                        <i class="fas fa-save mr-2"></i> Save Root .env
+                    </button>
+                    <p class="text-xs text-forge-text-dark mt-2">Changes here might require a `make rebuild` to apply to Docker containers.</p>
+                </div>
+
+                <div class="forge-card rounded-xl p-6 shadow-soft">
+                    <h3 class="text-xl font-semibold text-white mb-4 flex items-center">
+                        <i class="fas fa-laptop-code text-forge-primary mr-3"></i> Laravel App `.env` (<span id="laravel-env-path-display">Loading...</span>)
+                    </h3>
+                    <textarea id="laravel-env-content" rows="15" class="forge-textarea w-full"></textarea>
+                    <button onclick="saveEnvFile('laravel')" class="forge-button forge-button-primary mt-4">
+                        <i class="fas fa-save mr-2"></i> Save Laravel .env
+                    </button>
+                    <p class="text-xs text-forge-text-dark mt-2">Changes here typically apply instantly to Laravel, but some may require `php artisan config:clear` or `php artisan optimize:clear`.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Logs Section -->
+        <section id="logs-section" class="section hidden p-8 pt-4">
+            <h2 class="text-3xl font-bold text-white mb-6"><i class="fas fa-stream mr-3"></i> Real-time Logs</h2>
+
+            <div class="forge-card rounded-xl p-6 shadow-soft">
+                <h3 class="text-xl font-semibold text-white mb-4 flex items-center">
+                    <i class="fas fa-clipboard-list text-forge-primary mr-3"></i>Log Stream
+                </h3>
+
+                <div class="mb-4 flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
+                    <label for="log-service" class="text-forge-text-dark">Select Service:</label>
+                    <select id="log-service" class="forge-select flex-grow sm:flex-grow-0">
+                        <option value="app">app (Laravel)</option>
+                        <option value="nginx">nginx (Web Server)</option>
+                        <option value="mysql">mysql (Database)</option>
+                        <option value="redis">redis (Cache)</option>
+                        <option value="mailhog">mailhog (Email)</option>
+                    </select>
+                    <button id="start-logs-btn" class="forge-button forge-button-success w-full sm:w-auto">
+                        <i class="fas fa-play mr-2"></i>Start Logs
+                    </button>
+                    <button id="stop-logs-btn" class="forge-button forge-button-danger w-full sm:w-auto hidden">
+                        <i class="fas fa-stop mr-2"></i>Stop
+                    </button>
+                    <button onclick="clearLogs()" class="forge-button forge-button-secondary w-full sm:w-auto">
+                        <i class="fas fa-eraser mr-2"></i>Clear
+                    </button>
+                </div>
+
+                <div class="code-block h-96 overflow-y-auto" id="logs-container">
+                    <div class="text-forge-text-dark">Select a service and click "Start Logs" to view real-time logs...</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Command Terminal (always visible, but can be scrolled to) -->
+        <div class="mt-8 p-6 forge-card rounded-xl shadow-soft">
+            <h3 class="text-2xl font-semibold text-white mb-4 flex items-center">
+                <i class="fas fa-terminal text-forge-primary mr-3"></i> Command Terminal
+            </h3>
+            <div class="code-block h-64 overflow-y-auto mb-4" id="terminal-container">
+                <div id="command-output">
+                    <p class="text-forge-text-dark">Output will appear here...</p>
+                </div>
+            </div>
+            <input type="text" id="terminal-input" placeholder="Type make command here (e.g., up, composer install)..."
+                   class="forge-input w-full">
+        </div>
+    </main>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center hidden z-50">
+        <div class="forge-card rounded-xl p-8 max-w-md w-full mx-4 text-center">
+            <div class="flex items-center justify-center mb-4">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-forge-primary"></div>
+            </div>
+            <h3 class="text-lg font-semibold mb-2 text-white" id="loading-message">Executing Command</h3>
+            <p id="loading-sub-message" class="text-forge-text-dark">Please wait...</p>
+        </div>
+    </div>
+
+    <!-- Confirmation Overlay -->
+    <div id="confirmation-overlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center hidden z-50">
+        <div class="forge-card rounded-xl p-8 max-w-md w-full mx-4">
+            <h3 class="text-xl font-semibold text-white mb-4">Confirm Action</h3>
+            <p id="confirmation-message" class="text-forge-text-light mb-6"></p>
+            <div class="flex justify-end space-x-4">
+                <button id="cancel-btn" class="forge-button forge-button-secondary">Cancel</button>
+                <button id="confirm-btn" class="forge-button forge-button-danger">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

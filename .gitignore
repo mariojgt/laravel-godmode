@@ -1,7 +1,51 @@
-# Ignore .env file
-*.env
+# Environment files
+.env
+.env.local
+.env.production
 
-# Ignore all files from /project/application
-/project/application/*
+# Logs
+logs/
+*.log
 
-project/laravel/
+# Database backups
+*.sql
+backup.sql
+
+# Laravel application (if you want to keep it separate)
+# src/
+
+# Docker volumes data
+mysql_data/
+redis_data/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+
+# SSL certificates (if generated locally)
+ssl/
+*.pem
+*.key
+*.crt
+
+# Coverage reports
+coverage/
+.phpunit.result.cache
+
+# Node modules (if installed locally)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Composer
+vendor/
