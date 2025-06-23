@@ -5,6 +5,8 @@ const { exec, spawn } = require('child_process');
 const fs = require('fs-extra');
 const path = require('path');
 const Docker = require('dockerode');
+const dotenv = require('dotenv');
+const fetch = require('node-fetch'); // Import node-fetch
 
 const app = express();
 const server = http.createServer(app);
@@ -35,509 +37,435 @@ function log(message, type = 'info') {
     console.log(`${colors[type] || colors.info}[${timestamp}] ${message}${reset}`);
 }
 
-// Load environment variables from parent directory
-function loadEnvVars() {
+// Load environment variables from parent directory (root .env)
+let rootEnv = {};
+let codePath = process.env.CODE_PATH || 'src'; // Default from Makefile
+
+function loadRootEnv() {
     try {
-        const envPath = path.join(process.cwd(), '..', '.env');
-        if (fs.existsSync(envPath)) {
-            const envContent = fs.readFileSync(envPath, 'utf8');
-            const envVars = {};
-            envContent.split('\n').forEach(line => {
-                const [key, ...valueParts] = line.split('=');
-                if (key && valueParts.length > 0) {
-                    const value = valueParts.join('=').trim();
-                    // Remove quotes if present
-                    envVars[key.trim()] = value.replace(/^["']|["']$/g, '');
-                }
-            });
-            return envVars;
-        }
-    } catch (error) {
-        log(`Error loading .env: ${error.message}`, 'error');
-    }
-    return {};
-}
-
-// Execute make commands in parent directory with enhanced error handling
-function executeMakeCommand(command, socket = null) {
-    return new Promise((resolve, reject) => {
-        const parentDir = path.join(process.cwd(), '..');
-        log(`Executing: make ${command}`, 'info');
-
-        const startTime = Date.now();
-        const childProcess = exec(`make ${command}`, {
-            cwd: parentDir,
-            maxBuffer: 1024 * 1024 * 10, // 10MB buffer
-            timeout: 300000 // 5 minute timeout
-        }, (error, stdout, stderr) => {
-            const executionTime = Date.now() - startTime;
-
-            const result = {
-                success: !error,
-                stdout: stdout,
-                stderr: stderr,
-                command: `make ${command}`,
-                executionTime: executionTime,
-                timestamp: new Date().toISOString()
-            };
-
-            if (socket) {
-                socket.emit('command-result', result);
+        const rootEnvPath = path.join(process.cwd(), '..', '.env');
+        if (fs.existsSync(rootEnvPath)) {
+            const envContent = fs.readFileSync(rootEnvPath, 'utf8');
+            rootEnv = dotenv.parse(envContent);
+            log(`Root .env loaded from ${rootEnvPath}`, 'info');
+            // Update CODE_PATH if it exists in the root .env
+            if (rootEnv.CODE_PATH) {
+                codePath = rootEnv.CODE_PATH;
+                log(`Server's CODE_PATH updated to: ${codePath}`, 'info');
             }
-
-            if (error) {
-                log(`Command failed: make ${command} (${executionTime}ms)`, 'error');
-                log(`Error: ${error.message}`, 'error');
-                reject(result);
-            } else {
-                log(`Command completed: make ${command} (${executionTime}ms)`, 'success');
-                resolve(result);
-            }
-        });
-
-        // Handle process events
-        childProcess.on('error', (error) => {
-            log(`Process error: ${error.message}`, 'error');
-        });
-    });
-}
-
-// Get enhanced Docker container status
-async function getContainerStatus() {
-    try {
-        const containers = await docker.listContainers({ all: true });
-        const projectContainers = containers.filter(container =>
-            container.Names.some(name =>
-                name.includes('laravel') ||
-                name.includes('mysql') ||
-                name.includes('redis') ||
-                name.includes('phpmyadmin') ||
-                name.includes('mailhog') ||
-                name.includes('nginx') ||
-                name.toLowerCase().includes('app')
-            )
-        );
-
-        return projectContainers.map(container => {
-            const name = container.Names[0].substring(1);
-            const isRunning = container.State === 'running';
-
-            return {
-                id: container.Id.substring(0, 12),
-                name: name,
-                image: container.Image,
-                state: container.State,
-                status: container.Status,
-                created: container.Created,
-                ports: container.Ports.map(port => ({
-                    private: port.PrivatePort,
-                    public: port.PublicPort,
-                    type: port.Type,
-                    ip: port.IP || '0.0.0.0'
-                })),
-                labels: container.Labels,
-                health: isRunning ? 'healthy' : 'stopped'
-            };
-        });
-    } catch (error) {
-        log(`Error getting container status: ${error.message}`, 'error');
-        return [];
-    }
-}
-
-// Get system statistics
-async function getSystemStats() {
-    try {
-        const containers = await getContainerStatus();
-        const runningContainers = containers.filter(c => c.state === 'running');
-
-        // Get Docker system info
-        let dockerInfo = {};
-        try {
-            dockerInfo = await docker.info();
-        } catch (error) {
-            log(`Could not get Docker info: ${error.message}`, 'warning');
-        }
-
-        return {
-            containers: {
-                total: containers.length,
-                running: runningContainers.length,
-                stopped: containers.length - runningContainers.length
-            },
-            docker: {
-                version: dockerInfo.ServerVersion || 'Unknown',
-                containers: dockerInfo.Containers || 0,
-                images: dockerInfo.Images || 0,
-                memTotal: dockerInfo.MemTotal || 0,
-                cpus: dockerInfo.NCPU || 0
-            },
-            system: {
-                uptime: process.uptime(),
-                nodeVersion: process.version,
-                platform: process.platform,
-                arch: process.arch
-            }
-        };
-    } catch (error) {
-        log(`Error getting system stats: ${error.message}`, 'error');
-        return {
-            containers: { total: 0, running: 0, stopped: 0 },
-            docker: {},
-            system: {}
-        };
-    }
-}
-
-// Get available Makefile commands
-async function getMakefileCommands() {
-    try {
-        const parentDir = path.join(process.cwd(), '..');
-        const makefilePath = path.join(parentDir, 'Makefile');
-
-        if (!fs.existsSync(makefilePath)) {
-            return [];
-        }
-
-        const makefileContent = fs.readFileSync(makefilePath, 'utf8');
-        const commands = [];
-
-        // Parse Makefile for targets with descriptions
-        const lines = makefileContent.split('\n');
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i].trim();
-            if (line.includes('##')) {
-                const match = line.match(/^([a-zA-Z_-]+):\s*.*?##\s*(.+)$/);
-                if (match) {
-                    commands.push({
-                        name: match[1],
-                        description: match[2].trim()
-                    });
-                }
-            }
-        }
-
-        return commands;
-    } catch (error) {
-        log(`Error parsing Makefile: ${error.message}`, 'error');
-        return [];
-    }
-}
-
-// Routes
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// Enhanced status endpoint
-app.get('/api/status', async (req, res) => {
-    try {
-        const startTime = Date.now();
-
-        const [envVars, containers, stats] = await Promise.all([
-            Promise.resolve(loadEnvVars()),
-            getContainerStatus(),
-            getSystemStats()
-        ]);
-
-        const responseTime = Date.now() - startTime;
-
-        res.json({
-            environment: envVars,
-            containers: containers,
-            stats: stats,
-            responseTime: responseTime,
-            timestamp: new Date().toISOString(),
-            version: '2.0.0'
-        });
-
-        log(`Status request completed in ${responseTime}ms`, 'info');
-    } catch (error) {
-        log(`Status endpoint error: ${error.message}`, 'error');
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Enhanced command execution endpoint
-app.post('/api/command', async (req, res) => {
-    try {
-        const { command, args } = req.body;
-
-        if (!command) {
-            return res.status(400).json({ error: 'Command is required' });
-        }
-
-        // Sanitize command to prevent injection
-        const sanitizedCommand = command.replace(/[;&|`$()]/g, '');
-        const fullCommand = args ? `${sanitizedCommand} ${args}` : sanitizedCommand;
-
-        const result = await executeMakeCommand(fullCommand);
-        res.json(result);
-    } catch (error) {
-        res.status(500).json(error);
-    }
-});
-
-// Environment variable management
-app.post('/api/env', async (req, res) => {
-    try {
-        const { key, value } = req.body;
-
-        if (!key) {
-            return res.status(400).json({ error: 'Key is required' });
-        }
-
-        const envPath = path.join(process.cwd(), '..', '.env');
-
-        if (!fs.existsSync(envPath)) {
-            return res.status(404).json({ error: '.env file not found' });
-        }
-
-        let envContent = fs.readFileSync(envPath, 'utf8');
-
-        // Update or add the environment variable
-        const regex = new RegExp(`^${key}=.*`, 'm');
-        if (regex.test(envContent)) {
-            envContent = envContent.replace(regex, `${key}=${value}`);
-            log(`Updated environment variable: ${key}`, 'info');
         } else {
-            envContent += `\n${key}=${value}`;
-            log(`Added environment variable: ${key}`, 'info');
+            log('Root .env file not found.', 'warning');
+            rootEnv = {};
         }
-
-        // Create backup
-        const backupPath = `${envPath}.backup.${Date.now()}`;
-        fs.copyFileSync(envPath, backupPath);
-
-        fs.writeFileSync(envPath, envContent);
-
-        res.json({
-            success: true,
-            message: 'Environment variable updated',
-            backup: backupPath
-        });
     } catch (error) {
-        log(`Environment update error: ${error.message}`, 'error');
-        res.status(500).json({ error: error.message });
+        log(`Error loading root .env file: ${error.message}`, 'error');
+        rootEnv = {};
     }
-});
+}
 
-// Enhanced logs endpoint
-app.get('/api/logs/:service', (req, res) => {
-    const { service } = req.params;
-    const { lines = 100, follow = false } = req.query;
+// Initial load of environment variables
+loadRootEnv();
 
-    const parentDir = path.join(process.cwd(), '..');
-    const command = follow ?
-        `docker compose logs -f --tail=${lines} ${service}` :
-        `docker compose logs --tail=${lines} ${service}`;
-
-    if (follow) {
-        // For real-time logs, use streaming
-        res.writeHead(200, {
-            'Content-Type': 'text/plain',
-            'Cache-Control': 'no-cache',
-            'Connection': 'keep-alive'
-        });
-
-        const logProcess = spawn('docker', ['compose', 'logs', '-f', '--tail', lines, service], {
-            cwd: parentDir
-        });
-
-        logProcess.stdout.on('data', (data) => {
-            res.write(data);
-        });
-
-        logProcess.stderr.on('data', (data) => {
-            res.write(`ERROR: ${data}`);
-        });
-
-        logProcess.on('close', () => {
-            res.end();
-        });
-
-        req.on('close', () => {
-            logProcess.kill();
-        });
-    } else {
-        exec(command, { cwd: parentDir }, (error, stdout, stderr) => {
+// Helper to get Laravel version
+async function getLaravelVersion() {
+    return new Promise((resolve) => {
+        exec(`docker compose exec -T app php artisan --version`, { cwd: path.join(__dirname, '..') }, (error, stdout) => {
             if (error) {
-                return res.status(500).json({ error: error.message });
+                // Check if the error is due to container not running or command failing
+                log(`Could not get Laravel version: ${error.message.trim()}`, 'warning');
+                resolve('N/A (Container not running or command failed)');
+            } else {
+                const match = stdout.match(/Laravel Framework (\S+)/);
+                resolve(match ? match[1] : 'N/A');
+            }
+        });
+    }).catch(err => {
+        log(`Unhandled error in getLaravelVersion: ${err.message}`, 'error');
+        return 'N/A';
+    });
+}
+
+// Helper to get PHP version
+async function getPhpVersion() {
+    return new Promise((resolve) => {
+        exec(`docker compose exec -T app php -r "echo PHP_VERSION;"`, { cwd: path.join(__dirname, '..') }, (error, stdout) => {
+            if (error) {
+                log(`Could not get PHP version: ${error.message.trim()}`, 'warning');
+                resolve('N/A (Container not running or command failed)');
+            } else {
+                resolve(stdout.trim());
+            }
+        });
+    }).catch(err => {
+        log(`Unhandled error in getPhpVersion: ${err.message}`, 'error');
+        return 'N/A';
+    });
+}
+
+
+// ==============================================================================
+// SOCKET.IO COMMAND EXECUTION
+// ==============================================================================
+
+let currentCommandProcess = null; // To keep track of the currently running command
+
+io.on('connection', (socket) => {
+    log('A user connected', 'info');
+
+    // Get comprehensive status for dashboard
+    socket.on('get-status', async () => {
+        try {
+            loadRootEnv(); // Ensure latest CODE_PATH and rootEnv are loaded
+
+            const laravelVersion = await getLaravelVersion();
+            const phpVersion = await getPhpVersion();
+
+            // Get general Docker info (more robust parsing)
+            let dockerInfo = {};
+            try {
+                const [stdoutInfo, stderrInfo] = await new Promise((resolve, reject) => {
+                    exec('docker info --format "{{json .}}"', (error, stdout, stderr) => {
+                        if (error) return reject(new Error(`Docker info failed: ${stderr.trim()}`));
+                        resolve([stdout, stderr]);
+                    });
+                });
+                dockerInfo = JSON.parse(stdoutInfo || '{}');
+            } catch (e) {
+                log(`Error getting or parsing docker info: ${e.message}`, 'error');
+                dockerInfo = { ServerStatus: 'stopped', Images: 0, Volumes: { Used: 0 } }; // Fallback
             }
 
-            res.json({
-                service: service,
-                logs: stdout,
-                stderr: stderr,
-                timestamp: new Date().toISOString()
+            // Get container list with more details
+            let containers = [];
+            try {
+                const [stdoutPs, stderrPs] = await new Promise((resolve, reject) => {
+                    exec('docker compose ps --format json', { cwd: path.join(__dirname, '..') }, (error, stdout, stderr) => {
+                        if (error) {
+                            log(`Docker compose ps error: ${stderr.trim()}`, 'warning');
+                            // Attempt to extract JSON even if there's stderr, or fall back to empty array
+                            const jsonMatch = stdout.match(/\[.*\]/s); // Regex to find array-like JSON
+                            if (jsonMatch) {
+                                try {
+                                    return resolve([jsonMatch[0], stderr]);
+                                } catch (parseErr) {
+                                    log(`Failed to parse extracted JSON from docker compose ps: ${parseErr.message}`, 'error');
+                                    return resolve(['[]', stderr]);
+                                }
+                            }
+                            return resolve(['[]', stderr]); // Resolve with empty array string if no JSON found
+                        }
+                        resolve([stdout, stderr]);
+                    });
+                });
+                containers = JSON.parse(stdoutPs || '[]');
+            } catch (e) {
+                log(`Error parsing docker compose ps output: ${e.message}. Raw output leading to error: "${stdoutPs}"`, 'error');
+                containers = [];
+            }
+
+
+            let runningContainers = 0;
+            let pausedContainers = 0;
+            let stoppedContainers = 0;
+            const serviceStatus = {};
+
+            containers.forEach(c => {
+                const serviceName = c.Service; // Docker Compose 2.x uses Service property
+                serviceStatus[serviceName] = c.State;
+
+                if (c.State === 'running') {
+                    runningContainers++;
+                } else if (c.State === 'paused') {
+                    pausedContainers++;
+                } else { // Includes exited, dead, etc.
+                    stoppedContainers++;
+                }
             });
-        });
-    }
-});
 
-// Get available commands
-app.get('/api/commands', async (req, res) => {
-    try {
-        const commands = await getMakefileCommands();
-        res.json({ commands });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
+            // Fallback for dockerInfo.Volumes.Used if it's not structured as expected
+            const totalImages = dockerInfo.Images || 0;
+            const totalVolumes = dockerInfo.Volumes && dockerInfo.Volumes.Used !== undefined ? dockerInfo.Volumes.Used : 0;
 
-// System information endpoint
-app.get('/api/system', async (req, res) => {
-    try {
-        const stats = await getSystemStats();
-        const envVars = loadEnvVars();
+            const dockerStatus = dockerInfo.ServerStatus && dockerInfo.ServerStatus.toLowerCase() === 'running' ? 'running' : 'stopped'; // Simple interpretation
 
-        res.json({
-            system: stats.system,
-            docker: stats.docker,
-            environment: {
-                nodeEnv: process.env.NODE_ENV || 'development',
-                controlPanelPort: PORT,
-                ...envVars
-            },
-            timestamp: new Date().toISOString()
-        });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
+            socket.emit('status-update', {
+                docker: {
+                    status: dockerStatus,
+                    runningContainers,
+                    pausedContainers,
+                    stoppedContainers,
+                    images: totalImages,
+                    volumes: totalVolumes,
+                    serviceStatus // Detailed service status
+                },
+                environment: rootEnv, // Pass loaded root environment variables
+                project: {
+                    name: rootEnv.APP_NAME || 'Laravel Project',
+                    path: path.join(process.cwd(), '..', codePath),
+                    laravelVersion: laravelVersion,
+                    phpVersion: phpVersion
+                }
+            });
 
-// Socket.io connection handling with enhanced features
-io.on('connection', (socket) => {
-    const clientId = socket.id.substring(0, 8);
-    log(`Client connected: ${clientId}`, 'info');
+            // Also emit detailed docker compose ps for the overview cards
+            socket.emit('docker-stats-update', containers);
 
-    // Send welcome message
-    socket.emit('welcome', {
-        message: 'Connected to Laravel Docker Control Panel',
-        version: '2.0.0',
-        features: ['Real-time logs', 'Command execution', 'Container monitoring']
-    });
-
-    // Handle command execution
-    socket.on('execute-command', async (command) => {
-        try {
-            log(`Client ${clientId} executing: ${command}`, 'info');
-            await executeMakeCommand(command, socket);
         } catch (error) {
-            log(`Command execution failed for client ${clientId}: ${error.message}`, 'error');
-            socket.emit('command-error', {
-                error: error.message,
-                command: command,
-                timestamp: new Date().toISOString()
+            log(`Error getting comprehensive status: ${error.message}`, 'error');
+            socket.emit('status-update', {
+                docker: { status: 'error', runningContainers: 0, pausedContainers: 0, stoppedContainers: 0, images: 0, volumes: 0, serviceStatus: {} },
+                environment: {},
+                project: { name: 'Error', path: 'Error', laravelVersion: 'Error', phpVersion: 'Error' }
             });
+            socket.emit('docker-stats-update', []); // Send empty array on error
         }
     });
 
-    // Handle real-time logs
-    socket.on('get-real-time-logs', (service) => {
-        log(`Client ${clientId} requesting logs for: ${service}`, 'info');
+    socket.on('execute-command', (command) => {
+        if (currentCommandProcess) {
+            socket.emit('command-error', { message: 'Another command is already running. Please wait.' });
+            return;
+        }
 
-        const parentDir = path.join(process.cwd(), '..');
-        const logProcess = spawn('docker', ['compose', 'logs', '-f', '--tail', '50', service], {
-            cwd: parentDir
+        log(`Executing command: make ${command}`, 'info');
+        socket.emit('command-output', `\x1b[34m\n>>> Executing: make ${command}\n\x1b[0m`); // Blue color for command output
+
+        currentCommandProcess = spawn('make', [command], {
+            cwd: path.join(__dirname, '..'), // Execute make from the parent directory
+            env: { ...process.env, ...rootEnv } // Pass root .env vars to make process
         });
 
-        // Store process reference for cleanup
-        socket.logProcess = logProcess;
+        currentCommandProcess.stdout.on('data', (data) => {
+            socket.emit('command-output', data.toString());
+        });
+
+        currentCommandProcess.stderr.on('data', (data) => {
+            socket.emit('command-output', `\x1b[31m${data.toString()}\x1b[0m`); // Red color for stderr
+        });
+
+        currentCommandProcess.on('close', (code) => {
+            log(`Command 'make ${command}' exited with code ${code}`, code === 0 ? 'success' : 'error');
+            socket.emit('command-complete', { statusCode: code, command: command.split(' ')[0] }); // Send command info back
+            currentCommandProcess = null;
+        });
+
+        currentCommandProcess.on('error', (err) => {
+            log(`Failed to start command 'make ${command}': ${err.message}`, 'error');
+            socket.emit('command-error', { message: `Failed to start command: ${err.message}` });
+            currentCommandProcess = null;
+        });
+    });
+
+    // ==============================================================================
+    // LOG STREAMING VIA SOCKETS
+    // ==============================================================================
+
+    let logProcess = null;
+
+    socket.on('start-log-stream', (serviceName) => {
+        if (logProcess) {
+            log(`Log stream for ${serviceName} already active, stopping old one.`, 'warning');
+            logProcess.kill();
+        }
+
+        const dockerComposePath = path.join(__dirname, '..'); // Path to docker-compose.yml
+
+        if (serviceName === 'app') {
+            // For 'app' service, tail specific log files from within the container
+            // Using `bash -c` to combine multiple `tail -f` commands
+            const tailCommand = `tail -f /var/www/html/storage/logs/laravel.log /var/log/nginx/error.log /var/log/supervisor/*.log`;
+            logProcess = spawn('docker', ['compose', 'exec', '--no-TTY', 'app', 'bash', '-c', tailCommand], { cwd: dockerComposePath, shell: true });
+        } else {
+            // For other services, use standard 'docker compose logs -f'
+            logProcess = spawn('docker', ['compose', 'logs', '-f', serviceName], { cwd: dockerComposePath });
+        }
+
+        log(`Starting log stream for service: ${serviceName}`, 'info');
 
         logProcess.stdout.on('data', (data) => {
-            socket.emit('log-data', {
-                service: service,
-                data: data.toString(),
-                timestamp: new Date().toISOString()
-            });
+            socket.emit('log-output', data.toString());
         });
 
         logProcess.stderr.on('data', (data) => {
-            socket.emit('log-error', {
-                service: service,
-                error: data.toString(),
-                timestamp: new Date().toISOString()
-            });
+            socket.emit('log-output', `\x1b[31m${data.toString()}\x1b[0m`); // Red for stderr logs
         });
 
         logProcess.on('close', (code) => {
-            socket.emit('log-closed', {
-                service: service,
-                code: code,
-                timestamp: new Date().toISOString()
-            });
+            log(`Log stream for ${serviceName} closed with code ${code}`, code === 0 ? 'info' : 'error');
+            socket.emit('log-stream-closed', { service: serviceName, code: code });
+            logProcess = null;
         });
 
-        logProcess.on('error', (error) => {
-            socket.emit('log-error', {
-                service: service,
-                error: error.message,
-                timestamp: new Date().toISOString()
-            });
+        logProcess.on('error', (err) => {
+            log(`Error starting log stream for ${serviceName}: ${err.message}`, 'error');
+            socket.emit('log-stream-error', { service: serviceName, message: err.message });
+            if (logProcess) logProcess.kill();
+            logProcess = null;
         });
     });
 
-    // Handle log stop
-    socket.on('stop-logs', () => {
-        if (socket.logProcess) {
-            socket.logProcess.kill();
-            socket.logProcess = null;
-            log(`Stopped logs for client ${clientId}`, 'info');
+    socket.on('stop-log-stream', () => {
+        if (logProcess) {
+            log('Stopping log stream', 'info');
+            logProcess.kill();
+            logProcess = null;
+        } else {
+            log('No active log stream to stop', 'info');
         }
     });
 
-    // Handle status requests
-    socket.on('get-status', async () => {
+    // ==============================================================================
+    // .ENV FILE EDITING
+    // ==============================================================================
+
+    socket.on('get-env-content', async ({ type }) => {
+        let filePath = '';
+        let currentCodePathForLaravelEnv = codePath; // Use the current CODE_PATH
+
+        if (type === 'root') {
+            filePath = path.join(__dirname, '..', '.env');
+        } else if (type === 'laravel') {
+            // Ensure CODE_PATH is up-to-date from the root .env before determining Laravel path
+            loadRootEnv();
+            currentCodePathForLaravelEnv = codePath; // Update in case loadRootEnv changed it
+            filePath = path.join(process.cwd(), '..', currentCodePathForLaravelEnv, '.env');
+        } else {
+            socket.emit('env-error', { type, message: 'Invalid .env file type specified.' });
+            return;
+        }
+
         try {
-            const [envVars, containers, stats] = await Promise.all([
-                Promise.resolve(loadEnvVars()),
-                getContainerStatus(),
-                getSystemStats()
-            ]);
-
-            socket.emit('status-update', {
-                environment: envVars,
-                containers: containers,
-                stats: stats,
-                timestamp: new Date().toISOString()
-            });
+            if (fs.existsSync(filePath)) {
+                const content = await fs.readFile(filePath, 'utf8');
+                socket.emit('env-content', { type, content, currentCodePath: currentCodePathForLaravelEnv });
+                log(`Fetched ${type} .env content from ${filePath}`, 'info');
+            } else {
+                const errorMessage = `${type} .env file not found at ${filePath}.`;
+                socket.emit('env-error', { type, message: errorMessage });
+                log(errorMessage, 'warning');
+            }
         } catch (error) {
-            socket.emit('status-error', { error: error.message });
+            const errorMessage = `Error reading ${type} .env file: ${error.message}`;
+            socket.emit('env-error', { type, message: errorMessage });
+            log(errorMessage, 'error');
         }
     });
 
-    // Handle disconnect
-    socket.on('disconnect', (reason) => {
-        log(`Client disconnected: ${clientId} (${reason})`, 'info');
+    socket.on('save-env-content', async ({ type, content }) => {
+        let filePath = '';
+        if (type === 'root') {
+            filePath = path.join(__dirname, '..', '.env');
+        } else if (type === 'laravel') {
+            loadRootEnv(); // Ensure CODE_PATH is up-to-date
+            filePath = path.join(process.cwd(), '..', codePath, '.env');
+        } else {
+            socket.emit('env-save-error', { type, message: 'Invalid .env file type specified.' });
+            return;
+        }
 
-        // Clean up any running processes
-        if (socket.logProcess) {
-            socket.logProcess.kill();
+        try {
+            await fs.writeFile(filePath, content, 'utf8');
+            socket.emit('env-saved', { type });
+            log(`Saved ${type} .env content to ${filePath}`, 'success');
+
+            // If root .env was saved, reload it in the server process
+            if (type === 'root') {
+                loadRootEnv(); // This will update the server's `codePath` variable
+            }
+        } catch (error) {
+            const errorMessage = `Error writing ${type} .env file: ${error.message}`;
+            socket.emit('env-save-error', { type, message: errorMessage });
+            log(errorMessage, 'error');
         }
     });
 
-    // Handle errors
-    socket.on('error', (error) => {
-        log(`Socket error for client ${clientId}: ${error.message}`, 'error');
+    // ==============================================================================
+    // URL HEALTH CHECKS
+    // ==============================================================================
+
+    socket.on('check-urls', async (urls) => {
+        for (const urlInfo of urls) {
+            try {
+                const startTime = process.hrtime.bigint();
+                // Using node-fetch with a timeout
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
+                const response = await fetch(urlInfo.url, { signal: controller.signal, redirect: 'follow' });
+                clearTimeout(timeoutId);
+
+                const endTime = process.hrtime.bigint();
+                const durationMs = parseInt((endTime - startTime) / 1_000_000n);
+
+                if (response.ok) {
+                    socket.emit('url-status-update', { id: urlInfo.id, status: 'online', time: `${durationMs}ms` });
+                } else {
+                    socket.emit('url-status-update', { id: urlInfo.id, status: 'offline', error: `HTTP Status: ${response.status}` });
+                }
+            } catch (error) {
+                // Handle various fetch errors (network, timeout, etc.)
+                let errorMessage = error.message;
+                if (error.name === 'AbortError') {
+                    errorMessage = 'Request timed out';
+                }
+                socket.emit('url-status-update', { id: urlInfo.id, status: 'offline', error: errorMessage });
+            }
+        }
+    });
+
+    // ==============================================================================
+    // Project Path Information
+    // ==============================================================================
+    socket.on('get-path-info', async () => {
+        loadRootEnv(); // Ensure codePath is most recent from root .env
+
+        const currentPath = process.cwd();
+        const projectRootPath = path.join(currentPath, '..'); // Assuming project root is parent of control-panel
+        const defaultCodePath = 'src'; // Default from Makefile
+
+        let message = '';
+        const effectiveCodePath = codePath; // The actual CODE_PATH derived from .env or default
+
+        const fullProjectPath = path.join(projectRootPath, effectiveCodePath);
+        const laravelComposerJson = path.join(fullProjectPath, 'composer.json');
+        const laravelArtisan = path.join(fullProjectPath, 'artisan');
+
+        if (!fs.existsSync(fullProjectPath)) {
+            message = `Warning: The configured project path '${effectiveCodePath}' (resolved to ${fullProjectPath}) does not exist on the host.`;
+        } else if (!fs.existsSync(laravelComposerJson)) {
+            message = `Warning: No Laravel project detected at '${fullProjectPath}'. 'composer.json' not found.`;
+        } else if (!fs.existsSync(laravelArtisan)) {
+            message = `Warning: 'artisan' command not found at '${fullProjectPath}'.`;
+        } else {
+            message = `Laravel project detected and accessible at '${fullProjectPath}'.`;
+        }
+
+        socket.emit('path-info', {
+            currentPath: projectRootPath, // Show the actual directory where docker-compose.yml is
+            codePathEnv: effectiveCodePath,
+            defaultPath: defaultCodePath,
+            message: message
+        });
+    });
+
+
+    socket.on('disconnect', () => {
+        log('User disconnected', 'info');
+        if (logProcess) {
+            logProcess.kill();
+            logProcess = null;
+        }
+        if (currentCommandProcess) {
+            currentCommandProcess.kill();
+            currentCommandProcess = null;
+        }
     });
 });
 
-// Periodic status broadcast to all connected clients
-setInterval(async () => {
-    if (io.engine.clientsCount > 0) {
-        try {
-            const stats = await getSystemStats();
-            io.emit('stats-broadcast', {
-                stats: stats,
-                timestamp: new Date().toISOString(),
-                connectedClients: io.engine.clientsCount
-            });
-        } catch (error) {
-            log(`Stats broadcast error: ${error.message}`, 'error');
-        }
-    }
-}, 30000); // Every 30 seconds
+// Serve index.html for all routes
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
@@ -556,7 +484,7 @@ process.on('SIGINT', () => {
     });
 });
 
-// Error handling
+// Error handling for server process
 process.on('uncaughtException', (error) => {
     log(`Uncaught Exception: ${error.message}`, 'error');
     console.error(error.stack);
@@ -573,14 +501,6 @@ server.listen(PORT, () => {
     log('='.repeat(60), 'info');
     log(`🌐 Server running at: http://localhost:${PORT}`, 'success');
     log(`📁 Working directory: ${process.cwd()}`, 'info');
-    log(`📁 Project directory: ${path.join(process.cwd(), '..')}`, 'info');
-    log(`🐳 Docker support: ${docker ? 'Enabled' : 'Disabled'}`, 'info');
-    log(`📊 Real-time monitoring: Enabled`, 'info');
-    log(`🔧 Complete Makefile integration: Enabled`, 'info');
-    log('='.repeat(60), 'info');
-    log('🚀 Open your browser and start managing your Laravel application!', 'success');
-    log('💡 Features: All Makefile commands, real-time logs, modern UI', 'info');
-    log('='.repeat(60), 'info');
+    log(`📁 Project directory (CODE_PATH): ${path.join(process.cwd(), '..', codePath)}`, 'info');
+    log('🚀 Backend initialized. Open your browser to start managing!', 'success');
 });
-
-module.exports = app;

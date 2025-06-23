@@ -3,820 +3,616 @@ const socket = io();
 let currentSection = 'overview';
 let logsActive = false;
 let logProcess = null;
+let currentLogService = 'app'; // Default log service
+let commandHistory = [];
+let historyIndex = -1;
+
+// UI Elements (declared here, assigned in DOMContentLoaded)
+let commandOutput;
+let terminalInput;
+let loadingOverlay;
+let loadingMessage;
+let loadingSubMessage;
+let searchInput;
+let commandsContainer;
+let logOutput;
+let logServiceSelect;
+let rootEnvContent;
+let laravelEnvContent;
+let saveRootEnvBtn;
+let saveLaravelEnvBtn;
+let laravelEnvPathDisplay;
+let urlsListContainer;
+
 
 // Complete mapping of all Makefile commands organized by category
 const MAKEFILE_COMMANDS = {
+    quickStart: [
+        { cmd: 'install', icon: 'fas fa-download', title: 'Install Laravel', desc: 'Create Laravel project and setup environment (first-time)', type: 'primary' },
+        { cmd: 'up', icon: 'fas fa-play', title: 'Start All Containers', desc: 'Start all Docker containers', type: 'success' },
+        { cmd: 'control', icon: 'fas fa-sliders-h', title: 'Start Control Panel', desc: 'Start the web-based control panel', type: 'primary' },
+        { cmd: 'npm-dev', icon: 'fas fa-code', title: 'Start Frontend Dev Server', desc: 'Start Vite development server', type: 'info' }
+    ],
+    controlPanel: [
+        { cmd: 'control', icon: 'fas fa-sliders-h', title: 'Start Control Panel', desc: 'Start the web-based control panel', type: 'primary' },
+        { cmd: 'stop-control', icon: 'fas fa-power-off', title: 'Stop Control Panel', desc: 'Stop the web-based control panel process', type: 'danger' },
+        { cmd: 'control-dev', icon: 'fas fa-flask', title: 'Control Panel Dev', desc: 'Start control panel in development mode with auto-reload', type: 'info' },
+        { cmd: 'setup-control-panel', icon: 'fas fa-wrench', title: 'Setup Control Panel', desc: 'Setup the control panel (one-time setup)', type: 'primary' }
+    ],
     docker: [
-        { cmd: 'install', icon: 'fas fa-download', title: 'Install', desc: 'Create Laravel project and setup environment', color: 'primary' },
-        { cmd: 'up', icon: 'fas fa-play', title: 'Start All', desc: 'Start all containers', color: 'green' },
-        { cmd: 'down', icon: 'fas fa-stop', title: 'Stop All', desc: 'Stop all containers', color: 'red' },
-        { cmd: 'build', icon: 'fas fa-hammer', title: 'Build', desc: 'Build containers', color: 'blue' },
-        { cmd: 'rebuild', icon: 'fas fa-redo', title: 'Rebuild', desc: 'Rebuild and restart containers', color: 'purple' },
-        { cmd: 'restart', icon: 'fas fa-sync-alt', title: 'Restart', desc: 'Restart all containers', color: 'yellow' },
-        { cmd: 'list', icon: 'fas fa-list', title: 'List Containers', desc: 'List all containers', color: 'gray' },
-        { cmd: 'setup', icon: 'fas fa-cogs', title: 'Setup', desc: 'Setup Laravel application', color: 'indigo' },
-        { cmd: 'fresh', icon: 'fas fa-sparkles', title: 'Fresh Install', desc: 'Fresh installation', color: 'pink' }
+        { cmd: 'up', icon: 'fas fa-play', title: 'Start Containers', desc: 'Start all Docker containers', type: 'success' },
+        { cmd: 'down', icon: 'fas fa-stop', title: 'Stop Containers', desc: 'Stop all Docker containers', type: 'danger' },
+        { cmd: 'build', icon: 'fas fa-hammer', title: 'Build Images', desc: 'Build Docker service images', type: 'primary' },
+        { cmd: 'rebuild', icon: 'fas fa-redo', title: 'Rebuild & Restart', desc: 'Rebuild and restart all containers from scratch', type: 'warning' },
+        { cmd: 'restart', icon: 'fas fa-sync-alt', title: 'Restart Containers', desc: 'Restart all containers', type: 'info' },
+        { cmd: 'list', icon: 'fas fa-list', title: 'List Containers', desc: 'List all running Docker containers', type: 'secondary' }
     ],
-    laravel: [
-        { cmd: 'artisan', icon: 'fas fa-terminal', title: 'Artisan', desc: 'Run artisan command', color: 'red', hasInput: true, placeholder: 'e.g., make:controller UserController' },
-        { cmd: 'migrate', icon: 'fas fa-database', title: 'Migrate', desc: 'Run database migrations', color: 'blue' },
-        { cmd: 'migrate-fresh', icon: 'fas fa-sync-alt', title: 'Fresh Migration', desc: 'Fresh migration with seed', color: 'purple' },
-        { cmd: 'migrate-rollback', icon: 'fas fa-undo', title: 'Rollback', desc: 'Rollback the last migration', color: 'orange' },
-        { cmd: 'seed', icon: 'fas fa-seedling', title: 'Seed', desc: 'Run database seeders', color: 'green' },
-        { cmd: 'tinker', icon: 'fas fa-code', title: 'Tinker', desc: 'Open Laravel Tinker', color: 'yellow' },
-        { cmd: 'queue', icon: 'fas fa-tasks', title: 'Queue Worker', desc: 'Start queue worker manually', color: 'indigo' },
-        { cmd: 'queue-restart', icon: 'fas fa-redo-alt', title: 'Restart Queue', desc: 'Restart queue workers', color: 'blue' },
-        { cmd: 'schedule', icon: 'fas fa-clock', title: 'Schedule', desc: 'Run scheduled tasks', color: 'purple' },
-        { cmd: 'cache-clear', icon: 'fas fa-broom', title: 'Clear Cache', desc: 'Clear all caches', color: 'red' },
-        { cmd: 'optimize', icon: 'fas fa-rocket', title: 'Optimize', desc: 'Optimize Laravel application', color: 'green' },
-        { cmd: 'key-generate', icon: 'fas fa-key', title: 'Generate Key', desc: 'Generate new application key', color: 'yellow' }
+    shellAccess: [
+        { cmd: 'shell', icon: 'fas fa-terminal', title: 'App Shell', desc: 'Access the main application container shell', type: 'primary' },
+        { cmd: 'shell-root', icon: 'fas fa-user-shield', title: 'App Shell (Root)', desc: 'Access the main application container shell as root', type: 'danger' },
+        { cmd: 'shell-mysql', icon: 'fas fa-database', title: 'MySQL Shell', desc: 'Access the MySQL container shell', type: 'info' },
+        { cmd: 'shell-redis', icon: 'fas fa-box', title: 'Redis Shell', desc: 'Access the Redis container shell', type: 'danger' }
     ],
-    dependencies: [
-        { cmd: 'composer', icon: 'fab fa-php', title: 'Composer', desc: 'Run composer command', color: 'purple', hasInput: true, placeholder: 'e.g., require laravel/sanctum' },
-        { cmd: 'composer-install', icon: 'fas fa-download', title: 'Composer Install', desc: 'Install PHP dependencies', color: 'purple' },
-        { cmd: 'composer-update', icon: 'fas fa-sync-alt', title: 'Composer Update', desc: 'Update PHP dependencies', color: 'blue' },
-        { cmd: 'composer-dump', icon: 'fas fa-file-code', title: 'Dump Autoload', desc: 'Dump composer autoload', color: 'gray' },
-        { cmd: 'npm', icon: 'fab fa-npm', title: 'NPM', desc: 'Run npm command', color: 'red', hasInput: true, placeholder: 'e.g., install axios' },
-        { cmd: 'npm-install', icon: 'fas fa-download', title: 'NPM Install', desc: 'Install Node.js dependencies', color: 'red' },
-        { cmd: 'npm-update', icon: 'fas fa-sync-alt', title: 'NPM Update', desc: 'Update Node.js dependencies', color: 'orange' },
-        { cmd: 'npm-dev', icon: 'fas fa-code', title: 'NPM Dev', desc: 'Run npm development server', color: 'green' },
-        { cmd: 'npm-build', icon: 'fas fa-hammer', title: 'NPM Build', desc: 'Build assets for production', color: 'blue' },
-        { cmd: 'npm-watch', icon: 'fas fa-eye', title: 'NPM Watch', desc: 'Watch files for changes', color: 'yellow' },
-        { cmd: 'bun-install', icon: 'fas fa-zap', title: 'Bun Install', desc: 'Install dependencies with Bun', color: 'yellow' },
-        { cmd: 'bun-dev', icon: 'fas fa-bolt', title: 'Bun Dev', desc: 'Run development server with Bun', color: 'orange' },
-        { cmd: 'bun-build', icon: 'fas fa-lightning', title: 'Bun Build', desc: 'Build assets with Bun', color: 'red' }
+    logging: [
+        { cmd: 'logs', icon: 'fas fa-file-alt', title: 'App Logs', desc: 'Show aggregated application logs', type: 'warning' },
+        { cmd: 'logs-service', icon: 'fas fa-stream', title: 'Service Logs', desc: 'Show logs for a specific Docker service', type: 'primary', hasInput: true, placeholder: 'e.g., service=app' },
+        { cmd: 'logs-all', icon: 'fas fa-network-wired', title: 'All Container Logs', desc: 'Show all container logs', type: 'secondary' }
     ],
-    database: [
-        { cmd: 'db-shell', icon: 'fas fa-terminal', title: 'MySQL Shell', desc: 'Access MySQL shell', color: 'blue' },
-        { cmd: 'db-dump', icon: 'fas fa-download', title: 'Dump Database', desc: 'Dump database to file', color: 'green' },
-        { cmd: 'db-restore', icon: 'fas fa-upload', title: 'Restore Database', desc: 'Restore database from backup.sql', color: 'orange' },
-        { cmd: 'db-reset', icon: 'fas fa-trash-restore', title: 'Reset Database', desc: 'Reset database (drop and recreate)', color: 'red' }
+    laravelCommands: [
+        { cmd: 'artisan', icon: 'fas fa-terminal', title: 'Artisan Command', desc: 'Run any Laravel Artisan command', type: 'danger', hasInput: true, placeholder: 'e.g., cmd="make:model User"' },
+        { cmd: 'migrate', icon: 'fas fa-database', title: 'Migrate DB', desc: 'Run database migrations', type: 'primary' },
+        { cmd: 'migrate-fresh', icon: 'fas fa-eraser', title: 'Fresh Migrate (Wipes DB!)', desc: 'Drop all tables and re-run migrations', type: 'danger', confirm: true },
+        { cmd: 'migrate-rollback', icon: 'fas fa-undo', title: 'Rollback Migration', desc: 'Rollback the last database migration batch', type: 'warning' },
+        { cmd: 'seed', icon: 'fas fa-seedling', title: 'Seed DB', desc: 'Run database seeders', type: 'success' },
+        { cmd: 'tinker', icon: 'fas fa-screwdriver', title: 'Laravel Tinker', desc: 'Open Laravel Tinker', type: 'info' },
+        { cmd: 'queue', icon: 'fas fa-hourglass-half', title: 'Start Queue Worker', desc: 'Start a Laravel queue worker (foreground)', type: 'primary' },
+        { cmd: 'queue-restart', icon: 'fas fa-sync', title: 'Restart Queues', desc: 'Restart all Laravel queue workers', type: 'warning' },
+        { cmd: 'schedule', icon: 'fas fa-clock', title: 'Run Scheduler', desc: 'Run scheduled tasks', type: 'info' }
+    ],
+    cacheManagement: [
+        { cmd: 'cache-clear', icon: 'fas fa-broom', title: 'Clear Caches', desc: 'Clear all Laravel caches', type: 'warning' },
+        { cmd: 'optimize', icon: 'fas fa-rocket', title: 'Optimize App', desc: 'Optimize Laravel application for production', type: 'success' },
+        { cmd: 'optimize-clear', icon: 'fas fa-fire', title: 'Clear & Optimize', desc: 'Clear all caches and then optimize', type: 'danger' },
+        { cmd: 'key-generate', icon: 'fas fa-key', title: 'Generate App Key', desc: 'Generate a new Laravel application key', type: 'primary' }
+    ],
+    dependencyManagement: [
+        { cmd: 'composer', icon: 'fab fa-php', title: 'Composer Command', desc: 'Run any Composer command', type: 'primary', hasInput: true, placeholder: 'e.g., cmd="require package/name"' },
+        { cmd: 'composer-install', icon: 'fas fa-boxes', title: 'Composer Install', desc: 'Install PHP Composer dependencies', type: 'success' },
+        { cmd: 'composer-update', icon: 'fas fa-sync-alt', title: 'Composer Update', desc: 'Update PHP Composer dependencies', type: 'warning' },
+        { cmd: 'composer-dump', icon: 'fas fa-file-code', title: 'Composer Autoload', desc: 'Dump Composer autoloader files', type: 'secondary' },
+        { cmd: 'npm', icon: 'fab fa-node-js', title: 'NPM Command', desc: 'Run any NPM command', type: 'danger', hasInput: true, placeholder: 'e.g., cmd="run dev"' },
+        { cmd: 'npm-install', icon: 'fas fa-cubes', title: 'NPM Install', desc: 'Install Node.js dependencies with NPM', type: 'success' },
+        { cmd: 'npm-update', icon: 'fas fa-arrow-alt-circle-up', title: 'NPM Update', desc: 'Update Node.js dependencies with NPM', type: 'warning' },
+        { cmd: 'npm-dev', icon: 'fas fa-code', title: 'Vite Dev Server', desc: 'Start Vite development server', type: 'info' },
+        { cmd: 'npm-build', icon: 'fas fa-hammer', title: 'NPM Build', desc: 'Build frontend assets for production with NPM', type: 'primary' },
+        { cmd: 'npm-watch', icon: 'fas fa-eye', title: 'NPM Watch (Vite)', desc: 'Watch frontend files for changes (Vite)', type: 'info' },
+        { cmd: 'npm-watch-legacy', icon: 'fas fa-eye-slash', title: 'NPM Watch (Mix)', desc: 'Watch frontend files for changes (Laravel Mix)', type: 'secondary' },
+        { cmd: 'bun', icon: 'fas fa-bolt', title: 'Bun Command', desc: 'Run any Bun command', type: 'primary', hasInput: true, placeholder: 'e.g., cmd="run dev"' },
+        { cmd: 'bun-install', icon: 'fas fa-box-open', title: 'Bun Install', desc: 'Install dependencies with Bun', type: 'success' },
+        { cmd: 'bun-update', icon: 'fas fa-sync-alt', title: 'Bun Update', desc: 'Update dependencies with Bun', type: 'warning' },
+        { cmd: 'bun-dev', icon: 'fas fa-code-branch', title: 'Bun Dev Server', desc: 'Run development server with Bun', type: 'info' },
+        { cmd: 'bun-build', icon: 'fas fa-tools', title: 'Bun Build', desc: 'Build assets with Bun', type: 'primary' }
     ],
     testing: [
-        { cmd: 'test', icon: 'fas fa-flask', title: 'Run Tests', desc: 'Run PHPUnit tests', color: 'green' },
-        { cmd: 'test-coverage', icon: 'fas fa-chart-line', title: 'Test Coverage', desc: 'Run tests with coverage report', color: 'blue' },
-        { cmd: 'test-filter', icon: 'fas fa-filter', title: 'Filter Tests', desc: 'Run specific test', color: 'purple', hasInput: true, placeholder: 'TestName' },
-        { cmd: 'test-unit', icon: 'fas fa-cube', title: 'Unit Tests', desc: 'Run unit tests only', color: 'indigo' },
-        { cmd: 'test-feature', icon: 'fas fa-puzzle-piece', title: 'Feature Tests', desc: 'Run feature tests only', color: 'pink' },
-        { cmd: 'pest', icon: 'fas fa-bug', title: 'Pest Tests', desc: 'Run Pest tests', color: 'green' },
-        { cmd: 'pest-coverage', icon: 'fas fa-shield-alt', title: 'Pest Coverage', desc: 'Run Pest tests with coverage', color: 'blue' }
+        { cmd: 'test', icon: 'fas fa-flask', title: 'Run PHPUnit Tests', desc: 'Run PHPUnit tests', type: 'primary' },
+        { cmd: 'test-coverage', icon: 'fas fa-chart-bar', title: 'PHPUnit Coverage', desc: 'Run PHPUnit tests with coverage report', type: 'info' },
+        { cmd: 'test-filter', icon: 'fas fa-filter', title: 'Filter PHPUnit Test', desc: 'Run specific PHPUnit test', type: 'primary', hasInput: true, placeholder: 'e.g., name="UserTest"' },
+        { cmd: 'test-unit', icon: 'fas fa-cube', title: 'Run Unit Tests', desc: 'Run only unit tests with PHPUnit', type: 'success' },
+        { cmd: 'test-feature', icon: 'fas fa-puzzle-piece', title: 'Run Feature Tests', desc: 'Run only feature tests with PHPUnit', type: 'warning' },
+        { cmd: 'pest', icon: 'fas fa-bug', title: 'Run Pest Tests', desc: 'Run Pest tests', type: 'danger' },
+        { cmd: 'pest-coverage', icon: 'fas fa-chart-line', title: 'Pest Coverage', desc: 'Run Pest tests with coverage', type: 'info' }
     ],
-    monitoring: [
-        { cmd: 'status', icon: 'fas fa-info-circle', title: 'Container Status', desc: 'Show container status', color: 'blue' },
-        { cmd: 'top', icon: 'fas fa-list', title: 'Running Processes', desc: 'Show running processes', color: 'green' },
-        { cmd: 'stats', icon: 'fas fa-chart-bar', title: 'Resource Usage', desc: 'Show container resource usage', color: 'purple' },
-        { cmd: 'health', icon: 'fas fa-heartbeat', title: 'Health Check', desc: 'Run health check', color: 'red' },
-        { cmd: 'debug', icon: 'fas fa-bug', title: 'Debug Info', desc: 'Run debug script', color: 'yellow' },
-        { cmd: 'logs', icon: 'fas fa-file-alt', title: 'App Logs', desc: 'Show application logs', color: 'gray' },
-        { cmd: 'logs-nginx', icon: 'fas fa-server', title: 'Nginx Logs', desc: 'Show nginx logs', color: 'green' },
-        { cmd: 'logs-all', icon: 'fas fa-list-alt', title: 'All Logs', desc: 'Show all container logs', color: 'blue' },
-        { cmd: 'logs-mysql', icon: 'fas fa-database', title: 'MySQL Logs', desc: 'Show MySQL logs', color: 'orange' },
-        { cmd: 'logs-redis', icon: 'fas fa-memory', title: 'Redis Logs', desc: 'Show Redis logs', color: 'red' }
-    ],
-    paths: [
-        { cmd: 'path', icon: 'fas fa-folder-open', title: 'Show Path', desc: 'Show current Laravel application path', color: 'purple' },
-        { cmd: 'switch-path', icon: 'fas fa-exchange-alt', title: 'Switch Path', desc: 'Switch to different Laravel path', color: 'blue', hasInput: true, placeholder: 'new/path' },
-        { cmd: 'create-project', icon: 'fas fa-plus-circle', title: 'Create Project', desc: 'Create Laravel project in specific path', color: 'green', hasInput: true, placeholder: 'projects/myapp' }
+    projectManagement: [
+        { cmd: 'path', icon: 'fas fa-folder-open', title: 'Show Project Path', desc: 'Show current Laravel application path', type: 'secondary' },
+        { cmd: 'switch-path', icon: 'fas fa-exchange-alt', title: 'Switch Project Path', desc: 'Switch the project directory path in .env', type: 'primary', hasInput: true, placeholder: 'e.g., path="new/path"' },
+        { cmd: 'create-project', icon: 'fas fa-plus-circle', title: 'Create New Project', desc: 'Create a new Laravel project in a specified path', type: 'success', hasInput: true, placeholder: 'e.g., path="projects/myapp"' }
     ],
     maintenance: [
-        { cmd: 'shell', icon: 'fas fa-terminal', title: 'App Shell', desc: 'Access application container shell', color: 'blue' },
-        { cmd: 'shell-root', icon: 'fas fa-user-shield', title: 'Root Shell', desc: 'Access application container as root', color: 'red' },
-        { cmd: 'shell-mysql', icon: 'fas fa-database', title: 'MySQL Shell', desc: 'Access MySQL container shell', color: 'orange' },
-        { cmd: 'shell-redis', icon: 'fas fa-memory', title: 'Redis Shell', desc: 'Access Redis container shell', color: 'red' },
-        { cmd: 'permissions', icon: 'fas fa-shield-alt', title: 'Fix Permissions', desc: 'Fix file permissions', color: 'yellow' },
-        { cmd: 'clean', icon: 'fas fa-broom', title: 'Clean', desc: 'Clean up containers and volumes', color: 'red' },
-        { cmd: 'clean-all', icon: 'fas fa-trash', title: 'Clean All', desc: 'Clean everything including images', color: 'red' },
-        { cmd: 'urls', icon: 'fas fa-link', title: 'Show URLs', desc: 'Show application URLs', color: 'blue' },
-        { cmd: 'info', icon: 'fas fa-info', title: 'Environment Info', desc: 'Show environment information', color: 'gray' },
-        { cmd: 'update', icon: 'fas fa-sync', title: 'Update All', desc: 'Update all dependencies', color: 'green' },
-        { cmd: 'backup', icon: 'fas fa-save', title: 'Create Backup', desc: 'Create full backup', color: 'purple' },
-        { cmd: 'ide-helper', icon: 'fas fa-lightbulb', title: 'IDE Helper', desc: 'Generate IDE helper files', color: 'yellow' },
-        { cmd: 'clear-logs', icon: 'fas fa-eraser', title: 'Clear Logs', desc: 'Clear all log files', color: 'red' },
-        { cmd: 'restart-workers', icon: 'fas fa-redo', title: 'Restart Workers', desc: 'Restart all background workers', color: 'blue' },
-        { cmd: 'quick-start', icon: 'fas fa-rocket', title: 'Quick Start Guide', desc: 'Show quick start guide', color: 'green' }
+        { cmd: 'permissions', icon: 'fas fa-lock', title: 'Fix Permissions', desc: 'Fix Laravel file permissions within the container', type: 'warning' },
+        { cmd: 'clean', icon: 'fas fa-trash-alt', title: 'Clean Project', desc: 'Stop and remove all containers, networks, and volumes', type: 'danger' },
+        { cmd: 'clean-all', icon: 'fas fa-skull-crossbones', title: 'Clean ALL Docker (DANGEROUS!)', desc: 'Stop and remove ALL Docker data on your system', type: 'danger', confirm: true },
+        { cmd: 'prune', icon: 'fas fa-cut', title: 'Prune Docker', desc: 'Prune unused Docker images, containers, volumes, and networks', type: 'warning' },
+        { cmd: 'fresh', icon: 'fas fa-sync-alt', title: 'Fresh Install', desc: 'Perform a fresh installation (clean, build, install)', type: 'primary', confirm: true }
+    ],
+    database: [
+        { cmd: 'db-shell', icon: 'fas fa-database', title: 'DB Shell', desc: 'Access the MySQL client shell in the container', type: 'info' },
+        { cmd: 'db-dump', icon: 'fas fa-download', title: 'Dump DB', desc: 'Dump the database to a SQL file on the host', type: 'success' },
+        { cmd: 'db-restore', icon: 'fas fa-upload', title: 'Restore DB', desc: 'Restore the database from a SQL file', type: 'warning', hasInput: true, placeholder: 'e.g., file="my-backup.sql"' },
+        { cmd: 'db-reset', icon: 'fas fa-redo-alt', title: 'Reset DB (Wipes Data!)', desc: 'Reset the database (fresh migrate & seed)', type: 'danger', confirm: true }
+    ],
+    monitoringDebugging: [
+        { cmd: 'status', icon: 'fas fa-info-circle', title: 'Container Status', desc: 'Show running Docker container status', type: 'info' },
+        { cmd: 'top', icon: 'fas fa-chart-area', title: 'Container Processes', desc: 'Show running processes within containers', type: 'secondary' },
+        { cmd: 'stats', icon: 'fas fa-chart-line', title: 'Container Stats (Live)', desc: 'Show real-time container resource usage', type: 'primary' },
+        { cmd: 'health', icon: 'fas fa-heartbeat', title: 'Health Check', desc: 'Run project-specific health checks', type: 'success' },
+        { cmd: 'debug', icon: 'fas fa-bug', title: 'Debug Script', desc: 'Run project-specific debug script', type: 'danger' }
+    ],
+    utilities: [
+        { cmd: 'urls', icon: 'fas fa-link', title: 'Show URLs', desc: 'Display common application URLs', type: 'info' },
+        { cmd: 'info', icon: 'fas fa-info', title: 'Env Info', desc: 'Show environment and project information', type: 'secondary' },
+        { cmd: 'update', icon: 'fas fa-sync-alt', title: 'Update All Dependencies', desc: 'Update all project dependencies (Composer & NPM/Bun)', type: 'success' },
+        { cmd: 'backup', icon: 'fas fa-save', title: 'Full Project Backup', desc: 'Create a full project backup (DB dump + code archive)', type: 'primary' },
+        { cmd: 'ide-helper', icon: 'fas fa-lightbulb', title: 'Generate IDE Helpers', desc: 'Generate Laravel IDE helper files', type: 'warning' },
+        { cmd: 'clear-logs', icon: 'fas fa-eraser', title: 'Clear App Logs', desc: 'Clear application log files in storage/logs', type: 'danger' },
+        { cmd: 'restart-workers', icon: 'fas fa-redo', title: 'Restart Workers', desc: 'Restart all background workers', type: 'primary' },
+        { cmd: 'quick-start', icon: 'fas fa-rocket', title: 'Quick Start Guide', desc: 'Show a quick start guide for new users', type: 'primary' }
     ]
 };
 
-// Color mappings for command cards
-const COLOR_CLASSES = {
-    primary: 'from-primary-600 to-primary-700 hover:from-primary-500 hover:to-primary-600',
-    green: 'from-green-600 to-green-700 hover:from-green-500 hover:to-green-600',
-    red: 'from-red-600 to-red-700 hover:from-red-500 hover:to-red-600',
-    blue: 'from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600',
-    purple: 'from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600',
-    yellow: 'from-yellow-600 to-yellow-700 hover:from-yellow-500 hover:to-yellow-600',
-    indigo: 'from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600',
-    pink: 'from-pink-600 to-pink-700 hover:from-pink-500 hover:to-pink-600',
-    gray: 'from-gray-600 to-gray-700 hover:from-gray-500 hover:to-gray-600',
-    orange: 'from-orange-600 to-orange-700 hover:from-orange-500 hover:to-orange-600'
-};
+// Event Listeners setup (called after DOMContentLoaded)
+function setupEventListeners() {
+    // Assign UI elements here, after DOM is ready
+    commandOutput = document.getElementById('command-output');
+    terminalInput = document.getElementById('terminal-input');
+    loadingOverlay = document.getElementById('loading-overlay');
+    loadingMessage = document.getElementById('loading-message');
+    loadingSubMessage = document.getElementById('loading-sub-message');
+    searchInput = document.getElementById('command-search-input');
+    commandsContainer = document.getElementById('commands-container');
+    logOutput = document.getElementById('logs-container');
+    logServiceSelect = document.getElementById('log-service');
+    rootEnvContent = document.getElementById('root-env-content');
+    laravelEnvContent = document.getElementById('laravel-env-content');
+    saveRootEnvBtn = document.getElementById('save-root-env');
+    saveLaravelEnvBtn = document.getElementById('save-laravel-env');
+    laravelEnvPathDisplay = document.getElementById('laravel-env-path-display');
+    urlsListContainer = document.getElementById('urls-list');
 
-// Initialize on page load
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('🎛️ Enhanced Control Panel v2.0 Initializing...');
-    initializeApp();
-    refreshStatus();
-    setupEventListeners();
-    populateCommandSections();
 
-    // Add welcome message
-    showNotification('Welcome to Enhanced Laravel Docker Control Panel v2.0!', 'success');
-});
-
-// Initialize application
-function initializeApp() {
-    // Setup terminal input with enhanced features
-    const terminalInput = document.getElementById('terminal-input');
+    // Command execution via terminal input
     if (terminalInput) {
-        terminalInput.addEventListener('keypress', function(e) {
+        terminalInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
-                executeTerminalCommand();
-            }
-        });
-
-        // Add command history
-        let commandHistory = [];
-        let historyIndex = -1;
-
-        terminalInput.addEventListener('keydown', function(e) {
-            if (e.key === 'ArrowUp') {
                 e.preventDefault();
-                if (historyIndex < commandHistory.length - 1) {
+                const command = terminalInput.value.trim();
+                if (command) {
+                    executeCommand(command);
+                    terminalInput.value = ''; // Clear input immediately
+                }
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (commandHistory.length > 0 && historyIndex < commandHistory.length - 1) {
                     historyIndex++;
-                    this.value = commandHistory[commandHistory.length - 1 - historyIndex] || '';
+                    terminalInput.value = commandHistory[historyIndex];
                 }
             } else if (e.key === 'ArrowDown') {
                 e.preventDefault();
                 if (historyIndex > 0) {
                     historyIndex--;
-                    this.value = commandHistory[commandHistory.length - 1 - historyIndex] || '';
+                    terminalInput.value = commandHistory[historyIndex];
                 } else if (historyIndex === 0) {
-                    historyIndex = -1;
-                    this.value = '';
+                    historyIndex = -1; // Go past the first item to empty
+                    terminalInput.value = '';
                 }
-            }
-        });
-
-        // Store command history
-        window.addToCommandHistory = function(command) {
-            if (command && !commandHistory.includes(command)) {
-                commandHistory.push(command);
-                if (commandHistory.length > 50) {
-                    commandHistory.shift();
-                }
-            }
-            historyIndex = -1;
-        };
-    }
-
-    // Setup path switching input
-    const pathInput = document.getElementById('new-path-input');
-    if (pathInput) {
-        pathInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                switchProjectPath();
             }
         });
     }
 
-    // Initial connection status
-    updateConnectionStatus(false);
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+            e.preventDefault();
+            if (terminalInput) terminalInput.focus();
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+            e.preventDefault();
+            if (searchInput) searchInput.focus();
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+            e.preventDefault();
+            if (currentSection === 'overview' || currentSection === 'urls') { // Also refresh URLs
+                refreshStatus();
+            }
+        }
+        if (e.key === 'Escape') {
+            if (document.activeElement) {
+                document.activeElement.blur(); // Clear focus from any input
+            }
+            if (searchInput) searchInput.value = '';
+            renderCommands(); // Show all commands
+        }
+    });
 
-    // Add loading animation to status cards
-    animateStatusCards();
+    // Log buttons
+    document.getElementById('start-logs-btn').addEventListener('click', startLogStream);
+    document.getElementById('stop-logs-btn').addEventListener('click', stopLogStream);
+    if (logServiceSelect) { // Check if element exists before adding listener
+        logServiceSelect.addEventListener('change', () => {
+            currentLogService = logServiceSelect.value;
+            if (logsActive) {
+                startLogStream(); // Restart stream with new service
+            }
+        });
+    }
+
+    // ENV Editor buttons
+    if (saveRootEnvBtn) { // Check if element exists before adding listener
+        saveRootEnvBtn.addEventListener('click', () => saveEnvFile('root', rootEnvContent.value));
+    }
+    if (saveLaravelEnvBtn) { // Check if element exists before adding listener
+        saveLaravelEnvBtn.addEventListener('click', () => saveEnvFile('laravel', laravelEnvContent.value));
+    }
+
+    // Initial check and periodic refresh for URLs when URL section is active
+    setInterval(() => {
+        if (currentSection === 'urls') {
+            refreshStatus(); // Triggers updateServiceUrls
+        }
+    }, 15000); // Check every 15 seconds
 }
 
-// Socket event listeners
+
+// Socket Events
 socket.on('connect', () => {
-    console.log('🔗 Connected to enhanced control panel server');
-    updateConnectionStatus(true);
-    showNotification('Connected to control panel server', 'success');
+    console.log('Connected to server');
+    addCommandOutput('🚀 Connected to Laravel Docker Control Panel server.', 'info');
+    refreshStatus(); // Refresh status on connect
 });
 
 socket.on('disconnect', () => {
-    console.log('❌ Disconnected from control panel server');
-    updateConnectionStatus(false);
-    showNotification('Disconnected from control panel server', 'error');
+    console.log('Disconnected from server');
+    addCommandOutput('🔌 Disconnected from server. Attempting to reconnect...', 'error');
+    showNotification('Disconnected from server. Please check the server status.', 'error');
+    hideLoadingOverlay();
 });
 
-socket.on('command-result', (result) => {
-    console.log('📊 Command result received:', result);
-    hideLoading();
-    addTerminalOutput(result);
-
-    // Add to command history
-    if (window.addToCommandHistory) {
-        window.addToCommandHistory(result.command.replace('make ', ''));
-    }
-
-    // Show execution time in notification
-    const executionTime = result.executionTime ? ` (${result.executionTime}ms)` : '';
-    if (result.success) {
-        showNotification(`Command completed successfully${executionTime}`, 'success');
-    } else {
-        showNotification(`Command failed${executionTime}`, 'error');
-    }
-
-    // Refresh status after certain commands
-    if (currentSection === 'overview' ||
-        result.command.includes('up') ||
-        result.command.includes('down') ||
-        result.command.includes('restart') ||
-        result.command.includes('path')) {
-        setTimeout(refreshStatus, 2000);
-    }
+socket.on('status-update', (data) => {
+    hideLoadingOverlay();
+    updateDashboard(data);
+    updateServiceUrls(data.environment); // Update URLs on status update
+    showNotification('Dashboard status refreshed', 'success');
 });
 
-socket.on('command-error', (error) => {
-    console.error('❌ Command error:', error);
-    hideLoading();
-    showNotification('Command failed: ' + (error.message || 'Unknown error'), 'error');
-});
+socket.on('docker-stats-update', (data) => {
+    const servicesContainer = document.getElementById('services-container');
+    if (!servicesContainer) return;
+    servicesContainer.innerHTML = ''; // Clear previous status
 
-socket.on('log-data', (data) => {
-    if (logsActive) {
-        addLogLine(data.data.trim(), 'info');
-    }
-});
+    if (data && data.length > 0) {
+        data.forEach(service => {
+            const statusColor = service.State === 'running' ? 'forge-success' : 'forge-danger';
+            const iconClass = service.State === 'running' ? 'fa-check-circle' : 'fa-times-circle';
+            // Use 'Service' property for service name from docker compose ps json format
+            const serviceNameDisplay = service.Service || service.Names;
 
-socket.on('log-error', (data) => {
-    if (logsActive) {
-        addLogLine(data.error.trim(), 'error');
-    }
-});
-
-socket.on('log-closed', (data) => {
-    if (logsActive) {
-        addLogLine(`--- Log stream for ${data.service} closed ---`, 'warning');
-        logsActive = false;
-    }
-});
-
-socket.on('welcome', (data) => {
-    console.log('🎉 Welcome message:', data);
-    showNotification(`Connected! ${data.message}`, 'success');
-});
-
-socket.on('stats-broadcast', (data) => {
-    // Update stats in real-time if on overview
-    if (currentSection === 'overview') {
-        updateStatusCards(data);
-    }
-});
-
-// Setup event listeners
-function setupEventListeners() {
-    // Section switching event listeners
-    document.querySelectorAll('.sidebar-item').forEach(item => {
-        item.addEventListener('click', () => {
-            const section = item.getAttribute('data-section');
-            if (section) {
-                switchSection(section);
-            }
+            servicesContainer.insertAdjacentHTML('beforeend', `
+                <div class="flex items-center px-4 py-2 bg-forge-bg rounded-lg mr-2 mb-2 border border-forge-border">
+                    <span class="w-3 h-3 rounded-full ${statusColor} mr-2"></span>
+                    <span class="text-sm text-white">${serviceNameDisplay}: <span class="capitalize">${service.State}</span></span>
+                </div>
+            `);
         });
-    });
-
-    // Add click effects to command cards
-    document.addEventListener('click', function(e) {
-        if (e.target.closest('.command-card')) {
-            const card = e.target.closest('.command-card');
-            card.style.transform = 'scale(0.98)';
-            setTimeout(() => {
-                card.style.transform = '';
-            }, 150);
-        }
-    });
-}
-
-// Populate all command sections
-function populateCommandSections() {
-    Object.keys(MAKEFILE_COMMANDS).forEach(category => {
-        const container = document.getElementById(`${category}-commands`);
-        if (container) {
-            container.innerHTML = MAKEFILE_COMMANDS[category].map(cmd => createCommandCard(cmd)).join('');
-        }
-    });
-
-    // Add search functionality after populating
-    setTimeout(initializeSearch, 500);
-}
-
-// Create enhanced command card HTML
-function createCommandCard(command) {
-    const colorClass = COLOR_CLASSES[command.color] || COLOR_CLASSES.gray;
-    const inputId = command.hasInput ? `input-${command.cmd}` : '';
-
-    return `
-        <div class="command-card group" data-command="${command.cmd}" data-title="${command.title}" data-desc="${command.desc}">
-            <div class="flex items-start justify-between mb-4">
-                <div class="w-12 h-12 bg-gradient-to-br ${colorClass} rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
-                    <i class="${command.icon} text-white text-xl"></i>
-                </div>
-                <div class="text-xs text-gray-400 font-mono bg-dark-800 px-2 py-1 rounded">${command.cmd}</div>
-            </div>
-
-            <h3 class="font-semibold text-white mb-2 group-hover:text-primary-400 transition-colors">${command.title}</h3>
-            <p class="text-gray-400 text-sm mb-4 flex-1 leading-relaxed">${command.desc}</p>
-
-            ${command.hasInput ? `
-                <div class="mb-3">
-                    <input type="text" id="${inputId}" placeholder="${command.placeholder}"
-                           class="w-full bg-dark-700 border border-dark-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary-500 focus:bg-dark-600 transition-all duration-200">
-                </div>
-            ` : ''}
-
-            <button onclick="executeCommandWithInput('${command.cmd}', '${inputId}')"
-                    class="w-full px-4 py-2 bg-gradient-to-r ${colorClass} rounded-lg text-white font-medium transition-all duration-200 hover:scale-105 hover:shadow-lg flex items-center justify-center group-hover:shadow-xl">
-                <i class="${command.icon} mr-2"></i>
-                Execute
-                <i class="fas fa-arrow-right ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></i>
-            </button>
-        </div>
-    `;
-}
-
-// Execute command with optional input and enhanced validation
-function executeCommandWithInput(command, inputId = '') {
-    let fullCommand = command;
-
-    if (inputId) {
-        const input = document.getElementById(inputId);
-        if (input && input.value.trim()) {
-            const inputValue = input.value.trim();
-
-            // Validate input based on command type
-            if (!validateCommandInput(command, inputValue)) {
-                showNotification(`Invalid input for ${command}`, 'warning');
-                return;
-            }
-
-            if (command === 'artisan') {
-                fullCommand = `artisan cmd="${inputValue}"`;
-            } else if (command === 'composer') {
-                fullCommand = `composer cmd="${inputValue}"`;
-            } else if (command === 'npm') {
-                fullCommand = `npm cmd="${inputValue}"`;
-            } else if (command === 'switch-path') {
-                fullCommand = `switch-path path="${inputValue}"`;
-            } else if (command === 'create-project') {
-                fullCommand = `create-project path="${inputValue}"`;
-            } else if (command === 'test-filter') {
-                fullCommand = `test-filter name="${inputValue}"`;
-            }
-
-            // Clear input after execution
-            input.value = '';
-        } else if (command !== 'artisan' && command !== 'composer' && command !== 'npm') {
-            // For commands that require input but none provided
-            showNotification(`Please provide input for ${command}`, 'warning');
-            return;
-        }
-    }
-
-    executeCommand(fullCommand);
-}
-
-// Validate command input
-function validateCommandInput(command, input) {
-    switch (command) {
-        case 'switch-path':
-        case 'create-project':
-            // Path validation - no special characters that could be harmful
-            return /^[a-zA-Z0-9\/_-]+$/.test(input);
-        case 'test-filter':
-            // Test name validation
-            return /^[a-zA-Z0-9_\\]+$/.test(input);
-        default:
-            return true; // Allow most inputs for artisan, composer, npm
-    }
-}
-
-// Switch between sections with enhanced animations
-function switchSection(sectionName) {
-    console.log('🔄 Switching to section:', sectionName);
-    currentSection = sectionName;
-
-    // Update sidebar with smooth transition
-    document.querySelectorAll('.sidebar-item').forEach(item => {
-        item.classList.remove('active');
-        item.style.transform = 'translateX(0)';
-    });
-    const activeItem = document.querySelector(`[data-section="${sectionName}"]`);
-    if (activeItem) {
-        activeItem.classList.add('active');
-        activeItem.style.transform = 'translateX(4px)';
-    }
-
-    // Update content with fade transition
-    document.querySelectorAll('.section').forEach(section => {
-        section.style.opacity = '0';
-        section.style.transform = 'translateY(20px)';
-        setTimeout(() => {
-            section.classList.add('hidden');
-        }, 200);
-    });
-
-    setTimeout(() => {
-        const activeSection = document.getElementById(`${sectionName}-section`);
-        if (activeSection) {
-            activeSection.classList.remove('hidden');
-            activeSection.style.opacity = '1';
-            activeSection.style.transform = 'translateY(0)';
-        }
-    }, 200);
-
-    // Load section-specific data
-    if (sectionName === 'overview') {
-        refreshStatus();
-    } else if (sectionName === 'paths') {
-        updatePathInfo();
-    } else if (sectionName === 'logs' && logsActive) {
-        stopLogs();
-    }
-
-    // Analytics
-    console.log(`📊 Section changed to: ${sectionName}`);
-}
-
-// Update connection status indicator with enhanced styling
-function updateConnectionStatus(connected) {
-    const indicator = document.getElementById('status-indicator');
-    if (!indicator) return;
-
-    if (connected) {
-        indicator.innerHTML = `
-            <div class="w-2 h-2 bg-primary-500 rounded-full mr-2 animate-pulse"></div>
-            <span class="text-sm text-primary-400 font-medium">Connected</span>
-        `;
-        indicator.className = 'flex items-center px-3 py-2 rounded-lg bg-dark-800 border border-primary-500/20 shadow-lg shadow-primary-500/10';
     } else {
-        indicator.innerHTML = `
-            <div class="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
-            <span class="text-sm text-red-400 font-medium">Disconnected</span>
-        `;
-        indicator.className = 'flex items-center px-3 py-2 rounded-lg bg-dark-800 border border-red-500/20 shadow-lg shadow-red-500/10';
+        servicesContainer.innerHTML = '<p class="text-forge-text-dark">No Docker services found or status not available.</p>';
     }
-}
+});
 
-// Enhanced status refresh with better error handling
-async function refreshStatus() {
-    console.log('🔄 Refreshing status...');
 
-    try {
-        // Show subtle loading for status cards
-        animateStatusCards(true);
+socket.on('command-output', (data) => {
+    // Simple output. Server should handle coloring.
+    if (commandOutput) {
+        commandOutput.innerHTML += data.replace(/\n/g, '<br>');
+        terminalInput.scrollTop = terminalInput.scrollHeight; // Auto-scroll terminal
+    }
+});
 
-        const response = await axios.get('/api/status');
-        const data = response.data;
+socket.on('command-complete', (data) => {
+    hideLoadingOverlay();
+    const { statusCode, command: executedCommand } = data; // Destructure command property
+    if (statusCode === 0) {
+        addCommandOutput(`\nCommand 'make ${executedCommand}' completed successfully.`, 'success');
+        showNotification(`Command 'make ${executedCommand}' executed successfully!`, 'success');
+    } else {
+        addCommandOutput(`\nCommand 'make ${executedCommand}' failed with exit code: ${statusCode}.`, 'error');
+        showNotification(`Command 'make ${executedCommand}' failed! Exit Code: ${statusCode}`, 'error');
+    }
+    if (commandOutput) {
+        commandOutput.scrollTop = commandOutput.scrollHeight;
+    }
+    refreshStatus(); // Refresh status after any command execution
+});
 
-        console.log('📊 Status data received:', data);
+socket.on('command-error', (data) => {
+    hideLoadingOverlay();
+    addCommandOutput(`\nError: ${data.message}`, 'error');
+    if (commandOutput) {
+        commandOutput.scrollTop = commandOutput.scrollHeight;
+    }
+    showNotification(`Command error: ${data.message}`, 'error');
+});
 
-        updateStatusCards(data);
-        updateContainersList(data.containers);
-        updateServiceUrls(data.environment);
-        updatePathInfo(data.environment);
+socket.on('log-output', (data) => {
+    if (logsActive && logOutput) {
+        logOutput.innerHTML += data.replace(/\n/g, '<br>'); // Replace newlines for HTML
+        logOutput.scrollTop = logOutput.scrollHeight;
+    }
+});
 
-        // Show response time in console
-        if (data.responseTime) {
-            console.log(`⚡ Status loaded in ${data.responseTime}ms`);
+socket.on('log-stream-error', (data) => {
+    if (logsActive) {
+        addLogLine(`[LOG ERROR] ${data.message}`, 'error');
+        if (logOutput) logOutput.scrollTop = logOutput.scrollHeight;
+        showNotification(`Log stream error: ${data.message}`, 'error');
+    }
+    stopLogStream(); // Stop stream on server-side error
+});
+
+socket.on('log-stream-closed', (data) => {
+    if (logsActive) { // Only show if it was actively streaming
+        addLogLine(`Log stream for ${data.service} closed. Code: ${data.code}`, 'info');
+    }
+    stopLogStream();
+});
+
+socket.on('project-path-updated', (data) => {
+    hideLoadingOverlay();
+    if (data.success) {
+        showNotification('Project path updated successfully!', 'success');
+        updatePathInfo(); // Refresh path info after update
+        refreshStatus(); // Also refresh general status
+    } else {
+        showNotification(`Failed to update project path: ${data.error}`, 'error');
+    }
+});
+
+socket.on('url-status-update', (data) => {
+    const urlElement = document.getElementById(`url-item-${data.id}`);
+    if (urlElement) {
+        const statusIndicator = urlElement.querySelector('.url-status-indicator');
+        const pingResultEl = urlElement.querySelector('.ping-result');
+
+        if (statusIndicator) {
+            statusIndicator.classList.remove('bg-gray-500', 'bg-forge-danger', 'bg-forge-success', 'animate-pulse');
+            if (data.status === 'online') {
+                statusIndicator.classList.add('bg-forge-success');
+            } else {
+                statusIndicator.classList.add('bg-forge-danger');
+            }
         }
 
-    } catch (error) {
-        console.error('❌ Error refreshing status:', error);
-        showNotification('Error refreshing status: ' + error.message, 'error');
-
-        // Show offline state
-        animateStatusCards(false);
-    } finally {
-        animateStatusCards(false);
+        if (pingResultEl) {
+            if (data.status === 'online') {
+                pingResultEl.innerHTML = `<span class="text-forge-success">Online</span> <span class="text-forge-text-dark">(${data.time})</span>`;
+            } else {
+                pingResultEl.innerHTML = `<span class="text-forge-danger">Offline</span>`;
+            }
+        }
     }
-}
+});
 
-// Animate status cards for better UX
-function animateStatusCards(loading = false) {
-    const cards = document.querySelectorAll('.bg-gradient-to-br');
-    cards.forEach((card, index) => {
-        if (loading) {
-            card.style.opacity = '0.6';
-            card.style.transform = 'scale(0.98)';
+socket.on('env-content', (data) => {
+    hideLoadingOverlay();
+    if (data.type === 'root' && rootEnvContent) {
+        rootEnvContent.value = data.content;
+    } else if (data.type === 'laravel' && laravelEnvContent) {
+        laravelEnvContent.value = data.content;
+    }
+    if (data.currentCodePath && laravelEnvPathDisplay) {
+        laravelEnvPathDisplay.textContent = data.currentCodePath; // Update path display for Laravel .env
+    }
+    showNotification(`Loaded ${data.type} .env file`, 'success');
+});
+
+socket.on('env-error', (data) => {
+    hideLoadingOverlay();
+    const targetTextarea = data.type === 'root' ? rootEnvContent : laravelEnvContent;
+    if (targetTextarea) {
+        targetTextarea.value = `Error loading ${data.type} .env file: ${data.message}`;
+    }
+    showNotification(`Failed to load ${data.type} .env file: ${data.message}`, 'error');
+});
+
+socket.on('env-saved', (data) => {
+    hideLoadingOverlay();
+    showNotification(`Saved ${data.type} .env file successfully!`, 'success');
+    if (data.type === 'root') {
+        showNotification('Root .env updated. Consider running "make rebuild" for Docker changes to take effect.', 'warning', 7000);
+        refreshStatus(); // Re-fetch status to update CODE_PATH info
+    }
+});
+
+socket.on('env-save-error', (data) => {
+    hideLoadingOverlay();
+    showNotification(`Failed to save ${data.type} .env file: ${data.error}`, 'error');
+});
+
+socket.on('path-info', (data) => {
+    hideLoadingOverlay();
+    if (document.getElementById('current-project-path')) {
+        document.getElementById('current-project-path').textContent = data.currentPath || 'Not set';
+    }
+    if (document.getElementById('code-path-env')) {
+        document.getElementById('code-path-env').textContent = data.codePathEnv || 'Not set (CODE_PATH in root .env)';
+    }
+    if (document.getElementById('default-project-path')) {
+        document.getElementById('default-project-path').textContent = data.defaultPath || 'Not set';
+    }
+    if (document.getElementById('path-status-message')) {
+        document.getElementById('path-status-message').textContent = data.message || '';
+    }
+});
+
+
+// UI Update Functions
+function updateDashboard(data) {
+    // Docker Engine Status
+    const dockerEngineStatusEl = document.getElementById('docker-engine-status');
+    if (dockerEngineStatusEl) {
+        dockerEngineStatusEl.textContent = data.docker.status.toUpperCase();
+        dockerEngineStatusEl.className = `font-bold text-white ${data.docker.status === 'running' ? 'text-forge-success' : 'text-forge-danger'}`;
+    }
+
+    // Containers Overview
+    if (document.getElementById('running-containers')) {
+        document.getElementById('running-containers').textContent = data.docker.runningContainers;
+    }
+    if (document.getElementById('paused-containers')) {
+        document.getElementById('paused-containers').textContent = data.docker.pausedContainers;
+    }
+    if (document.getElementById('stopped-containers')) {
+        document.getElementById('stopped-containers').textContent = data.docker.stoppedContainers;
+    }
+    if (document.getElementById('total-images')) {
+        document.getElementById('total-images').textContent = data.docker.images;
+    }
+    if (document.getElementById('total-volumes')) {
+        document.getElementById('total-volumes').textContent = data.docker.volumes;
+    }
+
+    // Environment Variables (simplified display on overview)
+    const envList = document.getElementById('env-list');
+    if (envList) {
+        envList.innerHTML = '';
+        if (data.environment && Object.keys(data.environment).length > 0) {
+            Object.entries(data.environment).forEach(([key, value]) => {
+                // Filter out sensitive or excessively long variables for display
+                if (key.includes('PASSWORD') || key.includes('KEY') || (typeof value === 'string' && value.length > 50)) {
+                    value = '[REDACTED/TRUNCATED]';
+                }
+                envList.insertAdjacentHTML('beforeend', `
+                    <div class="flex justify-between items-center bg-forge-bg p-2 rounded-md mb-1 border border-forge-border">
+                        <span class="font-mono text-forge-primary text-sm">${key}</span>
+                        <span class="text-forge-text-light text-sm break-all ml-4">${value}</span>
+                    </div>
+                `);
+            });
         } else {
-            setTimeout(() => {
-                card.style.opacity = '1';
-                card.style.transform = 'scale(1)';
-            }, index * 100);
-        }
-    });
-}
-
-// Enhanced status cards update
-function updateStatusCards(data) {
-    const stats = data.stats;
-    const env = data.environment;
-
-    if (stats && stats.containers) {
-        const runningEl = document.getElementById('running-containers');
-        const totalEl = document.getElementById('total-containers');
-
-        if (runningEl) {
-            animateNumber(runningEl, parseInt(runningEl.textContent) || 0, stats.containers.running || 0);
-        }
-        if (totalEl) {
-            animateNumber(totalEl, parseInt(totalEl.textContent) || 0, stats.containers.total || 0);
+            envList.innerHTML = '<p class="text-forge-text-dark">No environment variables loaded.</p>';
         }
     }
 
-    const codePathEl = document.getElementById('code-path');
-    const appPortEl = document.getElementById('app-port');
-
-    if (codePathEl && env.CODE_PATH !== codePathEl.textContent) {
-        codePathEl.style.transform = 'scale(1.1)';
-        codePathEl.textContent = env.CODE_PATH || 'src';
-        setTimeout(() => {
-            codePathEl.style.transform = 'scale(1)';
-        }, 200);
+    // Project Info
+    if (document.getElementById('project-name')) {
+        document.getElementById('project-name').textContent = data.project.name || 'N/A';
     }
-
-    if (appPortEl) {
-        animateNumber(appPortEl, parseInt(appPortEl.textContent) || 0, parseInt(env.APP_PORT) || 8000);
+    if (document.getElementById('project-path')) {
+        document.getElementById('project-path').textContent = data.project.path || 'N/A';
+    }
+    if (document.getElementById('laravel-version')) {
+        document.getElementById('laravel-version').textContent = data.project.laravelVersion || 'N/A';
+    }
+    if (document.getElementById('php-version')) {
+        document.getElementById('php-version').textContent = data.project.phpVersion || 'N/A';
     }
 }
 
-// Animate number changes
-function animateNumber(element, from, to) {
-    if (from === to) return;
-
-    const duration = 500;
-    const steps = 20;
-    const stepValue = (to - from) / steps;
-    let current = from;
-    let step = 0;
-
-    const timer = setInterval(() => {
-        step++;
-        current += stepValue;
-
-        if (step >= steps) {
-            current = to;
-            clearInterval(timer);
-        }
-
-        element.textContent = Math.round(current);
-
-        // Add pulse effect on final value
-        if (step >= steps) {
-            element.style.transform = 'scale(1.1)';
-            setTimeout(() => {
-                element.style.transform = 'scale(1)';
-            }, 200);
-        }
-    }, duration / steps);
-}
-
-// Enhanced containers list update
-function updateContainersList(containers) {
-    const containersList = document.getElementById('containers-list');
-    if (!containersList) return;
-
-    if (!containers || containers.length === 0) {
-        containersList.innerHTML = `
-            <div class="text-center py-12">
-                <div class="w-24 h-24 bg-gradient-to-br from-dark-800 to-dark-900 rounded-full flex items-center justify-center mx-auto mb-6 border border-dark-600">
-                    <i class="fas fa-cube text-4xl text-gray-400"></i>
-                </div>
-                <h3 class="text-xl font-semibold mb-3 text-gray-300">No containers found</h3>
-                <p class="text-gray-400 mb-8 max-w-md mx-auto">Start your Laravel environment to see running containers and services</p>
-                <button onclick="executeCommand('up')" class="px-8 py-3 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-500 hover:to-primary-600 rounded-lg transition-all duration-200 transform hover:scale-105 shadow-lg">
-                    <i class="fas fa-play mr-2"></i>Start Containers
-                </button>
-            </div>
-        `;
-        return;
-    }
-
-    containersList.innerHTML = containers.map((container, index) => `
-        <div class="bg-gradient-to-br from-dark-800 to-dark-900 rounded-xl p-6 border border-dark-700 hover:border-dark-600 transition-all duration-300 transform hover:scale-[1.02] hover:shadow-xl" style="animation-delay: ${index * 100}ms">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-4">
-                    <div class="relative">
-                        <div class="w-4 h-4 rounded-full ${container.state === 'running' ? 'bg-primary-500' : 'bg-red-500'}"></div>
-                        ${container.state === 'running' ? '<div class="absolute inset-0 w-4 h-4 rounded-full bg-primary-500 animate-ping"></div>' : ''}
-                    </div>
-                    <div>
-                        <h4 class="font-semibold text-white flex items-center">
-                            ${container.name}
-                            ${container.health === 'healthy' ? '<i class="fas fa-check-circle text-green-400 text-sm ml-2"></i>' : ''}
-                        </h4>
-                        <p class="text-sm text-gray-400">${container.image}</p>
-                        <p class="text-xs text-gray-500 flex items-center mt-1">
-                            <i class="fas fa-clock mr-1"></i>
-                            ${container.status}
-                        </p>
-                    </div>
-                </div>
-                <div class="flex items-center space-x-2">
-                    ${container.ports.map(port =>
-                        port.public ? `
-                            <span class="bg-blue-600 text-xs px-2 py-1 rounded font-mono hover:bg-blue-500 transition-colors cursor-pointer"
-                                  title="Click to open" onclick="window.open('http://localhost:${port.public}', '_blank')">
-                                ${port.public}:${port.private}
-                            </span>` : ''
-                    ).join('')}
-                    <span class="px-3 py-1 rounded-full text-xs font-medium ${
-                        container.state === 'running'
-                            ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-primary-100 shadow-lg'
-                            : 'bg-gradient-to-r from-red-600 to-red-700 text-red-100'
-                    }">
-                        ${container.state.toUpperCase()}
-                    </span>
-                </div>
-            </div>
-        </div>
-    `).join('');
-}
-
-// Update service URLs with enhanced styling
 function updateServiceUrls(env) {
     const baseUrl = 'http://localhost';
 
     const services = [
-        { id: 'app-url', port: env.APP_PORT || 8000 },
-        { id: 'phpmyadmin-url', port: env.PHPMYADMIN_PORT || 8080 },
-        { id: 'redis-url', port: env.REDIS_INSIGHT_PORT || 8001 },
-        { id: 'mailhog-url', port: env.MAILHOG_PORT || 8025 }
+        { id: 'app', label: 'Laravel App', port: env.APP_PORT || 8000 },
+        { id: 'control-panel', label: 'Control Panel', port: env.CONTROL_PANEL_PORT || 9000 },
+        { id: 'vite', label: 'Vite Dev Server', port: env.VITE_PORT || 5173 },
+        { id: 'phpmyadmin', label: 'PHPMyAdmin', port: env.PHPMYADMIN_PORT || 8080 },
+        { id: 'redis-insight', label: 'Redis Insight', port: env.REDIS_INSIGHT_PORT || 8001 },
+        { id: 'mailhog', label: 'Mailhog', port: env.MAILHOG_PORT || 8025 }
     ];
 
+    if (!urlsListContainer) return;
+    urlsListContainer.innerHTML = ''; // Clear previous URLs
+
+    const urlsToCheck = [];
+
     services.forEach(service => {
-        const element = document.getElementById(service.id);
-        if (element) {
-            element.href = `${baseUrl}:${service.port}`;
+        const url = `${baseUrl}:${service.port}`;
+        urlsToCheck.push({ id: service.id, url: url });
 
-            // Add click analytics
-            element.onclick = function() {
-                console.log(`🔗 Opening service: ${service.id} at port ${service.port}`);
-            };
-        }
-    });
-}
-
-// Enhanced path information update
-function updatePathInfo(env = null) {
-    if (!env) {
-        refreshStatus();
-        return;
-    }
-
-    const pathDisplay = document.getElementById('current-path-display');
-    if (pathDisplay) {
-        const newPath = env.CODE_PATH || 'src';
-        if (pathDisplay.textContent !== newPath) {
-            pathDisplay.style.transform = 'scale(1.1)';
-            pathDisplay.style.color = '#22c55e';
-            pathDisplay.textContent = newPath;
-            setTimeout(() => {
-                pathDisplay.style.transform = 'scale(1)';
-                pathDisplay.style.color = '';
-            }, 300);
-        }
-    }
-}
-
-// Enhanced project path switching
-function switchProjectPath() {
-    const input = document.getElementById('new-path-input');
-    if (!input || !input.value.trim()) {
-        showNotification('Please enter a valid path', 'warning');
-        input?.focus();
-        return;
-    }
-
-    const newPath = input.value.trim();
-
-    // Validate path
-    if (!validateCommandInput('switch-path', newPath)) {
-        showNotification('Invalid path format. Use alphanumeric characters, hyphens, underscores, and forward slashes only.', 'warning');
-        return;
-    }
-
-    showNotification(`Switching to path: ${newPath}`, 'info');
-    executeCommand(`switch-path path="${newPath}"`);
-    input.value = '';
-}
-
-// Enhanced command execution with better feedback
-async function executeCommand(command) {
-    console.log('⚡ Executing command:', command);
-
-    showLoading();
-
-    // Add command to terminal immediately for better UX
-    addTerminalOutput({
-        command: `make ${command}`,
-        stdout: '⏳ Executing command...',
-        timestamp: new Date().toISOString(),
-        success: true
+        const urlHtml = `
+            <div id="url-item-${service.id}" class="forge-card p-4 flex items-center justify-between">
+                <div class="flex items-center">
+                    <span class="url-status-indicator w-3 h-3 rounded-full bg-gray-500 animate-pulse mr-3"></span>
+                    <a href="${url}" target="_blank" rel="noopener noreferrer" class="text-white hover:text-forge-primary font-medium">
+                        ${service.label} <i class="fas fa-external-link-alt text-xs ml-2 text-forge-text-dark"></i>
+                    </a>
+                </div>
+                <div class="flex items-center">
+                    <span class="text-sm text-forge-text-dark font-mono mr-4">${service.port}</span>
+                    <span class="ping-result text-sm text-forge-text-dark">Checking...</span>
+                </div>
+            </div>
+        `;
+        urlsListContainer.insertAdjacentHTML('beforeend', urlHtml);
     });
 
-    try {
-        socket.emit('execute-command', command);
-        showNotification(`Executing: make ${command}`, 'info');
+    // Emit to server to check URLs
+    socket.emit('check-urls', urlsToCheck);
+}
 
-        // Add to command history
-        if (window.addToCommandHistory) {
-            window.addToCommandHistory(command);
-        }
 
-    } catch (error) {
-        hideLoading();
-        console.error('❌ Error executing command:', error);
-        showNotification(`Error executing command: ${error.message}`, 'error');
+// Command execution and logging
+function executeCommand(command, param = '') {
+    const fullCommand = param ? `${command} ${param}` : command;
+    clearCommandOutput(); // Clear terminal output before new command
+    addCommandOutput(`Executing: make ${fullCommand}`, 'info');
+    showLoadingOverlay(`Running 'make ${fullCommand}'...`);
+    if (terminalInput) terminalInput.value = ''; // Clear input field
+
+    // Add to history
+    if (commandHistory.length === 0 || commandHistory[commandHistory.length - 1] !== fullCommand) {
+        commandHistory.push(fullCommand);
+    }
+    historyIndex = commandHistory.length; // Reset history index to end
+
+    socket.emit('execute-command', fullCommand);
+    switchSection('terminal'); // Switch to terminal view
+}
+
+function addCommandOutput(line, type = 'normal') {
+    if (!commandOutput) return; // Ensure element exists
+
+    const p = document.createElement('p');
+    p.classList.add('py-0.5', 'px-1', 'rounded', 'font-mono', 'text-sm', 'whitespace-pre-wrap', 'break-words');
+    switch (type) {
+        case 'command':
+            p.classList.add('text-forge-primary', 'font-bold');
+            break;
+        case 'stdout':
+            p.classList.add('text-forge-text-light');
+            break;
+        case 'stderr':
+            p.classList.add('text-forge-danger', 'font-semibold');
+            break;
+        case 'info':
+            p.classList.add('text-forge-info', 'font-semibold');
+            break;
+        case 'success':
+            p.classList.add('text-forge-success', 'font-semibold');
+            break;
+        case 'error':
+            p.classList.add('text-forge-danger', 'font-bold');
+            break;
+        default:
+            p.classList.add('text-forge-text-light');
+    }
+    p.textContent = line;
+    commandOutput.appendChild(p);
+}
+
+function clearCommandOutput() {
+    if (commandOutput) {
+        commandOutput.innerHTML = '';
     }
 }
 
-// Enhanced terminal command execution
-function executeTerminalCommand() {
-    const input = document.getElementById('terminal-input');
-    if (!input) return;
-
-    const command = input.value.trim();
-    if (!command) {
-        showNotification('Please enter a command', 'warning');
+// Log functions
+function startLogStream() {
+    if (!logServiceSelect) {
+        showNotification('Log service selector not found.', 'error');
         return;
     }
 
-    executeCommand(command);
-    input.value = '';
-    input.focus();
-}
-
-// Clear terminal with enhanced animation
-function clearTerminal() {
-    const terminal = document.getElementById('terminal-output');
-    if (terminal) {
-        terminal.style.opacity = '0.5';
-        setTimeout(() => {
-            terminal.innerHTML = `
-                <div class="text-primary-400 font-bold">$ Laravel Docker Control Panel Terminal v2.0</div>
-                <div class="text-gray-400">✨ Enhanced with complete Makefile integration</div>
-                <div class="text-gray-400">💡 Type make commands and press Enter or click Execute</div>
-                <div class="text-gray-400">🔍 Use ↑/↓ arrows to navigate command history</div>
-                <div class="text-gray-500">Available commands: up, down, shell, migrate, test, composer-install, npm-dev, etc.</div>
-            `;
-            terminal.style.opacity = '1';
-        }, 200);
+    let service = logServiceSelect.value;
+    if (!service) {
+        showNotification('Log service not selected, defaulting to "app".', 'info');
+        service = 'app';
     }
-}
 
-// Enhanced terminal output with better formatting
-function addTerminalOutput(result) {
-    const terminal = document.getElementById('terminal-output');
-    if (!terminal) return;
-
-    const timestamp = new Date().toLocaleTimeString();
-
-    const outputDiv = document.createElement('div');
-    outputDiv.className = 'terminal-line mb-4 border-l-2 border-dark-600 pl-4 hover:border-primary-500 transition-colors duration-200';
-
-    // Enhanced command display
-    const commandDisplay = result.command.replace('make ', '');
-    const executionTime = result.executionTime ? ` (${result.executionTime}ms)` : '';
-
-    outputDiv.innerHTML = `
-        <div class="text-primary-400 font-mono text-sm mb-1 flex items-center justify-between">
-            <span>$ ${commandDisplay}</span>
-            <span class="text-gray-500 text-xs">[${timestamp}]${executionTime}</span>
-        </div>
-        ${result.stdout ? `<div class="text-green-300 whitespace-pre-wrap text-sm mb-2 bg-dark-900 rounded p-2 border-l-2 border-green-500">${escapeHtml(result.stdout)}</div>` : ''}
-        ${result.stderr ? `<div class="text-red-300 whitespace-pre-wrap text-sm mb-2 bg-dark-900 rounded p-2 border-l-2 border-red-500">${escapeHtml(result.stderr)}</div>` : ''}
-        <div class="text-xs flex items-center ${result.success ? 'text-green-400' : 'text-red-400'}">
-            <i class="fas ${result.success ? 'fa-check-circle' : 'fa-times-circle'} mr-2"></i>
-            <span>${result.success ? 'Command completed successfully' : 'Command failed'}</span>
-            ${result.executionTime ? `<span class="ml-2 text-gray-500">• ${result.executionTime}ms</span>` : ''}
-        </div>
-    `;
-
-    terminal.appendChild(outputDiv);
-    terminal.scrollTop = terminal.scrollHeight;
-
-    // Add animation
-    outputDiv.style.opacity = '0';
-    outputDiv.style.transform = 'translateY(10px)';
-    setTimeout(() => {
-        outputDiv.style.opacity = '1';
-        outputDiv.style.transform = 'translateY(0)';
-    }, 100);
-
-    // Limit terminal lines to prevent memory issues
-    if (terminal.children.length > 100) {
-        terminal.removeChild(terminal.firstChild);
+    if (logsActive && currentLogService === service) {
+        showNotification(`Log stream for ${service} is already active.`, 'info');
+        return;
     }
-}
 
-// Enhanced real-time logs
-function startLogs() {
-    const serviceSelect = document.getElementById('log-service');
-    if (!serviceSelect) return;
-
-    const service = serviceSelect.value;
+    currentLogService = service;
     logsActive = true;
 
     console.log('📋 Starting enhanced logs for service:', service);
@@ -827,379 +623,391 @@ function startLogs() {
     addLogLine(`⏹️  Use "Stop" button to stop logs or "Clear" to clear output`, 'info');
     addLogLine(''.padEnd(50, '─'), 'info');
 
-    socket.emit('get-real-time-logs', service);
+    socket.emit('start-log-stream', service);
     showNotification(`Started enhanced logs for ${service}`, 'success');
 
-    // Update button states
     updateLogButtons(true);
 }
 
-// Stop real-time logs with better feedback
-function stopLogs() {
+function stopLogStream() {
+    if (!logsActive) {
+        showNotification('No active log stream to stop.', 'info');
+        return;
+    }
     logsActive = false;
-    console.log('⏹️ Stopping enhanced logs');
-    addLogLine(''.padEnd(50, '─'), 'warning');
-    addLogLine('⏹️  Log streaming stopped', 'warning');
-    showNotification('Log streaming stopped', 'info');
-
-    socket.emit('stop-logs');
+    socket.emit('stop-log-stream'); // Tell server to kill log process
+    addLogLine(`🛑 Stopping logs for ${currentLogService}.`, 'info');
+    showNotification('Logs stopped.', 'warning');
     updateLogButtons(false);
 }
 
-// Update log button states
-function updateLogButtons(isActive) {
-    const startBtn = document.querySelector('button[onclick="startLogs()"]');
-    const stopBtn = document.querySelector('button[onclick="stopLogs()"]');
-
-    if (startBtn && stopBtn) {
-        if (isActive) {
-            startBtn.disabled = true;
-            startBtn.classList.add('opacity-50', 'cursor-not-allowed');
-            stopBtn.disabled = false;
-            stopBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-        } else {
-            startBtn.disabled = false;
-            startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-            stopBtn.disabled = true;
-            stopBtn.classList.add('opacity-50', 'cursor-not-allowed');
-        }
+function clearLogs() {
+    if (logOutput) {
+        logOutput.innerHTML = '';
     }
+    addLogLine('Logs cleared.', 'info');
 }
 
-// Enhanced log line addition
-function addLogLine(text, type = 'info') {
-    const logsContainer = document.getElementById('logs-container');
-    if (!logsContainer) return;
+function addLogLine(line, type = 'normal') {
+    if (!logOutput) return; // Ensure element exists
 
+    const p = document.createElement('p');
+    p.classList.add('py-0.5', 'px-1', 'rounded', 'font-mono', 'text-sm', 'whitespace-pre-wrap', 'break-words');
     const timestamp = new Date().toLocaleTimeString();
 
-    const logDiv = document.createElement('div');
-    logDiv.className = `terminal-line font-mono text-xs py-1 hover:bg-dark-800 rounded px-2 transition-colors`;
-
-    // Clean up the text - remove ANSI color codes
-    const cleanText = text.replace(/\x1b\[[0-9;]*m/g, '');
-
-    // Enhanced log formatting
-    logDiv.innerHTML = `
-        <span class="text-gray-500 select-none">[${timestamp}]</span>
-        <span class="${getLogColor(type)} ${getLogStyle(type)}">${escapeHtml(cleanText)}</span>
-    `;
-
-    logsContainer.appendChild(logDiv);
-    logsContainer.scrollTop = logsContainer.scrollHeight;
-
-    // Add smooth animation
-    logDiv.style.opacity = '0';
-    setTimeout(() => {
-        logDiv.style.opacity = '1';
-    }, 50);
-
-    // Limit log lines to prevent memory issues
-    if (logsContainer.children.length > 1000) {
-        logsContainer.removeChild(logsContainer.firstChild);
-    }
-}
-
-// Enhanced log color and styling
-function getLogColor(type) {
     switch (type) {
-        case 'error': return 'text-red-300';
-        case 'warning': return 'text-yellow-300';
-        case 'info': return 'text-blue-300';
-        case 'success': return 'text-green-300';
-        default: return 'text-gray-300';
+        case 'info':
+            p.classList.add('text-forge-info');
+            break;
+        case 'success':
+            p.classList.add('text-forge-success');
+            break;
+        case 'error':
+            p.classList.add('text-forge-danger', 'font-semibold');
+            break;
+        case 'warning':
+            p.classList.add('text-forge-warning');
+            break;
+        default:
+            p.classList.add('text-forge-text-light');
     }
+    p.textContent = `[${timestamp}] ${line}`;
+    logOutput.appendChild(p);
 }
 
-function getLogStyle(type) {
-    switch (type) {
-        case 'error': return 'font-semibold';
-        case 'warning': return 'font-medium';
-        default: return '';
-    }
+function updateLogButtons(logsAreActive) {
+    const startButton = document.getElementById('start-logs-btn');
+    const stopButton = document.getElementById('stop-logs-btn');
+
+    if (startButton) startButton.classList.toggle('hidden', logsAreActive);
+    if (stopButton) stopButton.classList.toggle('hidden', !logsAreActive);
 }
 
-// Enhanced logs clearing
-function clearLogs() {
-    const logsContainer = document.getElementById('logs-container');
-    if (logsContainer) {
-        logsContainer.style.opacity = '0.5';
-        setTimeout(() => {
-            logsContainer.innerHTML = `
-                <div class="text-gray-400 text-center py-8">
-                    <i class="fas fa-file-alt text-2xl mb-2"></i>
-                    <div>Log output cleared</div>
-                    <div class="text-xs text-gray-500 mt-1">Select a service and click "Start Logs" to begin</div>
-                </div>
-            `;
-            logsContainer.style.opacity = '1';
-        }, 200);
-    }
+// UI Utilities
+function showLoadingOverlay(message = 'Executing command...', subMessage = 'Please wait...') {
+    if (loadingMessage) loadingMessage.textContent = message;
+    if (loadingSubMessage) loadingSubMessage.textContent = subMessage;
+    if (loadingOverlay) loadingOverlay.classList.remove('hidden');
 }
 
-// Enhanced loading overlay
-function showLoading() {
-    const overlay = document.getElementById('loading-overlay');
-    if (overlay) {
-        overlay.classList.remove('hidden');
-        overlay.style.opacity = '0';
-        setTimeout(() => {
-            overlay.style.opacity = '1';
-        }, 10);
-    }
+function hideLoadingOverlay() {
+    if (loadingOverlay) loadingOverlay.classList.add('hidden');
 }
 
-function hideLoading() {
-    const overlay = document.getElementById('loading-overlay');
-    if (overlay) {
-        overlay.style.opacity = '0';
-        setTimeout(() => {
-            overlay.classList.add('hidden');
-        }, 300);
-    }
-}
-
-// Enhanced notification system with modern styling
-function showNotification(message, type = 'info') {
-    console.log(`📢 ${type.toUpperCase()}: ${message}`);
-
-    // Remove existing notifications of the same type
-    document.querySelectorAll(`.notification-${type}`).forEach(n => n.remove());
+function showNotification(message, type = 'info', duration = 5000) {
+    const notificationContainer = document.getElementById('notification-container');
+    if (!notificationContainer) return; // Ensure container exists
 
     const notification = document.createElement('div');
-    notification.className = `notification notification-${type} fixed top-4 right-4 px-6 py-4 rounded-xl text-white z-50 transition-all duration-300 transform translate-x-0 max-w-md shadow-2xl border backdrop-blur-sm ${getNotificationClasses(type)}`;
+    // Using explicit Tailwind classes defined in style.css or tailwind.config.js extend
+    let bgColorClass = '';
+    let iconClass = '';
+    switch (type) {
+        case 'success':
+            bgColorClass = 'bg-forge-success';
+            iconClass = 'fas fa-check-circle';
+            break;
+        case 'error':
+            bgColorClass = 'bg-forge-danger';
+            iconClass = 'fas fa-times-circle';
+            break;
+        case 'warning':
+            bgColorClass = 'bg-forge-warning';
+            iconClass = 'fas fa-exclamation-triangle';
+            break;
+        case 'info':
+        default:
+            bgColorClass = 'bg-forge-info';
+            iconClass = 'fas fa-info-circle';
+            break;
+    }
 
-    notification.innerHTML = `
-        <div class="flex items-start">
-            <div class="flex-shrink-0 mr-3 mt-0.5">
-                <div class="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
-                    <i class="fas ${getNotificationIcon(type)} text-sm"></i>
-                </div>
-            </div>
-            <div class="flex-1">
-                <div class="font-semibold text-sm">${getNotificationTitle(type)}</div>
-                <div class="text-sm opacity-90 mt-1">${escapeHtml(message)}</div>
-            </div>
-            <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-white/70 hover:text-white transition-colors">
-                <i class="fas fa-times text-sm"></i>
-            </button>
-        </div>
-        <div class="absolute bottom-0 left-0 h-1 bg-white/30 rounded-full transition-all duration-5000 notification-progress"></div>
-    `;
+    notification.classList.add(
+        'notification', 'p-3', 'rounded-lg', 'shadow-soft', 'mb-3', 'flex', 'items-center',
+        bgColorClass, 'text-white', 'transition-all', 'duration-300', 'transform', 'translate-y-full', 'opacity-0'
+    );
+    notification.innerHTML = `<i class="${iconClass} mr-2"></i> ${escapeHtml(message)}`;
 
-    document.body.appendChild(notification);
+    notificationContainer.appendChild(notification);
 
     // Animate in
-    notification.style.transform = 'translateX(100%)';
-    notification.style.opacity = '0';
-    setTimeout(() => {
-        notification.style.transform = 'translateX(0)';
-        notification.style.opacity = '1';
-    }, 10);
-
-    // Progress bar animation
-    const progressBar = notification.querySelector('.notification-progress');
-    if (progressBar) {
-        setTimeout(() => {
-            progressBar.style.width = '100%';
-        }, 100);
-    }
-
-    // Auto-remove after 5 seconds
-    setTimeout(() => {
-        if (document.body.contains(notification)) {
-            notification.style.opacity = '0';
-            notification.style.transform = 'translateX(100%)';
-            setTimeout(() => {
-                if (document.body.contains(notification)) {
-                    document.body.removeChild(notification);
-                }
-            }, 300);
-        }
-    }, 5000);
-}
-
-// Enhanced notification styling
-function getNotificationClasses(type) {
-    switch (type) {
-        case 'success': return 'bg-gradient-to-r from-green-600/90 to-green-700/90 border-green-500/50';
-        case 'error': return 'bg-gradient-to-r from-red-600/90 to-red-700/90 border-red-500/50';
-        case 'warning': return 'bg-gradient-to-r from-yellow-600/90 to-yellow-700/90 border-yellow-500/50';
-        default: return 'bg-gradient-to-r from-blue-600/90 to-blue-700/90 border-blue-500/50';
-    }
-}
-
-function getNotificationIcon(type) {
-    switch (type) {
-        case 'success': return 'fa-check';
-        case 'error': return 'fa-times';
-        case 'warning': return 'fa-exclamation';
-        default: return 'fa-info';
-    }
-}
-
-function getNotificationTitle(type) {
-    switch (type) {
-        case 'success': return 'Success';
-        case 'error': return 'Error';
-        case 'warning': return 'Warning';
-        default: return 'Information';
-    }
-}
-
-// Enhanced search functionality
-function initializeSearch() {
-    const sidebar = document.querySelector('aside nav');
-    if (!sidebar) return;
-
-    const searchHTML = `
-        <div class="mb-6 px-4">
-            <div class="relative">
-                <input type="text" id="command-search" placeholder="Search commands..."
-                       class="w-full bg-dark-800 border border-dark-600 rounded-lg px-4 py-2 pl-10 text-white text-sm focus:outline-none focus:border-primary-500 focus:bg-dark-700 transition-all duration-200">
-                <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                <div id="search-results-count" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-gray-500"></div>
-            </div>
-        </div>
-    `;
-
-    sidebar.insertAdjacentHTML('beforebegin', searchHTML);
-
-    const searchInput = document.getElementById('command-search');
-    if (searchInput) {
-        let searchTimeout;
-        searchInput.addEventListener('input', function() {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                const query = this.value.toLowerCase();
-                filterCommands(query);
-            }, 300);
-        });
-
-        // Clear search on escape
-        searchInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                this.value = '';
-                filterCommands('');
-                this.blur();
-            }
-        });
-    }
-}
-
-// Enhanced command filtering
-function filterCommands(query) {
-    const resultsCount = document.getElementById('search-results-count');
-    let visibleCount = 0;
-
-    document.querySelectorAll('.command-card').forEach(card => {
-        if (!query) {
-            card.style.display = 'block';
-            card.style.opacity = '1';
-            visibleCount++;
-            return;
-        }
-
-        const title = card.getAttribute('data-title')?.toLowerCase() || '';
-        const desc = card.getAttribute('data-desc')?.toLowerCase() || '';
-        const cmd = card.getAttribute('data-command')?.toLowerCase() || '';
-
-        if (title.includes(query) || desc.includes(query) || cmd.includes(query)) {
-            card.style.display = 'block';
-            card.style.opacity = '1';
-            card.style.transform = 'scale(1)';
-            visibleCount++;
-
-            // Highlight matching text
-            highlightMatchingText(card, query);
-        } else {
-            card.style.opacity = '0.3';
-            card.style.transform = 'scale(0.95)';
-            setTimeout(() => {
-                if (card.style.opacity === '0.3') {
-                    card.style.display = 'none';
-                }
-            }, 200);
-        }
+    requestAnimationFrame(() => {
+        notification.classList.remove('translate-y-full', 'opacity-0');
+        notification.classList.add('translate-y-0', 'opacity-100');
     });
 
-    // Update results count
-    if (resultsCount) {
-        if (query) {
-            resultsCount.textContent = `${visibleCount} found`;
-            resultsCount.style.opacity = '1';
-        } else {
-            resultsCount.style.opacity = '0';
-        }
+    if (duration > 0) {
+        setTimeout(() => {
+            // Animate out
+            notification.classList.remove('translate-y-0', 'opacity-100');
+            notification.classList.add('translate-y-full', 'opacity-0');
+            notification.addEventListener('transitionend', () => notification.remove(), { once: true });
+        }, duration);
     }
 }
 
-// Highlight matching text in search results
-function highlightMatchingText(card, query) {
-    const title = card.querySelector('h3');
-    const desc = card.querySelector('p');
+function showConfirmation(message, onConfirm) {
+    const confirmationOverlay = document.getElementById('confirmation-overlay');
+    const confirmationMessage = document.getElementById('confirmation-message');
+    const confirmBtn = document.getElementById('confirm-btn');
+    const cancelBtn = document.getElementById('cancel-btn');
 
-    if (title && title.textContent.toLowerCase().includes(query)) {
-        title.style.color = '#22c55e';
-        setTimeout(() => {
-            title.style.color = '';
-        }, 2000);
+    if (!confirmationOverlay || !confirmationMessage || !confirmBtn || !cancelBtn) {
+        console.error("Confirmation overlay elements not found.");
+        return;
     }
 
-    if (desc && desc.textContent.toLowerCase().includes(query)) {
-        desc.style.color = '#a3a3a3';
-        setTimeout(() => {
-            desc.style.color = '';
-        }, 2000);
+    confirmationMessage.textContent = message;
+    confirmationOverlay.classList.remove('hidden');
+
+    confirmBtn.onclick = () => {
+        onConfirm();
+        confirmationOverlay.classList.add('hidden');
+    };
+
+    cancelBtn.onclick = () => {
+        confirmationOverlay.classList.add('hidden');
+        showNotification('Operation cancelled.', 'info');
+    };
+}
+
+
+function refreshStatus() {
+    showLoadingOverlay('Refreshing dashboard status...', 'Fetching Docker and project info...');
+    socket.emit('get-status');
+}
+
+function renderCommands(filter = '') {
+    if (!commandsContainer) return;
+
+    commandsContainer.innerHTML = '';
+    let hasResults = false;
+
+    for (const category in MAKEFILE_COMMANDS) {
+        const filteredCommands = MAKEFILE_COMMANDS[category].filter(cmd =>
+            cmd.cmd.toLowerCase().includes(filter.toLowerCase()) ||
+            cmd.title.toLowerCase().includes(filter.toLowerCase()) ||
+            cmd.desc.toLowerCase().includes(filter.toLowerCase())
+        );
+
+        if (filteredCommands.length > 0) {
+            hasResults = true;
+            const categoryTitle = document.createElement('h3');
+            categoryTitle.className = 'text-xl font-semibold text-white mb-4 mt-6 capitalize';
+            categoryTitle.textContent = category.replace(/([A-Z])/g, ' $1').trim() + ' Commands';
+            commandsContainer.appendChild(categoryTitle);
+
+            const grid = document.createElement('div');
+            grid.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4';
+
+            filteredCommands.forEach(cmd => {
+                const commandCard = document.createElement('div');
+                commandCard.className = `forge-card p-5 shadow-soft flex flex-col justify-between transform transition-all duration-300 hover:scale-[1.01]`;
+
+                let inputHtml = '';
+                if (cmd.hasInput) {
+                    // Use a unique ID for the input field
+                    const inputId = `input-${cmd.cmd.replace(/[^a-zA-Z0-9]/g, '-')}`;
+                    inputHtml = `
+                        <input type="text" id="${inputId}" placeholder="${cmd.placeholder}"
+                               class="forge-input w-full mt-3"
+                               onkeypress="handleCommandInput(event, this)">
+                    `;
+                }
+
+                commandCard.innerHTML = `
+                    <div class="flex items-center mb-3">
+                        <i class="${cmd.icon} text-forge-${cmd.type} text-2xl mr-4"></i>
+                        <div>
+                            <h4 class="text-lg font-semibold text-white">${cmd.title}</h4>
+                            <p class="text-forge-text-dark text-sm">${cmd.desc}</p>
+                        </div>
+                    </div>
+                    ${inputHtml}
+                    <button class="execute-btn forge-button forge-button-${cmd.type} mt-4 w-full"
+                            data-cmd="${cmd.cmd}" ${cmd.hasInput ? 'data-has-input="true"' : ''} ${cmd.confirm ? 'data-confirm="true"' : ''}>
+                        Execute <i class="fas fa-play ml-2"></i>
+                    </button>
+                `;
+                grid.appendChild(commandCard);
+            });
+            commandsContainer.appendChild(grid);
+        }
+    }
+
+    if (!hasResults && filter) {
+        commandsContainer.innerHTML = '<p class="text-forge-text-dark text-center text-lg mt-8">No commands found matching your search.</p>';
+    } else if (!hasResults && !filter) {
+        // This case should ideally not happen if MAKEFILE_COMMANDS is populated
+        commandsContainer.innerHTML = '<p class="text-forge-text-dark text-center text-lg mt-8">No commands configured. Check MAKEFILE_COMMANDS in app.js.</p>';
+    }
+
+    // Attach event listeners to newly rendered buttons
+    document.querySelectorAll('.execute-btn').forEach(button => {
+        button.onclick = () => {
+            const cmd = button.dataset.cmd;
+            const hasInput = button.dataset.hasInput === 'true';
+            const confirm = button.dataset.confirm === 'true';
+            let inputParam = '';
+
+            if (hasInput) {
+                // Get input from the specific input field associated with this button's card
+                const inputElement = button.closest('.forge-card').querySelector('.forge-input');
+                inputParam = inputElement ? inputElement.value.trim() : '';
+                if (!inputParam) {
+                    showNotification(`Parameter for '${cmd}' is required.`, 'error');
+                    return;
+                }
+            }
+
+            if (confirm) {
+                showConfirmation(`Are you absolutely sure you want to run 'make ${cmd}${inputParam ? ' ' + inputParam : ''}'? This action might be irreversible and could lead to data loss.`, () => {
+                    executeCommand(cmd, inputParam);
+                });
+            } else {
+                executeCommand(cmd, inputParam);
+            }
+        };
+    });
+}
+
+
+function setupCommandSearch() {
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            renderCommands(e.target.value);
+        });
     }
 }
 
-// Enhanced keyboard shortcuts
-document.addEventListener('keydown', (event) => {
-    // Ctrl/Cmd + K to focus terminal input
-    if ((event.ctrlKey || event.metaKey) && event.key === 'k') {
-        event.preventDefault();
-        const terminalInput = document.getElementById('terminal-input');
-        if (terminalInput && currentSection === 'terminal') {
-            terminalInput.focus();
-        } else {
-            switchSection('terminal');
-            setTimeout(() => {
-                const input = document.getElementById('terminal-input');
-                if (input) input.focus();
-            }, 300);
-        }
-        showNotification('Terminal focused', 'info');
+function switchSection(sectionName) {
+    console.log('🔄 Switching to section:', sectionName);
+    currentSection = sectionName;
+
+    // Update sidebar with active state
+    document.querySelectorAll('.sidebar-item').forEach(item => {
+        item.classList.remove('active', 'bg-forge-border');
+    });
+    const activeItem = document.querySelector(`[data-section="${sectionName}"]`);
+    if (activeItem) {
+        activeItem.classList.add('active', 'bg-forge-border');
     }
 
-    // Ctrl/Cmd + / for search
-    if ((event.ctrlKey || event.metaKey) && event.key === '/') {
-        event.preventDefault();
-        const searchInput = document.getElementById('command-search');
-        if (searchInput) {
-            searchInput.focus();
-            showNotification('Search focused', 'info');
-        }
+    // Update content visibility
+    document.querySelectorAll('.section').forEach(section => {
+        section.classList.add('hidden');
+    });
+    const activeSection = document.getElementById(`${sectionName}-section`);
+    if (activeSection) {
+        activeSection.classList.remove('hidden');
     }
 
-    // Escape to clear focused input
-    if (event.key === 'Escape') {
-        document.activeElement.blur();
-    }
-
-    // Ctrl/Cmd + R to refresh status
-    if ((event.ctrlKey || event.metaKey) && event.key === 'r' && currentSection === 'overview') {
-        event.preventDefault();
+    // Load section-specific data
+    if (sectionName === 'overview') {
         refreshStatus();
-        showNotification('Status refreshed', 'success');
+    } else if (sectionName === 'urls') {
+        refreshStatus(); // This will trigger updateServiceUrls
+    } else if (sectionName === 'paths') {
+        updatePathInfo();
+    } else if (sectionName === 'env') {
+        loadEnvFiles();
+    } else if (sectionName === 'logs') {
+        // If switching to logs, ensure state is correct
+        if (!logsActive) {
+            clearLogs();
+            addLogLine('Select a service and click "Start Logs" to view real-time logs...', 'info');
+            updateLogButtons(false);
+        }
     }
-});
+    // Analytics
+    console.log(`📊 Section changed to: ${sectionName}`);
+}
+
+function executeCommandWithInput(command, inputId) {
+    const inputElement = document.getElementById(inputId);
+    const inputValue = inputElement ? inputElement.value.trim() : '';
+
+    if (!inputValue) {
+        showNotification(`Input is required for 'make ${command}'`, 'error');
+        return;
+    }
+
+    // Special handling for commands that take a named parameter
+    let fullCommand = command;
+    if (command === 'artisan' || command === 'composer' || command === 'npm' || command === 'bun') {
+        fullCommand = `${command} cmd="${inputValue}"`;
+    } else if (command === 'switch-path' || command === 'create-project' || command === 'db-restore' || command === 'test-filter' || command === 'logs-service') {
+        const paramName = command === 'switch-path' || command === 'create-project' ? 'path' :
+                         command === 'db-restore' ? 'file' :
+                         command === 'test-filter' ? 'name' :
+                         command === 'logs-service' ? 'service' : '';
+        fullCommand = `${command} ${paramName}="${inputValue}"`;
+    }
+
+    // Check for confirmation for dangerous commands
+    const commandConfig = Object.values(MAKEFILE_COMMANDS).flat().find(c => c.cmd === command);
+    if (commandConfig && commandConfig.confirm) {
+        showConfirmation(`Are you absolutely sure you want to run 'make ${fullCommand}'? This action might be irreversible and could lead to data loss.`, () => {
+            executeCommand(fullCommand);
+            if (inputElement) inputElement.value = ''; // Clear input after execution
+        });
+    } else {
+        executeCommand(fullCommand);
+        if (inputElement) inputElement.value = ''; // Clear input after execution
+    }
+}
+
+// Env file management functions
+function loadEnvFiles() {
+    showNotification('Loading .env files...', 'info');
+    if (rootEnvContent) rootEnvContent.value = 'Loading...';
+    if (laravelEnvContent) laravelEnvContent.value = 'Loading...';
+
+    socket.emit('get-env-content', { type: 'root' });
+    socket.emit('get-env-content', { type: 'laravel' });
+}
+
+function saveEnvFile(type) {
+    let content;
+    if (type === 'root') {
+        content = rootEnvContent.value;
+    } else if (type === 'laravel') {
+        content = laravelEnvContent.value;
+    } else {
+        showNotification('Invalid .env file type specified for saving.', 'error');
+        return;
+    }
+    showLoadingOverlay(`Saving ${type} .env file...`);
+    socket.emit('save-env-content', { type, content });
+}
+
 
 // Enhanced utility function
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// ADD THE NEW FUNCTIONS HERE:
+function updatePathInfo() {
+    showLoadingOverlay('Loading path information...', 'Fetching project paths...');
+    socket.emit('get-path-info');
+}
+
+function refreshEnvFiles() {
+    loadEnvFiles();
+}
+
+function handleCommandInput(event, inputElement) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        const commandCard = inputElement.closest('.forge-card');
+        const executeBtn = commandCard.querySelector('.execute-btn');
+        if (executeBtn) {
+            executeBtn.click();
+        }
+    }
 }
 
 // Auto-refresh status every 30 seconds for overview
@@ -1222,13 +1030,20 @@ window.addEventListener('error', (event) => {
     showNotification('An unexpected error occurred. Check console for details.', 'error');
 });
 
-// Enhanced console welcome message
-console.log(`
+// Initial DOMContentLoaded listener
+document.addEventListener('DOMContentLoaded', () => {
+    setupEventListeners(); // Assign UI elements and set up listeners
+    switchSection('overview'); // Default to overview
+    renderCommands(); // Initial render of all commands
+    setupCommandSearch(); // Set up search after elements are assigned
+
+    // Initial console welcome message
+    console.log(`
 🎛️ Enhanced Laravel Docker Control Panel v2.0
 =============================================
 🚀 Modern UI with complete Makefile integration
 📊 Real-time monitoring and command execution
-🎨 Nuxt-inspired dark theme design
+🎨 Forge-inspired dark theme design
 
 Features:
 ✨ ${Object.values(MAKEFILE_COMMANDS).flat().length} Makefile commands available
@@ -1246,4 +1061,5 @@ Keyboard shortcuts:
 - ↑/↓: Navigate command history
 
 Happy managing! 🚀🎛️
-`);
+    `);
+});
