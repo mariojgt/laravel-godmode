@@ -14,7 +14,8 @@
     "dotenv": "^16.3.1",
     "fs-extra": "^11.1.1",
     "chokidar": "^3.5.3",
-    "dockerode": "^3.3.5"
+    "dockerode": "^3.3.5",
+    "node-fetch": "^3.3.2"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
