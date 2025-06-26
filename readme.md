@@ -15,7 +15,7 @@ A simplified, optimized Docker setup for Laravel applications using Nginx, PHP-F
    make control
    ```
 
-That's it! Your Laravel app will be running at `http://localhost:8000`
+That's it! Your Laravel app will be running at `http://localhost:9000`
 
 ## 📁 Flexible Project Structure
 
