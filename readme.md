@@ -9,9 +9,10 @@ A simplified, optimized Docker setup for Laravel applications using Nginx, PHP-F
    ```bash
    cp .env.example .env
    ```
-3. **Start everything:**
+3. **Start everything management panel:**
+   cd to the control panel folder and make sure you run a npm install first
    ```bash
-   make install
+   make control
    ```
 
 That's it! Your Laravel app will be running at `http://localhost:8000`
