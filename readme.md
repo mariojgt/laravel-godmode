@@ -60,6 +60,7 @@ CODE_PATH=app                   # Simple structure
 | Redis | 6379 | Cache & sessions |
 | Redis Insight | 8001 | Redis management |
 | Mailhog | 8025 | Email testing |
+| Control panel | 9000 | full panel manager |
 
 ## 🛠 Development Commands
 
