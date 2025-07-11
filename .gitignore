@@ -49,3 +49,6 @@ yarn-error.log
 
 # Composer
 vendor/
+
+# ignore evehintg in the /src directory
+/src/*
