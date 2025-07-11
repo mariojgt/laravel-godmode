@@ -30,7 +30,6 @@
         </div>
     </div>
 
-    <!-- Create Project Modal -->
     <div id="createModal" class="modal">
         <div class="modal-content large">
             <h2>Create New Laravel Project</h2>
@@ -111,6 +110,45 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <div id="envEditorModal" class="modal">
+        <div class="modal-content large">
+            <h2>Edit .env for <span id="envProjectName"></span></h2>
+            <div class="form-group">
+                <textarea id="envContent" rows="20" class="code-editor"></textarea>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn" onclick="hideEnvEditor()">
+                    Cancel
+                </button>
+                <button type="button" class="btn" id="saveEnvBtn">
+                    Save .env
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="artisanCommanderModal" class="modal">
+        <div class="modal-content large">
+            <h2>Artisan Command for <span id="artisanProjectName"></span></h2>
+            <div class="form-group">
+                <label for="artisanCommandInput">Command (e.g., migrate, cache:clear)</label>
+                <input type="text" id="artisanCommandInput" placeholder="migrate --seed" class="text-input">
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn" onclick="hideArtisanCommander()">
+                    Cancel
+                </button>
+                <button type="button" class="btn" id="runArtisanBtn">
+                    Run Artisan Command
+                </button>
+            </div>
+            <div class="form-group">
+                <label>Output</label>
+                <pre id="artisanOutput" class="code-output"></pre>
+            </div>
         </div>
     </div>
 

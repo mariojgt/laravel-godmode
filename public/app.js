@@ -18,12 +18,40 @@ class LaravelManager {
             this.createProject();
         });
 
-        // Close modal when clicking outside
+        // Close create modal when clicking outside
         document.getElementById('createModal').addEventListener('click', (e) => {
             if (e.target.id === 'createModal') {
                 this.hideCreateModal();
             }
         });
+
+        // Close env editor modal when clicking outside
+        document.getElementById('envEditorModal').addEventListener('click', (e) => { //
+            if (e.target.id === 'envEditorModal') { //
+                this.hideEnvEditor(); //
+            } //
+        }); //
+
+        // Close artisan commander modal when clicking outside
+        document.getElementById('artisanCommanderModal').addEventListener('click', (e) => { //
+            if (e.target.id === 'artisanCommanderModal') { //
+                this.hideArtisanCommander(); //
+            } //
+        }); //
+
+        // Save .env content
+        document.getElementById('saveEnvBtn').addEventListener('click', () => { //
+            const projectName = document.getElementById('envProjectName').textContent; //
+            const content = document.getElementById('envContent').value; //
+            this.saveEnvContent(projectName, content); //
+        }); //
+
+        // Run Artisan Command
+        document.getElementById('runArtisanBtn').addEventListener('click', () => { //
+            const projectName = document.getElementById('artisanProjectName').textContent; //
+            const command = document.getElementById('artisanCommandInput').value; //
+            this.runArtisanCommand(projectName, command); //
+        }); //
     }
 
     async loadProjects() {
@@ -144,6 +172,12 @@ class LaravelManager {
                             Database
                         </button>
                     ` : ''}
+                    <button class="btn btn-sm" onclick="manager.showEnvEditor('${project.name}')">
+                        Edit .env
+                    </button>
+                    <button class="btn btn-sm" onclick="manager.showArtisanCommander('${project.name}')">
+                        Artisan
+                    </button>
                     <button class="btn btn-danger btn-sm" onclick="manager.deleteProject('${project.name}')">
                         Delete
                     </button>
@@ -280,6 +314,108 @@ class LaravelManager {
         document.getElementById('createModal').classList.remove('active');
     }
 
+    // New: Show .env editor modal
+    async showEnvEditor(projectName) { //
+        const envEditorModal = document.getElementById('envEditorModal'); //
+        const envProjectName = document.getElementById('envProjectName'); //
+        const envContent = document.getElementById('envContent'); //
+        envProjectName.textContent = projectName; //
+        envContent.value = 'Loading .env...'; //
+        envEditorModal.classList.add('active'); //
+        try { //
+            const response = await fetch(`/api/projects/${projectName}/env`); //
+            if (response.ok) { //
+                const data = await response.json(); //
+                envContent.value = data.content; //
+                envContent.focus(); //
+            } else { //
+                throw new Error('Failed to load .env content'); //
+            } //
+        } catch (error) { //
+            this.showToast(`Error loading .env for ${projectName}: ${error.message}`, 'error'); //
+            envContent.value = `Error: ${error.message}`; //
+        } //
+    } //
+
+    // New: Hide .env editor modal
+    hideEnvEditor() { //
+        document.getElementById('envEditorModal').classList.remove('active'); //
+    } //
+
+    // New: Save .env content
+    async saveEnvContent(projectName, content) { //
+        try { //
+            this.showToast(`Saving .env for ${projectName}...`, 'info'); //
+            const response = await fetch(`/api/projects/${projectName}/env`, { //
+                method: 'PUT', //
+                headers: { 'Content-Type': 'application/json' }, //
+                body: JSON.stringify({ content }) //
+            }); //
+
+            if (response.ok) { //
+                this.showToast(`.env for ${projectName} saved successfully!`, 'success'); //
+                this.hideEnvEditor(); //
+            } else { //
+                const error = await response.json(); //
+                throw new Error(error.error || 'Failed to save .env content'); //
+            } //
+        } catch (error) { //
+            this.showToast(`Error saving .env for ${projectName}: ${error.message}`, 'error'); //
+        } //
+    } //
+
+    // New: Show Artisan commander modal
+    showArtisanCommander(projectName) { //
+        const artisanCommanderModal = document.getElementById('artisanCommanderModal'); //
+        const artisanProjectName = document.getElementById('artisanProjectName'); //
+        const artisanOutput = document.getElementById('artisanOutput'); //
+        const artisanCommandInput = document.getElementById('artisanCommandInput'); //
+
+        artisanProjectName.textContent = projectName; //
+        artisanOutput.textContent = ''; // Clear previous output
+        artisanCommandInput.value = ''; // Clear previous command
+        artisanCommanderModal.classList.add('active'); //
+        artisanCommandInput.focus(); //
+    } //
+
+    // New: Hide Artisan commander modal
+    hideArtisanCommander() { //
+        document.getElementById('artisanCommanderModal').classList.remove('active'); //
+    } //
+
+    // New: Run Artisan command
+    async runArtisanCommand(projectName, command) { //
+        const artisanOutput = document.getElementById('artisanOutput'); //
+        artisanOutput.textContent = 'Running command...\n'; //
+
+        try { //
+            this.showToast(`Running artisan ${command} for ${projectName}...`, 'info'); //
+            const response = await fetch(`/api/projects/${projectName}/artisan`, { //
+                method: 'POST', //
+                headers: { 'Content-Type': 'application/json' }, //
+                body: JSON.stringify({ command }) //
+            }); //
+
+            if (response.ok) { //
+                const data = await response.json(); //
+                artisanOutput.textContent = data.output || data.error || 'Command executed, no output.'; //
+                if (data.error) { //
+                    this.showToast(`Artisan command for ${projectName} completed with errors.`, 'error'); //
+                } else { //
+                    this.showToast(`Artisan command for ${projectName} completed successfully!`, 'success'); //
+                } //
+            } else { //
+                const error = await response.json(); //
+                artisanOutput.textContent = `Error: ${error.error || 'Unknown error'}`; //
+                this.showToast(`Failed to run artisan command for ${projectName}: ${error.error}`, 'error'); //
+            } //
+        } catch (error) { //
+            artisanOutput.textContent = `Network Error: ${error.message}`; //
+            this.showToast(`Network error running artisan command for ${projectName}: ${error.message}`, 'error'); //
+        } //
+    } //
+
+
     refreshProjects() {
         this.loadProjects();
         this.showToast('Projects refreshed', 'info');
@@ -307,7 +443,7 @@ class LaravelManager {
     }
 }
 
-// Global functions for inline event handlers
+// Global functions for inline event handlers (now also for new modals)
 function showCreateModal() {
     window.manager.showCreateModal();
 }
@@ -325,6 +461,23 @@ function toggleCustomPorts() {
     const toggle = document.getElementById('customPortsToggle');
     section.style.display = toggle.checked ? 'block' : 'none';
 }
+
+// New Global functions for .env and Artisan
+function showEnvEditor(projectName) { //
+    window.manager.showEnvEditor(projectName); //
+} //
+
+function hideEnvEditor() { //
+    window.manager.hideEnvEditor(); //
+} //
+
+function showArtisanCommander(projectName) { //
+    window.manager.showArtisanCommander(projectName); //
+} //
+
+function hideArtisanCommander() { //
+    window.manager.hideArtisanCommander(); //
+} //
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
