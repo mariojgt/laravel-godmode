@@ -1,4 +1,4 @@
-FROM php:8.2-fpm-alpine
+FROM php:{{PHP_VERSION}}-fpm-alpine
 
 # Install system dependencies
 RUN apk add --no-cache \
@@ -13,7 +13,18 @@ RUN apk add --no-cache \
     supervisor \
     mysql-client \
     nodejs \
-    npm
+    npm \
+    bash
+
+# Install Bun via npm (if enabled) - more reliable than curl install
+RUN if [ "{{INSTALL_BUN}}" = "true" ]; then \
+        npm install -g bun; \
+    fi
+
+# Install pnpm (if enabled)
+RUN if [ "{{INSTALL_PNPM}}" = "true" ]; then \
+        npm install -g pnpm; \
+    fi
 
 # Install PHP extensions
 RUN docker-php-ext-install \
@@ -41,11 +52,11 @@ RUN addgroup -g 1000 www && \
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy supervisor configuration first
-COPY docker/supervisor.conf /etc/supervisor/conf.d/laravel.conf
-
 # Create supervisor log directory
 RUN mkdir -p /var/log/supervisor
+
+# Copy supervisor configuration
+COPY docker/supervisor.conf /etc/supervisor/conf.d/laravel.conf
 
 # Copy application files from src directory
 COPY src/ /var/www/html/
@@ -56,12 +67,16 @@ RUN chown -R www:www /var/www/html \
     && chmod -R 755 /var/www/html/bootstrap/cache
 
 # Install Laravel dependencies if composer.json exists
-RUN if [ -f composer.json ]; then composer install --no-dev --optimize-autoloader; fi
+RUN if [ -f composer.json ]; then \
+        composer install --no-dev --optimize-autoloader --no-interaction; \
+    fi
 
 # Generate Laravel application key if artisan exists and no key is set
-RUN if [ -f artisan ] && [ -z "$(grep '^APP_KEY=' .env | cut -d'=' -f2)" ]; then php artisan key:generate --no-interaction --force; fi
+RUN if [ -f artisan ] && ! grep -q "^APP_KEY=.*[^=]" .env 2>/dev/null; then \
+        php artisan key:generate --no-interaction --force; \
+    fi
 
-# Create a proper supervisord.conf
+# Create supervisord main config
 RUN echo '[unix_http_server]' > /etc/supervisord.conf && \
     echo 'file=/var/run/supervisor.sock' >> /etc/supervisord.conf && \
     echo 'chmod=0700' >> /etc/supervisord.conf && \
@@ -72,6 +87,8 @@ RUN echo '[unix_http_server]' > /etc/supervisord.conf && \
     echo 'childlogdir=/var/log/supervisor' >> /etc/supervisord.conf && \
     echo 'nodaemon=true' >> /etc/supervisord.conf && \
     echo 'user=root' >> /etc/supervisord.conf && \
+    echo 'silent=false' >> /etc/supervisord.conf && \
+    echo 'loglevel=info' >> /etc/supervisord.conf && \
     echo '' >> /etc/supervisord.conf && \
     echo '[rpcinterface:supervisor]' >> /etc/supervisord.conf && \
     echo 'supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface' >> /etc/supervisord.conf && \
@@ -81,6 +98,9 @@ RUN echo '[unix_http_server]' > /etc/supervisord.conf && \
     echo '' >> /etc/supervisord.conf && \
     echo '[include]' >> /etc/supervisord.conf && \
     echo 'files = /etc/supervisor/conf.d/*.conf' >> /etc/supervisord.conf
+
+# Expose port
+EXPOSE 9000
 
 # Start supervisor
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]

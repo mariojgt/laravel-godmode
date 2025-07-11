@@ -1,5 +1,5 @@
 # {{PROJECT_NAME}} - Laravel Project Makefile
-.PHONY: help start stop restart build logs shell artisan composer npm status clean info install setup
+.PHONY: help start stop restart build logs shell artisan composer npm bun pnpm status clean info install setup
 
 # Colors for output
 GREEN = \033[32m
@@ -27,6 +27,12 @@ help:
 	@echo "$(CYAN)  make artisan$(RESET)   - Run artisan commands (e.g., make artisan CMD='migrate')"
 	@echo "$(CYAN)  make composer$(RESET)  - Run composer commands (e.g., make composer CMD='install')"
 	@echo "$(CYAN)  make npm$(RESET)       - Run npm commands (e.g., make npm CMD='install')"
+	@if [ "{{HAS_BUN}}" = "true" ]; then \
+		echo "$(CYAN)  make bun$(RESET)       - Run bun commands (e.g., make bun CMD='install')"; \
+	fi
+	@if [ "{{HAS_PNPM}}" = "true" ]; then \
+		echo "$(CYAN)  make pnpm$(RESET)      - Run pnpm commands (e.g., make pnpm CMD='install')"; \
+	fi
 	@echo "$(CYAN)  make status$(RESET)    - Show container status"
 	@echo "$(CYAN)  make clean$(RESET)     - Clean up containers and volumes"
 	@echo "$(CYAN)  make install$(RESET)   - Install dependencies"
@@ -38,6 +44,9 @@ help:
 	@echo "  make artisan CMD='migrate'"
 	@echo "  make composer CMD='require laravel/breeze'"
 	@echo "  make npm CMD='run build'"
+	@if [ "{{HAS_BUN}}" = "true" ]; then \
+		echo "  make bun CMD='run build'"; \
+	fi
 	@echo ""
 
 ## Start all containers
@@ -107,6 +116,34 @@ npm:
 		docker-compose exec vite npm $(CMD); \
 	fi
 
+## Run bun commands (if installed)
+bun:
+	@if [ "{{HAS_BUN}}" != "true" ]; then \
+		echo "$(RED)❌ Bun is not installed in this project$(RESET)"; \
+		exit 1; \
+	fi
+	@if [ -z "$(CMD)" ]; then \
+		echo "$(YELLOW)Usage: make bun CMD='command'$(RESET)"; \
+		echo "$(YELLOW)Example: make bun CMD='install'$(RESET)"; \
+	else \
+		echo "$(CYAN)🟡 Running bun $(CMD)...$(RESET)"; \
+		docker-compose exec vite bun $(CMD); \
+	fi
+
+## Run pnpm commands (if installed)
+pnpm:
+	@if [ "{{HAS_PNPM}}" != "true" ]; then \
+		echo "$(RED)❌ pnpm is not installed in this project$(RESET)"; \
+		exit 1; \
+	fi
+	@if [ -z "$(CMD)" ]; then \
+		echo "$(YELLOW)Usage: make pnpm CMD='command'$(RESET)"; \
+		echo "$(YELLOW)Example: make pnpm CMD='install'$(RESET)"; \
+	else \
+		echo "$(CYAN)🧶 Running pnpm $(CMD)...$(RESET)"; \
+		docker-compose exec vite pnpm $(CMD); \
+	fi
+
 ## Show container status
 status:
 	@echo "$(CYAN)📊 {{PROJECT_NAME}} Container Status:$(RESET)"
@@ -124,7 +161,16 @@ clean:
 install:
 	@echo "$(CYAN)📦 Installing dependencies for {{PROJECT_NAME}}...$(RESET)"
 	@docker-compose exec app composer install
-	@docker-compose exec vite npm install
+	@if [ "{{HAS_BUN}}" = "true" ]; then \
+		echo "$(CYAN)🟡 Installing frontend dependencies with Bun...$(RESET)"; \
+		docker-compose exec vite bun install; \
+	elif [ "{{HAS_PNPM}}" = "true" ]; then \
+		echo "$(CYAN)🧶 Installing frontend dependencies with pnpm...$(RESET)"; \
+		docker-compose exec vite pnpm install; \
+	else \
+		echo "$(CYAN)📦 Installing frontend dependencies with npm...$(RESET)"; \
+		docker-compose exec vite npm install; \
+	fi
 	@echo "$(GREEN)✅ Dependencies installed!$(RESET)"
 
 ## Setup fresh Laravel installation
@@ -148,8 +194,20 @@ info:
 	@echo "  📄 .env          - Environment variables"
 	@echo "  📄 Makefile      - This command interface"
 	@echo ""
+	@echo "$(GREEN)🛠️ Package Managers Available:$(RESET)"
+	@echo "  📦 npm           - Node Package Manager"
+	@if [ "{{HAS_BUN}}" = "true" ]; then \
+		echo "  🟡 bun           - Fast JavaScript runtime & package manager"; \
+	fi
+	@if [ "{{HAS_PNPM}}" = "true" ]; then \
+		echo "  🧶 pnpm          - Fast, disk space efficient package manager"; \
+	fi
+	@echo ""
 	@echo "$(GREEN)🚀 Quick Commands:$(RESET)"
 	@echo "  make shell       - Access container"
 	@echo "  make logs        - View logs"
 	@echo "  make artisan     - Laravel commands"
+	@if [ "{{HAS_BUN}}" = "true" ]; then \
+		echo "  make bun         - Bun commands"; \
+	fi
 	@echo ""

@@ -7,10 +7,10 @@ const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const PROJECTS_DB_FILE = path.join(__dirname, 'projects.json'); //
+const PROJECTS_DB_FILE = path.join(__dirname, 'projects.json');
 
 // Define PROJECTS_DIR
-const PROJECTS_DIR = path.join(process.cwd(), 'projects'); // Use process.cwd() for flexibility
+const PROJECTS_DIR = path.join(process.cwd(), 'projects');
 
 // Simple in-memory storage
 let projects = [];
@@ -37,15 +37,14 @@ const runCommand = (command, cwd = process.cwd()) => {
         exec(command, { cwd }, (error, stdout, stderr) => {
             if (error) {
                 log(`Error executing command: ${command}`);
-                log(`STDOUT:\n${stdout}`); // Log stdout even on error
-                log(`STDERR:\n${stderr}`); // Log stderr on error
-                // Resolve, but include error details for the caller to handle
+                log(`STDOUT:\n${stdout}`);
+                log(`STDERR:\n${stderr}`);
                 resolve({
                     success: false,
-                    stdout: stdout.trim(), // Trim whitespace
-                    stderr: stderr.trim(), // Trim whitespace
+                    stdout: stdout.trim(),
+                    stderr: stderr.trim(),
                     errorMessage: error.message,
-                    exitCode: error.code || 1 // Default to 1 if no exit code
+                    exitCode: error.code || 1
                 });
             } else {
                 log(`Success: ${command}`);
@@ -78,7 +77,6 @@ const processStubFile = async (stubPath, replacements) => {
 
 // Utility: Find next available ports
 const getNextPorts = (services = []) => {
-    // Collect all used ports from loaded projects
     const usedPorts = projects.flatMap(p => [
         p.port,
         p.dbPort,
@@ -88,24 +86,22 @@ const getNextPorts = (services = []) => {
         p.vitePort
     ]).filter(Boolean);
 
-    // Ensure nextPort starts higher than any currently used project port
-    // This helps in scenarios where the manager restarts and new projects are added
-    const maxProjectPort = projects.reduce((max, p) => Math.max(max, p.port || 0), 0); //
-    nextPort = Math.max(nextPort, maxProjectPort + 1); //
+    const maxProjectPort = projects.reduce((max, p) => Math.max(max, p.port || 0), 0);
+    nextPort = Math.max(nextPort, maxProjectPort + 1);
 
     const findNextPort = (startPort) => {
         let port = startPort;
         while (usedPorts.includes(port)) {
             port++;
         }
-        usedPorts.push(port); // Add the found port to usedPorts for this session
+        usedPorts.push(port);
         return port;
     };
 
     const ports = {
         port: findNextPort(nextPort),
-        dbPort: findNextPort(3306), // Common DB port
-        vitePort: findNextPort(5173) // Common Vite port
+        dbPort: findNextPort(3306),
+        vitePort: findNextPort(5173)
     };
 
     if (services.includes('redis')) {
@@ -120,14 +116,13 @@ const getNextPorts = (services = []) => {
         ports.mailhogPort = findNextPort(8025);
     }
 
-    // Update nextPort for future auto-assignments only if it's the main app port
-    nextPort = ports.port + 1; //
+    nextPort = ports.port + 1;
     return ports;
 };
 
 // Utility: Create Docker Compose from stub
 const createDockerCompose = async (projectName, config) => {
-    const { port, dbPort, redisPort, vitePort, services } = config;
+    const { port, dbPort, redisPort, vitePort, services, phpVersion, nodeVersion } = config;
 
     const replacements = {
         PROJECT_NAME: projectName,
@@ -137,7 +132,9 @@ const createDockerCompose = async (projectName, config) => {
         REDIS_PORT: redisPort || 6379,
         PHPMYADMIN_PORT: config.phpmyadminPort || 8080,
         MAILHOG_PORT: config.mailhogPort || 8025,
-        MAILHOG_SMTP_PORT: (config.mailhogPort || 8025) + 100
+        MAILHOG_SMTP_PORT: (config.mailhogPort || 8025) + 100,
+        PHP_VERSION: phpVersion || '8.2',
+        NODE_VERSION: nodeVersion || '18'
     };
 
     // Handle conditional services
@@ -196,7 +193,7 @@ const createDockerCompose = async (projectName, config) => {
 
 // Create project Makefile
 const createProjectMakefile = async (projectDir, projectName, config) => {
-    const { services } = config;
+    const { services, installBun, installPnpm } = config;
 
     let servicesInfo = `🌐 App: http://localhost:${config.port}\\n📊 MySQL: localhost:${config.dbPort}`;
 
@@ -222,6 +219,8 @@ const createProjectMakefile = async (projectDir, projectName, config) => {
         HAS_REDIS: services.includes('redis') ? 'true' : 'false',
         HAS_PHPMYADMIN: services.includes('phpmyadmin') ? 'true' : 'false',
         HAS_MAILHOG: services.includes('mailhog') ? 'true' : 'false',
+        HAS_BUN: installBun ? 'true' : 'false',
+        HAS_PNPM: installPnpm ? 'true' : 'false',
         SERVICES_INFO: servicesInfo
     };
 
@@ -233,23 +232,37 @@ const createProjectMakefile = async (projectDir, projectName, config) => {
 
 // Create other config files from stubs
 const createConfigFiles = async (projectDir, projectName, config) => {
-    const { services } = config;
+    const { services, phpVersion, nodeVersion, installBun, installPnpm } = config;
 
     // Create docker directory
     const dockerDir = path.join(projectDir, 'docker');
     await fs.mkdir(dockerDir, { recursive: true });
 
-    // Create Dockerfile from stub
-    const dockerfileStub = path.join(__dirname, 'stubs', 'Dockerfile.stub');
-    const dockerfile = await processStubFile(dockerfileStub, { PROJECT_NAME: projectName });
-    await fs.writeFile(path.join(projectDir, 'Dockerfile'), dockerfile);
-    log(`✅ Using Dockerfile.stub for ${projectName}`);
+    // Create Dockerfile from stub with version-specific replacements
+    const dockerfileReplacements = {
+        PROJECT_NAME: projectName,
+        PHP_VERSION: phpVersion || '8.2',
+        INSTALL_BUN: installBun ? 'true' : 'false',
+        INSTALL_PNPM: installPnpm ? 'true' : 'false'
+    };
 
-    // Create Vite Dockerfile from stub
+    const dockerfileStub = path.join(__dirname, 'stubs', 'Dockerfile.stub');
+    const dockerfile = await processStubFile(dockerfileStub, dockerfileReplacements);
+    await fs.writeFile(path.join(projectDir, 'Dockerfile'), dockerfile);
+    log(`✅ Using Dockerfile.stub for ${projectName} with PHP ${phpVersion}`);
+
+    // Create Vite Dockerfile from stub with Node version
+    const viteDockerfileReplacements = {
+        PROJECT_NAME: projectName,
+        NODE_VERSION: nodeVersion || '18',
+        INSTALL_BUN: installBun ? 'true' : 'false',
+        INSTALL_PNPM: installPnpm ? 'true' : 'false'
+    };
+
     const viteDockerfileStub = path.join(__dirname, 'stubs', 'Dockerfile.vite.stub');
-    const viteDockerfile = await processStubFile(viteDockerfileStub, { PROJECT_NAME: projectName });
+    const viteDockerfile = await processStubFile(viteDockerfileStub, viteDockerfileReplacements);
     await fs.writeFile(path.join(projectDir, 'Dockerfile.vite'), viteDockerfile);
-    log(`✅ Using Dockerfile.vite.stub for ${projectName}`);
+    log(`✅ Using Dockerfile.vite.stub for ${projectName} with Node ${nodeVersion}`);
 
     // Create Nginx config from stub
     const nginxStub = path.join(__dirname, 'stubs', 'nginx.conf.stub');
@@ -262,16 +275,11 @@ const createConfigFiles = async (projectDir, projectName, config) => {
     const supervisorConfig = await processStubFile(supervisorStub, { PROJECT_NAME: projectName });
     await fs.writeFile(path.join(dockerDir, 'supervisor.conf'), supervisorConfig);
     log(`✅ Using supervisor.conf.stub for ${projectName}`);
-
-    // Create .env file from stub (goes in src/ folder)
-    // NOTE: The actual .env creation happens in the /api/projects POST route now
-    // and is written directly to srcDir/.env
 };
 
 // API Routes
 app.get('/api/projects', async (req, res) => {
     try {
-        // We now have projects loaded from file on startup, so just return them
         res.json(projects);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -280,7 +288,15 @@ app.get('/api/projects', async (req, res) => {
 
 app.post('/api/projects', async (req, res) => {
     try {
-        const { name, services = [], customPorts = {} } = req.body;
+        const {
+            name,
+            services = [],
+            customPorts = {},
+            phpVersion = '8.2',
+            nodeVersion = '18',
+            installBun = true,
+            installPnpm = false
+        } = req.body;
 
         if (!name || !/^[a-z0-9-]+$/.test(name)) {
             return res.status(400).json({ error: 'Invalid project name' });
@@ -288,6 +304,18 @@ app.post('/api/projects', async (req, res) => {
 
         if (projects.find(p => p.name === name)) {
             return res.status(400).json({ error: 'Project already exists' });
+        }
+
+        // Validate PHP version
+        const validPhpVersions = ['7.4', '8.0', '8.1', '8.2', '8.3'];
+        if (!validPhpVersions.includes(phpVersion)) {
+            return res.status(400).json({ error: 'Invalid PHP version' });
+        }
+
+        // Validate Node version
+        const validNodeVersions = ['16', '18', '20', '21'];
+        if (!validNodeVersions.includes(nodeVersion)) {
+            return res.status(400).json({ error: 'Invalid Node.js version' });
         }
 
         // Get ports (use custom ports if provided, otherwise auto-assign)
@@ -310,17 +338,30 @@ app.post('/api/projects', async (req, res) => {
 
         // Create Laravel project in src directory
         log(`Creating Laravel project: ${name}`);
-        await runCommand(`composer create-project laravel/laravel . --prefer-dist`, srcDir);
+        const createResult = await runCommand(`composer create-project laravel/laravel . --prefer-dist`, srcDir);
+
+        if (!createResult.success) {
+            throw new Error(`Failed to create Laravel project: ${createResult.stderr || createResult.errorMessage}`);
+        }
+
+        const config = {
+            ...ports,
+            services,
+            phpVersion,
+            nodeVersion,
+            installBun,
+            installPnpm
+        };
 
         // Create Docker files from stubs
-        const dockerCompose = await createDockerCompose(name, { ...ports, services });
+        const dockerCompose = await createDockerCompose(name, config);
         await fs.writeFile(path.join(projectDir, 'docker-compose.yml'), dockerCompose);
 
         // Create all config files from stubs
-        await createConfigFiles(projectDir, name, { ...ports, services });
+        await createConfigFiles(projectDir, name, config);
 
         // Create project Makefile
-        await createProjectMakefile(projectDir, name, { ...ports, services });
+        await createProjectMakefile(projectDir, name, config);
 
         // Create .env file in src directory from stub
         const envReplacements = {
@@ -373,15 +414,19 @@ export default defineConfig({
         const project = {
             name,
             services,
+            phpVersion,
+            nodeVersion,
+            installBun,
+            installPnpm,
             ...ports,
             path: projectDir,
             srcPath: srcDir,
-            status: 'stopped', // Initial status is stopped
+            status: 'stopped',
             created: new Date().toISOString()
         };
 
         projects.push(project);
-        await saveProjects(); // Save projects after adding a new one
+        await saveProjects();
         res.json(project);
 
     } catch (error) {
@@ -399,7 +444,7 @@ app.post('/api/projects/:name/start', async (req, res) => {
 
         await runCommand('docker-compose up -d', project.path);
         project.status = 'running';
-        await saveProjects(); // Save project status
+        await saveProjects();
 
         res.json({ success: true });
     } catch (error) {
@@ -416,7 +461,7 @@ app.post('/api/projects/:name/stop', async (req, res) => {
 
         await runCommand('docker-compose down', project.path);
         project.status = 'stopped';
-        await saveProjects(); // Save project status
+        await saveProjects();
 
         res.json({ success: true });
     } catch (error) {
@@ -441,11 +486,11 @@ app.delete('/api/projects/:name', async (req, res) => {
         }
 
         // Remove project directory
-        await fs.rm(project.path, { recursive: true, force: true }); // Use fs.rm for broader compatibility and force option
+        await fs.rm(project.path, { recursive: true, force: true });
 
         // Remove from projects array
         projects.splice(projectIndex, 1);
-        await saveProjects(); // Save projects after deletion
+        await saveProjects();
 
         res.json({ success: true });
     } catch (error) {
@@ -453,7 +498,7 @@ app.delete('/api/projects/:name', async (req, res) => {
     }
 });
 
-// New API to get .env content
+// API to get .env content
 app.get('/api/projects/:name/env', async (req, res) => {
     try {
         const project = projects.find(p => p.name === req.params.name);
@@ -470,7 +515,7 @@ app.get('/api/projects/:name/env', async (req, res) => {
     }
 });
 
-// New API to update .env content
+// API to update .env content
 app.put('/api/projects/:name/env', async (req, res) => {
     try {
         const { content } = req.body;
@@ -493,12 +538,11 @@ app.put('/api/projects/:name/env', async (req, res) => {
     }
 });
 
-// New API to run Artisan commands
 // API to run Artisan commands
 app.post('/api/projects/:name/artisan', async (req, res) => {
     const { name } = req.params;
     const { command } = req.body;
-    const projectPath = path.join(PROJECTS_DIR, name, 'src'); // Laravel app is in src/
+    const projectPath = path.join(PROJECTS_DIR, name, 'src');
 
     if (!command) {
         return res.status(400).json({ error: 'Artisan command is required.' });
@@ -506,10 +550,9 @@ app.post('/api/projects/:name/artisan', async (req, res) => {
 
     try {
         const dockerComposeCommand = `docker compose -f "${path.join(PROJECTS_DIR, name, 'docker-compose.yml')}" exec -T app php artisan ${command}`;
-        const result = await runCommand(dockerComposeCommand, projectPath); // Use the updated runCommand
+        const result = await runCommand(dockerComposeCommand, projectPath);
 
         if (!result.success) {
-            // If the command failed (e.g., Artisan command error), return 400 with details
             return res.status(400).json({
                 error: `Artisan command failed with exit code ${result.exitCode}`,
                 output: result.stdout,
@@ -517,7 +560,6 @@ app.post('/api/projects/:name/artisan', async (req, res) => {
                 command: `php artisan ${command}`
             });
         } else {
-            // If successful, return 200 with output
             res.json({
                 message: 'Artisan command executed successfully!',
                 output: result.stdout,
@@ -527,7 +569,6 @@ app.post('/api/projects/:name/artisan', async (req, res) => {
         }
     } catch (error) {
         log(`Unhandled error running artisan command for ${name}: ${error.message}`);
-        // This catch block is for true server-side errors (e.g., docker not found, bad path)
         res.status(500).json({
             error: `Server error executing Artisan command: ${error.message}`,
             details: error.message
@@ -551,7 +592,7 @@ app.post('/api/projects/:name/command', async (req, res) => {
     }
 });
 
-// New API to get list of common Artisan commands
+// API to get list of common Artisan commands
 app.get('/api/artisan-commands', async (req, res) => {
     try {
         const commandsPath = path.join(__dirname, 'artisan-commands.json');
@@ -575,24 +616,24 @@ app.get('/health', (req, res) => {
 // Utility: Save projects to file
 const saveProjects = async () => {
     try {
-        await fs.writeFile(PROJECTS_DB_FILE, JSON.stringify(projects, null, 2), 'utf8'); //
-        log('✅ Project data saved to file'); //
+        await fs.writeFile(PROJECTS_DB_FILE, JSON.stringify(projects, null, 2), 'utf8');
+        log('✅ Project data saved to file');
     } catch (error) {
-        log(`❌ Error saving project data: ${error.message}`); //
+        log(`❌ Error saving project data: ${error.message}`);
     }
 };
 
 // Utility: Load projects from file
 const loadProjects = async () => {
     try {
-        const data = await fs.readFile(PROJECTS_DB_FILE, 'utf8'); //
-        projects = JSON.parse(data); //
-        log(`✅ Loaded ${projects.length} projects from ${PROJECTS_DB_FILE}`); //
-        // Recalculate nextPort based on loaded projects to avoid port conflicts
-        const maxPort = projects.reduce((max, p) => Math.max(max, p.port || 0), 0); //
-        nextPort = maxPort > nextPort ? maxPort + 1 : nextPort; //
+        const data = await fs.readFile(PROJECTS_DB_FILE, 'utf8');
+        projects = JSON.parse(data);
+        log(`✅ Loaded ${projects.length} projects from ${PROJECTS_DB_FILE}`);
 
-        // Update project paths after loading, in case the manager moved
+        const maxPort = projects.reduce((max, p) => Math.max(max, p.port || 0), 0);
+        nextPort = maxPort > nextPort ? maxPort + 1 : nextPort;
+
+        // Update project paths after loading
         projects = projects.map(p => ({
             ...p,
             path: path.join(process.cwd(), 'projects', p.name),
@@ -600,11 +641,11 @@ const loadProjects = async () => {
         }));
     } catch (error) {
         if (error.code === 'ENOENT') {
-            log('No existing project data file found, starting fresh.'); //
+            log('No existing project data file found, starting fresh.');
         } else {
-            log(`❌ Error loading project data: ${error.message}`); //
+            log(`❌ Error loading project data: ${error.message}`);
         }
-        projects = []; // Ensure projects array is empty on error
+        projects = [];
     }
 };
 
@@ -622,7 +663,7 @@ async function startServer() {
         log('❌ Missing artisan-commands.json. Please create it or it will not be available in the UI.');
     }
 
-    await loadProjects(); // Load existing projects at startup
+    await loadProjects();
 
     // Check if stub files exist and report status
     const stubFiles = [
@@ -653,19 +694,20 @@ async function startServer() {
     }
 
     app.listen(PORT, () => {
-        log('🚀 Simple Laravel Manager Started');
+        log('🚀 Simple Laravel Manager Started (Enhanced)');
         log(`📍 Server running on http://localhost:${PORT}`);
         log(`📁 Projects directory: ${path.join(process.cwd(), 'projects')}`);
         log(`📄 Stub files directory: ${path.join(process.cwd(), 'stubs')}`);
         log(`✅ All ${stubFiles.length} stub files found and ready`);
         log(`📊 Managing ${projects.length} projects`);
+        log(`🆕 Enhanced features: PHP version selection, Node.js version selection, Bun/pnpm support`);
     });
 }
 
 // Handle graceful shutdown
 process.on('SIGINT', async () => {
     log('\n👋 Shutting down gracefully...');
-    await saveProjects(); // Save projects on shutdown
+    await saveProjects();
     process.exit(0);
 });
 

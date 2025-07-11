@@ -1,9 +1,10 @@
-
 services:
   app:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        PHP_VERSION: {{PHP_VERSION}}
     container_name: {{PROJECT_NAME}}_app
     volumes:
       - ./src:/var/www/html
@@ -13,6 +14,8 @@ services:
     networks:
       - {{PROJECT_NAME}}_network
     restart: unless-stopped
+    environment:
+      - PHP_VERSION={{PHP_VERSION}}
 
   nginx:
     image: nginx:alpine
@@ -55,6 +58,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.vite
+      args:
+        NODE_VERSION: {{NODE_VERSION}}
     container_name: {{PROJECT_NAME}}_vite
     ports:
       - "{{VITE_PORT}}:5173"
@@ -67,6 +72,8 @@ services:
     restart: unless-stopped
     depends_on:
       - app
+    environment:
+      - NODE_VERSION={{NODE_VERSION}}
 
 volumes:
   mysql_data:

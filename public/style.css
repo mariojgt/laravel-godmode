@@ -158,6 +158,25 @@ h1 {
     border: 1px solid rgba(59, 130, 246, 0.2);
 }
 
+.version-badge {
+    background: rgba(168, 85, 247, 0.1);
+    color: #a855f7;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    border: 1px solid rgba(168, 85, 247, 0.2);
+    font-weight: 600;
+}
+
+.package-manager-badge {
+    background: rgba(34, 197, 94, 0.1);
+    color: #22c55e;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
 .ports-info {
     margin: 1rem 0;
     padding: 1rem;
@@ -264,6 +283,15 @@ input, select, textarea {
     font-size: 1rem;
 }
 
+.select-input {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.5rem center;
+    background-repeat: no-repeat;
+    background-size: 1.5em 1.5em;
+    padding-right: 2.5rem;
+}
+
 input:focus, select:focus, textarea:focus {
     outline: none;
     border-color: #3b82f6;
@@ -280,6 +308,13 @@ small {
 .services-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.package-managers-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     gap: 1rem;
     margin-top: 0.5rem;
 }
@@ -380,6 +415,161 @@ small {
     }
 }
 
+/* Form element styles */
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #cbd5e1;
+    font-size: 0.95rem;
+}
+
+.text-input,
+.select-input,
+.code-editor {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid #334155;
+    border-radius: 0.5rem;
+    background-color: #1e293b;
+    color: #f1f5f9;
+    font-size: 1rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+}
+
+.text-input:focus,
+.select-input:focus,
+.code-editor:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+    outline: none;
+}
+
+/* Artisan output area */
+.code-output {
+    background-color: #1a202c;
+    color: #e2e8f0;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid #334155;
+    font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.code-output.loading {
+    color: #60a5fa;
+    background-color: #1e293b;
+}
+
+.code-output.success-output {
+    border-color: #10b981;
+    box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.3);
+}
+
+.code-output.error-output {
+    border-color: #ef4444;
+    color: #fca5a5;
+    box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.3);
+}
+
+.command-note {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    margin-top: 0.5rem;
+    padding: 0 0.25rem;
+}
+
+/* Artisan command list styles */
+.artisan-command-list {
+    margin-top: 1rem;
+    padding: 0 0.5rem;
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #334155;
+    border-radius: 0.5rem;
+    background-color: #1a202c;
+}
+
+.command-category-section {
+    margin-bottom: 1.5rem;
+    padding-top: 0.5rem;
+}
+
+.command-category-section h3 {
+    font-size: 1.2rem;
+    color: #60a5fa;
+    border-bottom: 1px solid #334155;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+    position: sticky;
+    top: 0;
+    background-color: #1a202c;
+    z-index: 10;
+}
+
+.command-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.command-btn {
+    background-color: #2d3748;
+    border: 1px solid #4a5568;
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s, transform 0.1s;
+    color: #e2e8f0;
+    font-family: inherit;
+}
+
+.command-btn:hover {
+    background-color: #3b4558;
+    border-color: #60a5fa;
+    transform: translateY(-2px);
+}
+
+.command-btn:active {
+    transform: translateY(0);
+}
+
+.command-name {
+    font-weight: 600;
+    color: #f1f5f9;
+    margin-bottom: 0.25rem;
+}
+
+.command-syntax {
+    font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: #a0aec0;
+    background-color: #1e293b;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    display: inline-block;
+    margin-bottom: 0.25rem;
+}
+
+.command-btn .command-note {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin-top: 0.5rem;
+}
+
+.empty-state-small {
+    text-align: center;
+    color: #64748b;
+    padding: 1rem;
+    font-style: italic;
+}
+
 @media (max-width: 768px) {
     .container {
         padding: 1rem;
@@ -403,6 +593,10 @@ small {
         grid-template-columns: 1fr;
     }
 
+    .package-managers-grid {
+        grid-template-columns: 1fr;
+    }
+
     .ports-grid {
         grid-template-columns: 1fr;
     }
@@ -414,162 +608,4 @@ small {
     .ports-list {
         grid-template-columns: 1fr;
     }
-}
-
-
-/* Add these new styles to your style.css */
-
-/* General form element styles (ensure these are present and correct) */
-.form-group label {
-    display: block;
-    margin-bottom: 0.5rem;
-    color: #cbd5e1; /* slate-300 */
-    font-size: 0.95rem;
-}
-
-.text-input,
-.select-input,
-.code-editor {
-    width: 100%;
-    padding: 0.75rem 1rem;
-    border: 1px solid #334155; /* slate-700 */
-    border-radius: 0.5rem;
-    background-color: #1e293b; /* slate-800 */
-    color: #f1f5f9; /* slate-50 */
-    font-size: 1rem;
-    transition: border-color 0.2s, box-shadow 0.2s;
-    font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace; /* Monospace for code/commands */
-}
-
-.text-input:focus,
-.select-input:focus,
-.code-editor:focus {
-    border-color: #3b82f6; /* blue-500 */
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
-    outline: none;
-}
-
-/* Artisan output area (ensure these are present and correct) */
-.code-output {
-    background-color: #1a202c; /* darker background for code */
-    color: #e2e8f0; /* light text */
-    padding: 1rem;
-    border-radius: 0.5rem;
-    border: 1px solid #334155;
-    font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
-    font-size: 0.85rem;
-    line-height: 1.4;
-    white-space: pre-wrap; /* Preserve whitespace and wrap long lines */
-    max-height: 400px; /* Limit height */
-    overflow-y: auto; /* Scroll if content overflows */
-}
-
-.code-output.loading {
-    color: #60a5fa; /* blue-400 for loading */
-    background-color: #1e293b;
-}
-
-.code-output.success-output {
-    border-color: #10b981; /* emerald-500 */
-    box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.3);
-}
-
-.code-output.error-output {
-    border-color: #ef4444; /* red-500 */
-    color: #fca5a5; /* red-300 for error text */
-    box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.3);
-}
-
-.command-note {
-    font-size: 0.8rem;
-    color: #94a3b8; /* slate-400 */
-    margin-top: 0.5rem;
-    padding: 0 0.25rem;
-}
-
-/* New styles for categorized command list */
-.artisan-command-list {
-    margin-top: 1rem;
-    padding: 0 0.5rem; /* Add some horizontal padding */
-    max-height: 300px; /* Limit height for scrollability */
-    overflow-y: auto; /* Enable vertical scrolling */
-    border: 1px solid #334155; /* Add a border */
-    border-radius: 0.5rem;
-    background-color: #1a202c; /* Darker background */
-}
-
-.command-category-section {
-    margin-bottom: 1.5rem;
-    padding-top: 0.5rem;
-}
-
-.command-category-section h3 {
-    font-size: 1.2rem;
-    color: #60a5fa; /* blue-400 */
-    border-bottom: 1px solid #334155;
-    padding-bottom: 0.5rem;
-    margin-bottom: 1rem;
-    position: sticky; /* Make category headers sticky */
-    top: 0;
-    background-color: #1a202c; /* Match container background */
-    z-index: 10; /* Ensure it stays above command buttons */
-}
-
-.command-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Responsive grid */
-    gap: 0.75rem; /* Space between command buttons */
-    margin-bottom: 1rem;
-}
-
-.command-btn {
-    background-color: #2d3748; /* dark gray */
-    border: 1px solid #4a5568; /* slightly lighter border */
-    border-radius: 0.5rem;
-    padding: 0.75rem 1rem;
-    text-align: left;
-    cursor: pointer;
-    transition: background-color 0.2s, border-color 0.2s, transform 0.1s;
-    color: #e2e8f0; /* light text color */
-    font-family: inherit; /* Use body font */
-}
-
-.command-btn:hover {
-    background-color: #3b4558; /* slightly lighter on hover */
-    border-color: #60a5fa; /* blue-400 border on hover */
-    transform: translateY(-2px); /* Slight lift effect */
-}
-
-.command-btn:active {
-    transform: translateY(0);
-}
-
-.command-name {
-    font-weight: 600;
-    color: #f1f5f9; /* slate-50 */
-    margin-bottom: 0.25rem;
-}
-
-.command-syntax {
-    font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
-    font-size: 0.8rem;
-    color: #a0aec0; /* gray-400 */
-    background-color: #1e293b; /* slate-800 */
-    padding: 0.25rem 0.5rem;
-    border-radius: 0.25rem;
-    display: inline-block; /* Ensure padding applies well */
-    margin-bottom: 0.25rem;
-}
-
-.command-btn .command-note {
-    font-size: 0.75rem;
-    color: #94a3b8; /* slate-400 */
-    margin-top: 0.5rem;
-}
-
-.empty-state-small {
-    text-align: center;
-    color: #64748b;
-    padding: 1rem;
-    font-style: italic;
 }

@@ -2,7 +2,7 @@ class LaravelManager {
     constructor() {
         this.projects = [];
         this.artisanCommands = [];
-        this.filteredCommands = []; // New: To store filtered commands
+        this.filteredCommands = [];
         this.init();
     }
 
@@ -56,20 +56,17 @@ class LaravelManager {
             this.runArtisanCommand(projectName, command);
         });
 
-        // New: Handle search input for Artisan commands
+        // Handle search input for Artisan commands
         document.getElementById('artisanCommandSearchInput').addEventListener('input', (e) => {
             this.filterArtisanCommands(e.target.value);
         });
 
-        // New: Handle clicking on a command button
+        // Handle clicking on a command button
         document.getElementById('artisanCommandList').addEventListener('click', (e) => {
             if (e.target.classList.contains('command-btn')) {
                 const command = e.target.dataset.command;
                 document.getElementById('artisanCommandInput').value = command;
                 document.getElementById('artisanCommandInput').focus();
-                // Optionally hide the command list or scroll to top
-                // document.getElementById('artisanCommandSearchInput').value = ''; // Clear search
-                // this.filterArtisanCommands(''); // Reset filter
             }
         });
     }
@@ -84,13 +81,11 @@ class LaravelManager {
         }
     }
 
-    // Load Artisan Commands from JSON and categorize them
     async loadArtisanCommands() {
         try {
             const response = await fetch('/api/artisan-commands');
             if (response.ok) {
                 const commands = await response.json();
-                // Sort commands by category and then by name
                 this.artisanCommands = commands.sort((a, b) => {
                     if (a.category < b.category) return -1;
                     if (a.category > b.category) return 1;
@@ -98,8 +93,8 @@ class LaravelManager {
                     if (a.name > b.name) return 1;
                     return 0;
                 });
-                this.filteredCommands = [...this.artisanCommands]; // Initialize filtered commands
-                this.renderArtisanCommandList(); // Render initially
+                this.filteredCommands = [...this.artisanCommands];
+                this.renderArtisanCommandList();
             } else {
                 console.error('Failed to load artisan commands:', response.statusText);
                 this.showToast('Failed to load recommended Artisan commands.', 'error');
@@ -110,7 +105,6 @@ class LaravelManager {
         }
     }
 
-    // New: Filter Artisan commands based on search input
     filterArtisanCommands(searchTerm) {
         const lowerCaseSearchTerm = searchTerm.toLowerCase();
         this.filteredCommands = this.artisanCommands.filter(cmd =>
@@ -121,10 +115,9 @@ class LaravelManager {
         this.renderArtisanCommandList();
     }
 
-    // New: Render the categorized and searchable Artisan command list
     renderArtisanCommandList() {
         const listContainer = document.getElementById('artisanCommandList');
-        listContainer.innerHTML = ''; // Clear previous content
+        listContainer.innerHTML = '';
 
         if (this.filteredCommands.length === 0) {
             listContainer.innerHTML = '<p class="empty-state-small">No commands found matching your search.</p>';
@@ -140,7 +133,6 @@ class LaravelManager {
             categories[category].push(cmd);
         });
 
-        // Sort categories alphabetically
         const sortedCategoryNames = Object.keys(categories).sort();
 
         sortedCategoryNames.forEach(categoryName => {
@@ -166,7 +158,6 @@ class LaravelManager {
             listContainer.appendChild(categorySection);
         });
     }
-
 
     renderProjects() {
         const container = document.getElementById('projects-container');
@@ -204,6 +195,21 @@ class LaravelManager {
             return `<span class="service-badge">${icons[service] || service}</span>`;
         }).join('');
 
+        // Add version badges
+        const versionBadges = `
+            <span class="version-badge">PHP ${project.phpVersion || '8.2'}</span>
+            <span class="version-badge">Node ${project.nodeVersion || '18'}</span>
+        `;
+
+        // Add package manager badges
+        let packageManagerBadges = '';
+        if (project.installBun) {
+            packageManagerBadges += '<span class="package-manager-badge">Bun</span>';
+        }
+        if (project.installPnpm) {
+            packageManagerBadges += '<span class="package-manager-badge">pnpm</span>';
+        }
+
         return `
             <div class="project-card">
                 <div class="project-header">
@@ -218,11 +224,11 @@ class LaravelManager {
                     </div>
                 </div>
 
-                ${services.length > 0 ? `
-                    <div class="project-services">
-                        ${servicesBadges}
-                    </div>
-                ` : ''}
+                <div class="project-services">
+                    ${versionBadges}
+                    ${packageManagerBadges}
+                    ${servicesBadges}
+                </div>
 
                 <div class="ports-info">
                     <div style="font-weight: 600; margin-bottom: 0.5rem;">Service Ports</div>
@@ -262,7 +268,7 @@ class LaravelManager {
 
                 <div class="project-info">
                     <div>Stack: Laravel + Nginx + PHP-FPM + MySQL${services.includes('redis') ? ' + Redis' : ''}</div>
-                    <div>Supervisor: Queue Workers + Scheduler</div>
+                    <div>PHP ${project.phpVersion || '8.2'} | Node ${project.nodeVersion || '18'}${project.installBun ? ' | Bun' : ''}${project.installPnpm ? ' | pnpm' : ''}</div>
                     <div>Created: ${new Date(project.created).toLocaleDateString()}</div>
                 </div>
 
@@ -294,6 +300,10 @@ class LaravelManager {
         const form = document.getElementById('createForm');
         const formData = new FormData(form);
         const name = formData.get('name');
+        const phpVersion = formData.get('phpVersion') || '8.2';
+        const nodeVersion = formData.get('nodeVersion') || '18';
+        const installBun = formData.has('installBun');
+        const installPnpm = formData.has('installPnpm');
 
         if (!name || !/^[a-z0-9-]+$/.test(name)) {
             this.showToast('Invalid project name', 'error');
@@ -321,6 +331,10 @@ class LaravelManager {
         const projectData = {
             name,
             services,
+            phpVersion,
+            nodeVersion,
+            installBun,
+            installPnpm,
             customPorts: Object.keys(customPorts).length > 0 ? customPorts : undefined
         };
 
@@ -418,7 +432,6 @@ class LaravelManager {
         document.getElementById('createModal').classList.remove('active');
     }
 
-    // Show .env editor modal
     async showEnvEditor(projectName) {
         const envEditorModal = document.getElementById('envEditorModal');
         const envProjectName = document.getElementById('envProjectName');
@@ -441,12 +454,10 @@ class LaravelManager {
         }
     }
 
-    // Hide .env editor modal
     hideEnvEditor() {
         document.getElementById('envEditorModal').classList.remove('active');
     }
 
-    // Save .env content
     async saveEnvContent(projectName, content) {
         try {
             this.showToast(`Saving .env for ${projectName}...`, 'info');
@@ -468,32 +479,29 @@ class LaravelManager {
         }
     }
 
-    // Show Artisan commander modal
     showArtisanCommander(projectName) {
         const artisanCommanderModal = document.getElementById('artisanCommanderModal');
         const artisanProjectName = document.getElementById('artisanProjectName');
         const artisanOutput = document.getElementById('artisanOutput');
         const artisanCommandInput = document.getElementById('artisanCommandInput');
-        const artisanCommandSearchInput = document.getElementById('artisanCommandSearchInput'); // New
+        const artisanCommandSearchInput = document.getElementById('artisanCommandSearchInput');
         const artisanCommandNote = document.getElementById('artisanCommandNote');
 
         artisanProjectName.textContent = projectName;
-        artisanOutput.textContent = ''; // Clear previous output
-        artisanOutput.className = 'code-output'; // Reset styling
-        artisanCommandInput.value = ''; // Clear previous command
-        artisanCommandSearchInput.value = ''; // Clear search input
-        this.filterArtisanCommands(''); // Reset filter and render all commands
-        artisanCommandNote.textContent = ''; // Clear note
+        artisanOutput.textContent = '';
+        artisanOutput.className = 'code-output';
+        artisanCommandInput.value = '';
+        artisanCommandSearchInput.value = '';
+        this.filterArtisanCommands('');
+        artisanCommandNote.textContent = '';
         artisanCommanderModal.classList.add('active');
         artisanCommandInput.focus();
     }
 
-    // Hide Artisan commander modal
     hideArtisanCommander() {
         document.getElementById('artisanCommanderModal').classList.remove('active');
     }
 
-    // Run Artisan command (improved feedback)
     async runArtisanCommand(projectName, command) {
         const artisanOutput = document.getElementById('artisanOutput');
         const runArtisanBtn = document.getElementById('runArtisanBtn');
@@ -504,20 +512,18 @@ class LaravelManager {
             return;
         }
 
-        // Check if the command is interactive and warn the user
         const selectedCmdInfo = this.artisanCommands.find(c => c.command === command.trim());
         if (selectedCmdInfo && selectedCmdInfo.interactive) {
             artisanCommandNote.textContent = selectedCmdInfo.note || 'This command is interactive and may not work as expected via web UI. Consider running it via CLI.';
-            artisanCommandNote.style.color = '#fbbf24'; // Yellow
+            artisanCommandNote.style.color = '#fbbf24';
         } else {
             artisanCommandNote.textContent = '';
         }
 
         artisanOutput.textContent = `Running 'php artisan ${command}'...\n`;
-        artisanOutput.className = 'code-output loading'; // Add loading class
-        runArtisanBtn.disabled = true; // Disable button during execution
+        artisanOutput.className = 'code-output loading';
+        runArtisanBtn.disabled = true;
         runArtisanBtn.textContent = 'Running...';
-
 
         try {
             this.showToast(`Running artisan ${command} for ${projectName}...`, 'info');
@@ -527,44 +533,40 @@ class LaravelManager {
                 body: JSON.stringify({ command })
             });
 
-            const data = await response.json(); // Always parse JSON, even on error status
+            const data = await response.json();
 
-            artisanOutput.textContent = `Command: php artisan ${data.command || command}\n\n`; // Use returned command if available
+            artisanOutput.textContent = `Command: php artisan ${data.command || command}\n\n`;
 
             if (response.ok) {
-                // Command was successful (2xx status)
                 artisanOutput.textContent += data.output || 'No output.';
                 if (data.stderr) {
-                    artisanOutput.textContent += `\n\nSTDERR (if any):\n${data.stderr}`; // Still show stderr if there's any non-blocking message
+                    artisanOutput.textContent += `\n\nSTDERR (if any):\n${data.stderr}`;
                 }
                 artisanOutput.className = 'code-output success-output';
                 this.showToast(`Artisan command for ${projectName} completed successfully!`, 'success');
             } else {
-                // Command failed (e.g., 400 Bad Request from our server)
                 artisanOutput.textContent += `Status: ${response.status} - ${data.error || 'Unknown Error'}\n\n`;
-                if (data.output) { // This is stdout, even in an error case
+                if (data.output) {
                     artisanOutput.textContent += `STDOUT:\n${data.output}\n\n`;
                 }
-                if (data.stderr) { // This is the crucial part for Artisan errors
+                if (data.stderr) {
                     artisanOutput.textContent += `STDERR:\n${data.stderr}\n\n`;
-                } else if (data.details) { // For 500 errors from server.js
+                } else if (data.details) {
                     artisanOutput.textContent += `DETAILS:\n${data.details}\n\n`;
                 }
                 artisanOutput.className = 'code-output error-output';
                 this.showToast(`Failed to run artisan command for ${projectName}: ${data.error || 'Check output for details.'}`, 'error');
             }
         } catch (error) {
-            // This catch block is for network errors or unparseable JSON
             artisanOutput.textContent = `Network Error or unexpected response: ${error.message}`;
             artisanOutput.className = 'code-output error-output';
             this.showToast(`Network error or unexpected response: ${error.message}`, 'error');
         } finally {
             runArtisanBtn.disabled = false;
             runArtisanBtn.textContent = 'Run Artisan Command';
-            artisanOutput.scrollTop = artisanOutput.scrollHeight; // Scroll to bottom
+            artisanOutput.scrollTop = artisanOutput.scrollHeight;
         }
     }
-
 
     refreshProjects() {
         this.loadProjects();
@@ -572,7 +574,6 @@ class LaravelManager {
     }
 
     showToast(message, type = 'info') {
-        // Remove existing toasts
         document.querySelectorAll('.toast').forEach(toast => toast.remove());
 
         const toast = document.createElement('div');
@@ -581,19 +582,17 @@ class LaravelManager {
 
         document.body.appendChild(toast);
 
-        // Auto-remove after 3 seconds
         setTimeout(() => {
             if (toast.parentNode) {
                 toast.remove();
             }
         }, 3000);
 
-        // Allow manual removal
         toast.addEventListener('click', () => toast.remove());
     }
 }
 
-// Global functions for inline event handlers (now also for new modals)
+// Global functions for inline event handlers
 function showCreateModal() {
     window.manager.showCreateModal();
 }
@@ -612,7 +611,6 @@ function toggleCustomPorts() {
     section.style.display = toggle.checked ? 'block' : 'none';
 }
 
-// New Global functions for .env and Artisan
 function showEnvEditor(projectName) {
     window.manager.showEnvEditor(projectName);
 }

@@ -48,6 +48,44 @@
                 </div>
 
                 <div class="form-group">
+                    <label for="phpVersion">PHP Version</label>
+                    <select id="phpVersion" name="phpVersion" class="select-input">
+                        <option value="8.2" selected>PHP 8.2 (Recommended)</option>
+                        <option value="8.3">PHP 8.3 (Latest)</option>
+                        <option value="8.1">PHP 8.1</option>
+                        <option value="8.0">PHP 8.0</option>
+                        <option value="7.4">PHP 7.4 (Legacy)</option>
+                    </select>
+                    <small>Choose the PHP version for your Laravel project</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="nodeVersion">Node.js Version</label>
+                    <select id="nodeVersion" name="nodeVersion" class="select-input">
+                        <option value="18" selected>Node.js 18 LTS (Recommended)</option>
+                        <option value="20">Node.js 20 LTS</option>
+                        <option value="21">Node.js 21 (Latest)</option>
+                        <option value="16">Node.js 16 LTS</option>
+                    </select>
+                    <small>Choose the Node.js version for frontend tooling</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Package Managers</label>
+                    <div class="package-managers-grid">
+                        <label class="service-checkbox">
+                            <input type="checkbox" name="installBun" checked>
+                            <span>Install Bun</span>
+                        </label>
+                        <label class="service-checkbox">
+                            <input type="checkbox" name="installPnpm">
+                            <span>Install pnpm</span>
+                        </label>
+                    </div>
+                    <small>Bun and pnpm are faster alternatives to npm</small>
+                </div>
+
+                <div class="form-group">
                     <label>Additional Services</label>
                     <div class="services-grid">
                         <label class="service-checkbox">
