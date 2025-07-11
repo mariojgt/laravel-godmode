@@ -7,6 +7,7 @@ const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const PROJECTS_DB_FILE = path.join(__dirname, 'projects.json'); //
 
 // Simple in-memory storage
 let projects = [];
@@ -61,6 +62,7 @@ const processStubFile = async (stubPath, replacements) => {
 
 // Utility: Find next available ports
 const getNextPorts = (services = []) => {
+    // Collect all used ports from loaded projects
     const usedPorts = projects.flatMap(p => [
         p.port,
         p.dbPort,
@@ -70,19 +72,24 @@ const getNextPorts = (services = []) => {
         p.vitePort
     ]).filter(Boolean);
 
+    // Ensure nextPort starts higher than any currently used project port
+    // This helps in scenarios where the manager restarts and new projects are added
+    const maxProjectPort = projects.reduce((max, p) => Math.max(max, p.port || 0), 0); //
+    nextPort = Math.max(nextPort, maxProjectPort + 1); //
+
     const findNextPort = (startPort) => {
         let port = startPort;
         while (usedPorts.includes(port)) {
             port++;
         }
-        usedPorts.push(port);
+        usedPorts.push(port); // Add the found port to usedPorts for this session
         return port;
     };
 
     const ports = {
         port: findNextPort(nextPort),
-        dbPort: findNextPort(3306),
-        vitePort: findNextPort(5173)
+        dbPort: findNextPort(3306), // Common DB port
+        vitePort: findNextPort(5173) // Common Vite port
     };
 
     if (services.includes('redis')) {
@@ -97,7 +104,8 @@ const getNextPorts = (services = []) => {
         ports.mailhogPort = findNextPort(8025);
     }
 
-    nextPort = ports.port + 1;
+    // Update nextPort for future auto-assignments only if it's the main app port
+    nextPort = ports.port + 1; //
     return ports;
 };
 
@@ -240,33 +248,14 @@ const createConfigFiles = async (projectDir, projectName, config) => {
     log(`✅ Using supervisor.conf.stub for ${projectName}`);
 
     // Create .env file from stub (goes in src/ folder)
-    const envReplacements = {
-        PROJECT_NAME: projectName,
-        APP_KEY: `base64:${Buffer.from(projectName + Date.now()).toString('base64')}`,
-        APP_PORT: config.port,
-        CACHE_DRIVER: services.includes('redis') ? 'redis' : 'file',
-        QUEUE_CONNECTION: services.includes('redis') ? 'redis' : 'sync',
-        SESSION_DRIVER: services.includes('redis') ? 'redis' : 'file',
-        REDIS_CONFIG: services.includes('redis') ? `REDIS_HOST=redis
-REDIS_PASSWORD=null
-REDIS_PORT=6379` : '',
-        MAIL_CONFIG: services.includes('mailhog') ? `MAIL_MAILER=smtp
-MAIL_HOST=mailhog
-MAIL_PORT=1025
-MAIL_USERNAME=null
-MAIL_PASSWORD=null
-MAIL_ENCRYPTION=null
-MAIL_FROM_ADDRESS="hello@${projectName}.local"
-MAIL_FROM_NAME="${projectName}"` : ''
-    };
-
-    const envStub = path.join(__dirname, 'stubs', '.env.stub');
-    const envContent = await processStubFile(envStub, envReplacements);
+    // NOTE: The actual .env creation happens in the /api/projects POST route now
+    // and is written directly to srcDir/.env
 };
 
 // API Routes
 app.get('/api/projects', async (req, res) => {
     try {
+        // We now have projects loaded from file on startup, so just return them
         res.json(projects);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -371,11 +360,12 @@ export default defineConfig({
             ...ports,
             path: projectDir,
             srcPath: srcDir,
-            status: 'stopped',
+            status: 'stopped', // Initial status is stopped
             created: new Date().toISOString()
         };
 
         projects.push(project);
+        await saveProjects(); // Save projects after adding a new one
         res.json(project);
 
     } catch (error) {
@@ -393,6 +383,7 @@ app.post('/api/projects/:name/start', async (req, res) => {
 
         await runCommand('docker-compose up -d', project.path);
         project.status = 'running';
+        await saveProjects(); // Save project status
 
         res.json({ success: true });
     } catch (error) {
@@ -409,6 +400,7 @@ app.post('/api/projects/:name/stop', async (req, res) => {
 
         await runCommand('docker-compose down', project.path);
         project.status = 'stopped';
+        await saveProjects(); // Save project status
 
         res.json({ success: true });
     } catch (error) {
@@ -433,14 +425,78 @@ app.delete('/api/projects/:name', async (req, res) => {
         }
 
         // Remove project directory
-        await fs.rmdir(project.path, { recursive: true });
+        await fs.rm(project.path, { recursive: true, force: true }); // Use fs.rm for broader compatibility and force option
 
         // Remove from projects array
         projects.splice(projectIndex, 1);
+        await saveProjects(); // Save projects after deletion
 
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ error: error.message });
+    }
+});
+
+// New API to get .env content
+app.get('/api/projects/:name/env', async (req, res) => {
+    try {
+        const project = projects.find(p => p.name === req.params.name);
+        if (!project) {
+            return res.status(404).json({ error: 'Project not found' });
+        }
+
+        const envFilePath = path.join(project.srcPath, '.env');
+        const envContent = await fs.readFile(envFilePath, 'utf8');
+        res.json({ content: envContent });
+    } catch (error) {
+        log(`Error reading .env for ${req.params.name}: ${error.message}`);
+        res.status(500).json({ error: 'Failed to read .env file' });
+    }
+});
+
+// New API to update .env content
+app.put('/api/projects/:name/env', async (req, res) => {
+    try {
+        const { content } = req.body;
+        const project = projects.find(p => p.name === req.params.name);
+
+        if (!project) {
+            return res.status(404).json({ error: 'Project not found' });
+        }
+        if (typeof content !== 'string') {
+            return res.status(400).json({ error: 'Content must be a string' });
+        }
+
+        const envFilePath = path.join(project.srcPath, '.env');
+        await fs.writeFile(envFilePath, content, 'utf8');
+        log(`✅ .env updated for ${req.params.name}`);
+        res.json({ success: true, message: '.env updated successfully' });
+    } catch (error) {
+        log(`Error updating .env for ${req.params.name}: ${error.message}`);
+        res.status(500).json({ error: 'Failed to update .env file' });
+    }
+});
+
+// New API to run Artisan commands
+app.post('/api/projects/:name/artisan', async (req, res) => {
+    try {
+        const { command } = req.body; // e.g., 'migrate', 'cache:clear', 'optimize'
+        const project = projects.find(p => p.name === req.params.name);
+
+        if (!project) {
+            return res.status(404).json({ error: 'Project not found' });
+        }
+        if (!command) {
+            return res.status(400).json({ error: 'Artisan command is required' });
+        }
+
+        log(`Running Artisan command 'php artisan ${command}' for ${project.name}`);
+        // Ensure the command runs inside the 'app' container
+        const result = await runCommand(`docker-compose exec -T app php artisan ${command}`, project.path);
+        res.json({ output: result.stdout, error: result.stderr });
+    } catch (error) {
+        log(`Error running Artisan command: ${error.message}`);
+        res.status(500).json({ error: error.message, output: error.stdout, stderr: error.stderr });
     }
 });
 
@@ -469,11 +525,49 @@ app.get('/health', (req, res) => {
     });
 });
 
+// Utility: Save projects to file
+const saveProjects = async () => {
+    try {
+        await fs.writeFile(PROJECTS_DB_FILE, JSON.stringify(projects, null, 2), 'utf8'); //
+        log('✅ Project data saved to file'); //
+    } catch (error) {
+        log(`❌ Error saving project data: ${error.message}`); //
+    }
+};
+
+// Utility: Load projects from file
+const loadProjects = async () => {
+    try {
+        const data = await fs.readFile(PROJECTS_DB_FILE, 'utf8'); //
+        projects = JSON.parse(data); //
+        log(`✅ Loaded ${projects.length} projects from ${PROJECTS_DB_FILE}`); //
+        // Recalculate nextPort based on loaded projects to avoid port conflicts
+        const maxPort = projects.reduce((max, p) => Math.max(max, p.port || 0), 0); //
+        nextPort = maxPort > nextPort ? maxPort + 1 : nextPort; //
+
+        // Update project paths after loading, in case the manager moved
+        projects = projects.map(p => ({
+            ...p,
+            path: path.join(process.cwd(), 'projects', p.name),
+            srcPath: path.join(process.cwd(), 'projects', p.name, 'src')
+        }));
+    } catch (error) {
+        if (error.code === 'ENOENT') {
+            log('No existing project data file found, starting fresh.'); //
+        } else {
+            log(`❌ Error loading project data: ${error.message}`); //
+        }
+        projects = []; // Ensure projects array is empty on error
+    }
+};
+
 // Initialize and start server
 async function startServer() {
     // Create necessary directories
     await fs.mkdir('stubs', { recursive: true });
     await fs.mkdir('projects', { recursive: true });
+
+    await loadProjects(); // Load existing projects at startup
 
     // Check if stub files exist and report status
     const stubFiles = [
@@ -514,8 +608,9 @@ async function startServer() {
 }
 
 // Handle graceful shutdown
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
     log('\n👋 Shutting down gracefully...');
+    await saveProjects(); // Save projects on shutdown
     process.exit(0);
 });
 
