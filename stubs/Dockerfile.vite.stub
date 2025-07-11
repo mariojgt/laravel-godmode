@@ -1,0 +1,19 @@
+FROM node:18-alpine
+
+# Set working directory
+WORKDIR /var/www/html
+
+# Copy package files from src directory
+COPY src/package*.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy source code from src directory
+COPY src/ .
+
+# Expose Vite port
+EXPOSE 5173
+
+# Start Vite dev server
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]

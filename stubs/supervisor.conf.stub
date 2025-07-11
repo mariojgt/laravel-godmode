@@ -1,0 +1,28 @@
+[program:php-fpm]
+command=php-fpm --nodaemonize
+autostart=true
+autorestart=true
+stdout_logfile=/var/log/supervisor/php-fpm.out.log
+stderr_logfile=/var/log/supervisor/php-fpm.err.log
+user=root
+
+[program:laravel-queue]
+process_name=%(program_name)s_%(process_num)02d
+command=php /var/www/html/artisan queue:work --sleep=3 --tries=3 --max-time=3600
+autostart=true
+autorestart=true
+stopasgroup=true
+killasgroup=true
+user=www
+numprocs=1
+redirect_stderr=true
+stdout_logfile=/var/log/supervisor/laravel-queue.log
+stopwaitsecs=3600
+
+[program:laravel-schedule]
+command=bash -c "while [ true ]; do (php /var/www/html/artisan schedule:run --verbose --no-interaction &); sleep 60; done"
+autostart=true
+autorestart=true
+user=www
+redirect_stderr=true
+stdout_logfile=/var/log/supervisor/laravel-schedule.log

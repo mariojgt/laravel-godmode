@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: {{PROJECT_NAME}}_app
+    volumes:
+      - ./src:/var/www/html
+    working_dir: /var/www/html
+    depends_on:
+      - db{{REDIS_DEPENDS}}
+    networks:
+      - {{PROJECT_NAME}}_network
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: {{PROJECT_NAME}}_nginx
+    ports:
+      - "{{APP_PORT}}:80"
+    volumes:
+      - ./src:/var/www/html
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - app
+    networks:
+      - {{PROJECT_NAME}}_network
+    restart: unless-stopped
+
+  db:
+    image: mysql:8.0
+    container_name: {{PROJECT_NAME}}_db
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: {{PROJECT_NAME}}
+      MYSQL_USER: laravel
+      MYSQL_PASSWORD: password
+    ports:
+      - "{{DB_PORT}}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - {{PROJECT_NAME}}_network
+    restart: unless-stopped
+    command: --default-authentication-plugin=mysql_native_password
+
+{{REDIS_SERVICE}}
+
+{{PHPMYADMIN_SERVICE}}
+
+{{MAILHOG_SERVICE}}
+
+  vite:
+    build:
+      context: .
+      dockerfile: Dockerfile.vite
+    container_name: {{PROJECT_NAME}}_vite
+    ports:
+      - "{{VITE_PORT}}:5173"
+    volumes:
+      - ./src:/var/www/html
+    working_dir: /var/www/html
+    command: npm run dev -- --host 0.0.0.0
+    networks:
+      - {{PROJECT_NAME}}_network
+    restart: unless-stopped
+    depends_on:
+      - app
+
+volumes:
+  mysql_data:
+    driver: local
+{{REDIS_VOLUME}}
+
+networks:
+  {{PROJECT_NAME}}_network:
+    driver: bridge

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Laravel Manager</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Simple Laravel Manager</h1>
+            <p class="subtitle">Create and manage Laravel projects with ease</p>
+        </header>
+
+        <div class="actions">
+            <button class="btn" onclick="showCreateModal()">
+                Create New Project
+            </button>
+            <button class="btn" onclick="refreshProjects()">
+                Refresh
+            </button>
+        </div>
+
+        <div id="projects-container">
+            <div class="empty-state">
+                <h3>No projects yet</h3>
+                <p>Create your first Laravel project to get started</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Project Modal -->
+    <div id="createModal" class="modal">
+        <div class="modal-content large">
+            <h2>Create New Laravel Project</h2>
+            <form id="createForm">
+                <div class="form-group">
+                    <label for="projectName">Project Name</label>
+                    <input
+                        type="text"
+                        id="projectName"
+                        name="name"
+                        placeholder="my-awesome-project"
+                        pattern="[a-z0-9-]+"
+                        required
+                    >
+                    <small>Only lowercase letters, numbers, and hyphens</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Additional Services</label>
+                    <div class="services-grid">
+                        <label class="service-checkbox">
+                            <input type="checkbox" name="services" value="redis" checked>
+                            <span>Redis Cache</span>
+                        </label>
+                        <label class="service-checkbox">
+                            <input type="checkbox" name="services" value="phpmyadmin">
+                            <span>PHPMyAdmin</span>
+                        </label>
+                        <label class="service-checkbox">
+                            <input type="checkbox" name="services" value="mailhog">
+                            <span>Mailhog</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="customPortsToggle" onchange="toggleCustomPorts()">
+                        Customize Ports (Advanced)
+                    </label>
+                </div>
+
+                <div id="customPortsSection" class="custom-ports" style="display: none;">
+                    <div class="ports-grid">
+                        <div>
+                            <label for="appPort">App Port</label>
+                            <input type="number" id="appPort" name="port" min="1000" max="65535" placeholder="8000">
+                        </div>
+                        <div>
+                            <label for="dbPort">MySQL Port</label>
+                            <input type="number" id="dbPort" name="dbPort" min="1000" max="65535" placeholder="3306">
+                        </div>
+                        <div>
+                            <label for="redisPort">Redis Port</label>
+                            <input type="number" id="redisPort" name="redisPort" min="1000" max="65535" placeholder="6379">
+                        </div>
+                        <div>
+                            <label for="phpmyadminPort">PHPMyAdmin Port</label>
+                            <input type="number" id="phpmyadminPort" name="phpmyadminPort" min="1000" max="65535" placeholder="8080">
+                        </div>
+                        <div>
+                            <label for="mailhogPort">Mailhog Port</label>
+                            <input type="number" id="mailhogPort" name="mailhogPort" min="1000" max="65535" placeholder="8025">
+                        </div>
+                        <div>
+                            <label for="vitePort">Vite Port</label>
+                            <input type="number" id="vitePort" name="vitePort" min="1000" max="65535" placeholder="5173">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn" onclick="hideCreateModal()">
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn">
+                        Create Project
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

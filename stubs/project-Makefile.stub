@@ -1,0 +1,155 @@
+# {{PROJECT_NAME}} - Laravel Project Makefile
+.PHONY: help start stop restart build logs shell artisan composer npm status clean info install setup
+
+# Colors for output
+GREEN = \033[32m
+CYAN = \033[36m
+YELLOW = \033[33m
+RED = \033[31m
+RESET = \033[0m
+BOLD = \033[1m
+
+# Default target
+.DEFAULT_GOAL := help
+
+## Help - Show available commands
+help:
+	@echo "$(BOLD)🚀 {{PROJECT_NAME}} - Laravel Project Manager$(RESET)"
+	@echo ""
+	@echo "$(GREEN)Available commands:$(RESET)"
+	@echo ""
+	@echo "$(CYAN)  make start$(RESET)     - Start all containers"
+	@echo "$(CYAN)  make stop$(RESET)      - Stop all containers"
+	@echo "$(CYAN)  make restart$(RESET)   - Restart all containers"
+	@echo "$(CYAN)  make build$(RESET)     - Build containers"
+	@echo "$(CYAN)  make logs$(RESET)      - Show container logs"
+	@echo "$(CYAN)  make shell$(RESET)     - Open shell in app container"
+	@echo "$(CYAN)  make artisan$(RESET)   - Run artisan commands (e.g., make artisan CMD='migrate')"
+	@echo "$(CYAN)  make composer$(RESET)  - Run composer commands (e.g., make composer CMD='install')"
+	@echo "$(CYAN)  make npm$(RESET)       - Run npm commands (e.g., make npm CMD='install')"
+	@echo "$(CYAN)  make status$(RESET)    - Show container status"
+	@echo "$(CYAN)  make clean$(RESET)     - Clean up containers and volumes"
+	@echo "$(CYAN)  make install$(RESET)   - Install dependencies"
+	@echo "$(CYAN)  make setup$(RESET)     - Setup fresh Laravel installation"
+	@echo "$(CYAN)  make info$(RESET)      - Show project information"
+	@echo ""
+	@echo "$(YELLOW)💡 Quick examples:$(RESET)"
+	@echo "  make start"
+	@echo "  make artisan CMD='migrate'"
+	@echo "  make composer CMD='require laravel/breeze'"
+	@echo "  make npm CMD='run build'"
+	@echo ""
+
+## Start all containers
+start:
+	@echo "$(CYAN)🚀 Starting {{PROJECT_NAME}} containers...$(RESET)"
+	@docker-compose up -d
+	@echo "$(GREEN)✅ {{PROJECT_NAME}} started successfully!$(RESET)"
+	@echo ""
+	@$(MAKE) info
+
+## Stop all containers
+stop:
+	@echo "$(CYAN)⏹️ Stopping {{PROJECT_NAME}} containers...$(RESET)"
+	@docker-compose down
+	@echo "$(GREEN)✅ {{PROJECT_NAME}} stopped successfully!$(RESET)"
+
+## Restart all containers
+restart:
+	@echo "$(CYAN)🔄 Restarting {{PROJECT_NAME}}...$(RESET)"
+	@docker-compose down
+	@docker-compose up -d
+	@echo "$(GREEN)✅ {{PROJECT_NAME}} restarted successfully!$(RESET)"
+
+## Build containers
+build:
+	@echo "$(CYAN)🔨 Building {{PROJECT_NAME}} containers...$(RESET)"
+	@docker-compose build --no-cache
+	@echo "$(GREEN)✅ {{PROJECT_NAME}} built successfully!$(RESET)"
+
+## Show container logs
+logs:
+	@echo "$(CYAN)📋 {{PROJECT_NAME}} container logs:$(RESET)"
+	@docker-compose logs -f
+
+## Open shell in app container
+shell:
+	@echo "$(CYAN)🐚 Opening shell in {{PROJECT_NAME}} app container...$(RESET)"
+	@docker-compose exec app /bin/sh
+
+## Run artisan commands
+artisan:
+	@if [ -z "$(CMD)" ]; then \
+		echo "$(YELLOW)Usage: make artisan CMD='command'$(RESET)"; \
+		echo "$(YELLOW)Example: make artisan CMD='migrate'$(RESET)"; \
+	else \
+		echo "$(CYAN)🎯 Running artisan $(CMD)...$(RESET)"; \
+		docker-compose exec app php artisan $(CMD); \
+	fi
+
+## Run composer commands
+composer:
+	@if [ -z "$(CMD)" ]; then \
+		echo "$(YELLOW)Usage: make composer CMD='command'$(RESET)"; \
+		echo "$(YELLOW)Example: make composer CMD='install'$(RESET)"; \
+	else \
+		echo "$(CYAN)📦 Running composer $(CMD)...$(RESET)"; \
+		docker-compose exec app composer $(CMD); \
+	fi
+
+## Run npm commands
+npm:
+	@if [ -z "$(CMD)" ]; then \
+		echo "$(YELLOW)Usage: make npm CMD='command'$(RESET)"; \
+		echo "$(YELLOW)Example: make npm CMD='install'$(RESET)"; \
+	else \
+		echo "$(CYAN)📦 Running npm $(CMD)...$(RESET)"; \
+		docker-compose exec vite npm $(CMD); \
+	fi
+
+## Show container status
+status:
+	@echo "$(CYAN)📊 {{PROJECT_NAME}} Container Status:$(RESET)"
+	@echo ""
+	@docker-compose ps
+
+## Clean up containers and volumes
+clean:
+	@echo "$(CYAN)🧹 Cleaning up {{PROJECT_NAME}}...$(RESET)"
+	@docker-compose down -v --remove-orphans
+	@docker-compose down --rmi all --volumes --remove-orphans 2>/dev/null || true
+	@echo "$(GREEN)✅ {{PROJECT_NAME}} cleaned up!$(RESET)"
+
+## Install Laravel dependencies
+install:
+	@echo "$(CYAN)📦 Installing dependencies for {{PROJECT_NAME}}...$(RESET)"
+	@docker-compose exec app composer install
+	@docker-compose exec vite npm install
+	@echo "$(GREEN)✅ Dependencies installed!$(RESET)"
+
+## Setup fresh Laravel installation
+setup:
+	@echo "$(CYAN)⚙️ Setting up {{PROJECT_NAME}}...$(RESET)"
+	@docker-compose exec app php artisan key:generate
+	@docker-compose exec app php artisan storage:link
+	@docker-compose exec app php artisan migrate
+	@echo "$(GREEN)✅ {{PROJECT_NAME}} setup complete!$(RESET)"
+
+## Show project information
+info:
+	@echo "$(BOLD)📋 {{PROJECT_NAME}} - Project Information$(RESET)"
+	@echo ""
+	@echo "$(GREEN)🔗 Service URLs:$(RESET)"
+	@echo -e "{{SERVICES_INFO}}" | sed 's/^/  /'
+	@echo ""
+	@echo "$(GREEN)📁 Project Structure:$(RESET)"
+	@echo "  📂 src/          - Laravel application"
+	@echo "  📂 docker/       - Docker configurations"
+	@echo "  📄 .env          - Environment variables"
+	@echo "  📄 Makefile      - This command interface"
+	@echo ""
+	@echo "$(GREEN)🚀 Quick Commands:$(RESET)"
+	@echo "  make shell       - Access container"
+	@echo "  make logs        - View logs"
+	@echo "  make artisan     - Laravel commands"
+	@echo ""
