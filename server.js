@@ -9,6 +9,9 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const PROJECTS_DB_FILE = path.join(__dirname, 'projects.json'); //
 
+// Define PROJECTS_DIR
+const PROJECTS_DIR = path.join(process.cwd(), 'projects'); // Use process.cwd() for flexibility
+
 // Simple in-memory storage
 let projects = [];
 let nextPort = 8000;
@@ -33,11 +36,24 @@ const runCommand = (command, cwd = process.cwd()) => {
         log(`Running: ${command}`);
         exec(command, { cwd }, (error, stdout, stderr) => {
             if (error) {
-                log(`Error: ${error.message}`);
-                reject(error);
+                log(`Error executing command: ${command}`);
+                log(`STDOUT:\n${stdout}`); // Log stdout even on error
+                log(`STDERR:\n${stderr}`); // Log stderr on error
+                // Resolve, but include error details for the caller to handle
+                resolve({
+                    success: false,
+                    stdout: stdout.trim(), // Trim whitespace
+                    stderr: stderr.trim(), // Trim whitespace
+                    errorMessage: error.message,
+                    exitCode: error.code || 1 // Default to 1 if no exit code
+                });
             } else {
                 log(`Success: ${command}`);
-                resolve({ stdout, stderr });
+                resolve({
+                    success: true,
+                    stdout: stdout.trim(),
+                    stderr: stderr.trim()
+                });
             }
         });
     });
@@ -478,25 +494,44 @@ app.put('/api/projects/:name/env', async (req, res) => {
 });
 
 // New API to run Artisan commands
+// API to run Artisan commands
 app.post('/api/projects/:name/artisan', async (req, res) => {
+    const { name } = req.params;
+    const { command } = req.body;
+    const projectPath = path.join(PROJECTS_DIR, name, 'src'); // Laravel app is in src/
+
+    if (!command) {
+        return res.status(400).json({ error: 'Artisan command is required.' });
+    }
+
     try {
-        const { command } = req.body; // e.g., 'migrate', 'cache:clear', 'optimize'
-        const project = projects.find(p => p.name === req.params.name);
+        const dockerComposeCommand = `docker compose -f "${path.join(PROJECTS_DIR, name, 'docker-compose.yml')}" exec -T app php artisan ${command}`;
+        const result = await runCommand(dockerComposeCommand, projectPath); // Use the updated runCommand
 
-        if (!project) {
-            return res.status(404).json({ error: 'Project not found' });
+        if (!result.success) {
+            // If the command failed (e.g., Artisan command error), return 400 with details
+            return res.status(400).json({
+                error: `Artisan command failed with exit code ${result.exitCode}`,
+                output: result.stdout,
+                stderr: result.stderr,
+                command: `php artisan ${command}`
+            });
+        } else {
+            // If successful, return 200 with output
+            res.json({
+                message: 'Artisan command executed successfully!',
+                output: result.stdout,
+                stderr: result.stderr,
+                command: `php artisan ${command}`
+            });
         }
-        if (!command) {
-            return res.status(400).json({ error: 'Artisan command is required' });
-        }
-
-        log(`Running Artisan command 'php artisan ${command}' for ${project.name}`);
-        // Ensure the command runs inside the 'app' container
-        const result = await runCommand(`docker-compose exec -T app php artisan ${command}`, project.path);
-        res.json({ output: result.stdout, error: result.stderr });
     } catch (error) {
-        log(`Error running Artisan command: ${error.message}`);
-        res.status(500).json({ error: error.message, output: error.stdout, stderr: error.stderr });
+        log(`Unhandled error running artisan command for ${name}: ${error.message}`);
+        // This catch block is for true server-side errors (e.g., docker not found, bad path)
+        res.status(500).json({
+            error: `Server error executing Artisan command: ${error.message}`,
+            details: error.message
+        });
     }
 });
 
@@ -513,6 +548,18 @@ app.post('/api/projects/:name/command', async (req, res) => {
         res.json({ output: result.stdout });
     } catch (error) {
         res.status(500).json({ error: error.message });
+    }
+});
+
+// New API to get list of common Artisan commands
+app.get('/api/artisan-commands', async (req, res) => {
+    try {
+        const commandsPath = path.join(__dirname, 'artisan-commands.json');
+        const data = await fs.readFile(commandsPath, 'utf8');
+        res.json(JSON.parse(data));
+    } catch (error) {
+        log(`Error loading artisan commands: ${error.message}`);
+        res.status(500).json({ error: 'Failed to load artisan commands' });
     }
 });
 
@@ -566,6 +613,14 @@ async function startServer() {
     // Create necessary directories
     await fs.mkdir('stubs', { recursive: true });
     await fs.mkdir('projects', { recursive: true });
+
+    // Check for artisan-commands.json
+    try {
+        await fs.access(path.join(__dirname, 'artisan-commands.json'));
+        log('✅ artisan-commands.json found.');
+    } catch (error) {
+        log('❌ Missing artisan-commands.json. Please create it or it will not be available in the UI.');
+    }
 
     await loadProjects(); // Load existing projects at startup
 

@@ -415,3 +415,161 @@ small {
         grid-template-columns: 1fr;
     }
 }
+
+
+/* Add these new styles to your style.css */
+
+/* General form element styles (ensure these are present and correct) */
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #cbd5e1; /* slate-300 */
+    font-size: 0.95rem;
+}
+
+.text-input,
+.select-input,
+.code-editor {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid #334155; /* slate-700 */
+    border-radius: 0.5rem;
+    background-color: #1e293b; /* slate-800 */
+    color: #f1f5f9; /* slate-50 */
+    font-size: 1rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace; /* Monospace for code/commands */
+}
+
+.text-input:focus,
+.select-input:focus,
+.code-editor:focus {
+    border-color: #3b82f6; /* blue-500 */
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+    outline: none;
+}
+
+/* Artisan output area (ensure these are present and correct) */
+.code-output {
+    background-color: #1a202c; /* darker background for code */
+    color: #e2e8f0; /* light text */
+    padding: 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid #334155;
+    font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    white-space: pre-wrap; /* Preserve whitespace and wrap long lines */
+    max-height: 400px; /* Limit height */
+    overflow-y: auto; /* Scroll if content overflows */
+}
+
+.code-output.loading {
+    color: #60a5fa; /* blue-400 for loading */
+    background-color: #1e293b;
+}
+
+.code-output.success-output {
+    border-color: #10b981; /* emerald-500 */
+    box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.3);
+}
+
+.code-output.error-output {
+    border-color: #ef4444; /* red-500 */
+    color: #fca5a5; /* red-300 for error text */
+    box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.3);
+}
+
+.command-note {
+    font-size: 0.8rem;
+    color: #94a3b8; /* slate-400 */
+    margin-top: 0.5rem;
+    padding: 0 0.25rem;
+}
+
+/* New styles for categorized command list */
+.artisan-command-list {
+    margin-top: 1rem;
+    padding: 0 0.5rem; /* Add some horizontal padding */
+    max-height: 300px; /* Limit height for scrollability */
+    overflow-y: auto; /* Enable vertical scrolling */
+    border: 1px solid #334155; /* Add a border */
+    border-radius: 0.5rem;
+    background-color: #1a202c; /* Darker background */
+}
+
+.command-category-section {
+    margin-bottom: 1.5rem;
+    padding-top: 0.5rem;
+}
+
+.command-category-section h3 {
+    font-size: 1.2rem;
+    color: #60a5fa; /* blue-400 */
+    border-bottom: 1px solid #334155;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+    position: sticky; /* Make category headers sticky */
+    top: 0;
+    background-color: #1a202c; /* Match container background */
+    z-index: 10; /* Ensure it stays above command buttons */
+}
+
+.command-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Responsive grid */
+    gap: 0.75rem; /* Space between command buttons */
+    margin-bottom: 1rem;
+}
+
+.command-btn {
+    background-color: #2d3748; /* dark gray */
+    border: 1px solid #4a5568; /* slightly lighter border */
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s, transform 0.1s;
+    color: #e2e8f0; /* light text color */
+    font-family: inherit; /* Use body font */
+}
+
+.command-btn:hover {
+    background-color: #3b4558; /* slightly lighter on hover */
+    border-color: #60a5fa; /* blue-400 border on hover */
+    transform: translateY(-2px); /* Slight lift effect */
+}
+
+.command-btn:active {
+    transform: translateY(0);
+}
+
+.command-name {
+    font-weight: 600;
+    color: #f1f5f9; /* slate-50 */
+    margin-bottom: 0.25rem;
+}
+
+.command-syntax {
+    font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: #a0aec0; /* gray-400 */
+    background-color: #1e293b; /* slate-800 */
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    display: inline-block; /* Ensure padding applies well */
+    margin-bottom: 0.25rem;
+}
+
+.command-btn .command-note {
+    font-size: 0.75rem;
+    color: #94a3b8; /* slate-400 */
+    margin-top: 0.5rem;
+}
+
+.empty-state-small {
+    text-align: center;
+    color: #64748b;
+    padding: 1rem;
+    font-style: italic;
+}
