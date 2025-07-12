@@ -52,6 +52,7 @@ vendor/
 
 # ignore evehintg in the /src directory
 /src/*
+/data/*
 
 # // ignore the file projects.json
 /projects.json

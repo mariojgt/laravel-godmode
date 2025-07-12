@@ -3,219 +3,313 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enhanced Laravel Manager</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Laravel God Mode - Development Environment Manager</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>Enhanced Laravel Manager</h1>
-            <p class="subtitle">Create and manage Laravel projects with real-time monitoring</p>
+    <!-- Main Container -->
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="header-left">
+                    <h1 class="header-title">
+                        <span class="icon">⚡</span>
+                        Laravel God Mode
+                    </h1>
+                    <p class="header-subtitle">Enterprise Laravel Development Manager</p>
+                </div>
+
+                <div class="header-right">
+                    <div class="connection-status" id="connectionStatus">
+                        <div class="connection-indicator" id="connectionIndicator"></div>
+                        <span id="connectionText">Connecting...</span>
+                    </div>
+                </div>
+            </div>
         </header>
 
-        <div class="actions">
-            <button class="btn" onclick="showCreateModal()">
-                Create New Project
+        <!-- Navigation Tabs -->
+        <nav class="nav-tabs">
+            <button class="nav-tab active" data-tab="projects">
+                <span class="tab-icon">📦</span>
+                Projects
             </button>
-            <button class="btn" onclick="refreshProjects()">
-                Refresh
+            <button class="nav-tab" data-tab="create">
+                <span class="tab-icon">➕</span>
+                Create New
             </button>
-            <button class="btn" onclick="manager.discoverExistingProjects()" id="discoverBtn">
-                Discover Projects
+            <button class="nav-tab" data-tab="system">
+                <span class="tab-icon">⚙️</span>
+                System
             </button>
-        </div>
+        </nav>
 
-        <div id="projects-container">
-            <div class="empty-state">
-                <h3>No projects yet</h3>
-                <p>Create your first Laravel project or discover existing ones</p>
-                <button class="btn" onclick="showCreateModal()">Create New Project</button>
-                <button class="btn" onclick="manager.discoverExistingProjects()">Discover Existing</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Create Project Modal -->
-    <div id="createModal" class="modal">
-        <div class="modal-content large">
-            <h2>Create New Laravel Project</h2>
-            <form id="createForm">
-                <div class="form-group">
-                    <label for="projectName">Project Name</label>
-                    <input
-                        type="text"
-                        id="projectName"
-                        name="name"
-                        placeholder="my-awesome-project"
-                        pattern="[a-z0-9-]+"
-                        required
-                    >
-                    <small>Only lowercase letters, numbers, and hyphens</small>
-                </div>
-
-                <div class="form-group">
-                    <label for="phpVersion">PHP Version</label>
-                    <select id="phpVersion" name="phpVersion" class="select-input">
-                        <option value="8.2" selected>PHP 8.2 (Recommended)</option>
-                        <option value="8.3">PHP 8.3 (Latest)</option>
-                        <option value="8.1">PHP 8.1</option>
-                        <option value="8.0">PHP 8.0</option>
-                        <option value="7.4">PHP 7.4 (Legacy)</option>
-                    </select>
-                    <small>Choose the PHP version for your Laravel project</small>
-                </div>
-
-                <div class="form-group">
-                    <label for="nodeVersion">Node.js Version</label>
-                    <select id="nodeVersion" name="nodeVersion" class="select-input">
-                        <option value="18" selected>Node.js 18 LTS (Recommended)</option>
-                        <option value="20">Node.js 20 LTS</option>
-                        <option value="21">Node.js 21 (Latest)</option>
-                        <option value="16">Node.js 16 LTS</option>
-                    </select>
-                    <small>Choose the Node.js version for frontend tooling</small>
-                </div>
-
-                <div class="form-group">
-                    <label>Package Managers</label>
-                    <div class="package-managers-grid">
-                        <label class="service-checkbox">
-                            <input type="checkbox" name="installBun" checked>
-                            <span>Install Bun</span>
-                        </label>
-                        <label class="service-checkbox">
-                            <input type="checkbox" name="installPnpm">
-                            <span>Install pnpm</span>
-                        </label>
-                    </div>
-                    <small>Bun and pnpm are faster alternatives to npm</small>
-                </div>
-
-                <div class="form-group">
-                    <label>Additional Services</label>
-                    <div class="services-grid">
-                        <label class="service-checkbox">
-                            <input type="checkbox" name="services" value="redis" checked>
-                            <span>Redis Cache</span>
-                        </label>
-                        <label class="service-checkbox">
-                            <input type="checkbox" name="services" value="phpmyadmin">
-                            <span>PHPMyAdmin</span>
-                        </label>
-                        <label class="service-checkbox">
-                            <input type="checkbox" name="services" value="mailhog">
-                            <span>Mailhog</span>
-                        </label>
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Projects Tab -->
+            <div class="tab-content active" id="projectsTab">
+                <div class="content-header">
+                    <h2>Your Laravel Projects</h2>
+                    <div class="content-actions">
+                        <button class="btn btn-secondary" id="refreshBtn">
+                            <span class="btn-icon">🔄</span>
+                            Refresh
+                        </button>
+                        <button class="btn btn-secondary" id="discoverBtn">
+                            <span class="btn-icon">🔍</span>
+                            Discover
+                        </button>
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="customPortsToggle" onchange="toggleCustomPorts()">
-                        Customize Ports (Advanced)
-                    </label>
+                <div class="projects-container" id="projectsContainer">
+                    <div class="loading-state">
+                        <div class="spinner"></div>
+                        <p>Loading projects...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Create Tab -->
+            <div class="tab-content" id="createTab">
+                <div class="content-header">
+                    <h2>Create New Laravel Project</h2>
                 </div>
 
-                <div id="customPortsSection" class="custom-ports" style="display: none;">
-                    <div class="ports-grid">
-                        <div>
-                            <label for="appPort">App Port</label>
-                            <input type="number" id="appPort" name="port" min="1000" max="65535" placeholder="8000">
+                <form class="create-form" id="createForm">
+                    <div class="form-grid">
+                        <!-- Project Name -->
+                        <div class="form-group">
+                            <label for="projectName" class="form-label">Project Name</label>
+                            <input
+                                type="text"
+                                id="projectName"
+                                name="name"
+                                class="form-input"
+                                placeholder="my-awesome-project"
+                                pattern="[a-z0-9-]+"
+                                required
+                            >
+                            <p class="form-help">Only lowercase letters, numbers, and hyphens</p>
                         </div>
-                        <div>
-                            <label for="dbPort">MySQL Port</label>
-                            <input type="number" id="dbPort" name="dbPort" min="1000" max="65535" placeholder="3306">
+
+                        <!-- PHP Version -->
+                        <div class="form-group">
+                            <label for="phpVersion" class="form-label">PHP Version</label>
+                            <select id="phpVersion" name="phpVersion" class="form-select">
+                                <option value="8.2" selected>PHP 8.2 (Recommended)</option>
+                                <option value="8.3">PHP 8.3 (Latest)</option>
+                                <option value="8.1">PHP 8.1</option>
+                                <option value="8.0">PHP 8.0</option>
+                                <option value="7.4">PHP 7.4 (Legacy)</option>
+                            </select>
                         </div>
-                        <div>
-                            <label for="redisPort">Redis Port</label>
-                            <input type="number" id="redisPort" name="redisPort" min="1000" max="65535" placeholder="6379">
+
+                        <!-- Node Version -->
+                        <div class="form-group">
+                            <label for="nodeVersion" class="form-label">Node.js Version</label>
+                            <select id="nodeVersion" name="nodeVersion" class="form-select">
+                                <option value="18" selected>Node.js 18 LTS (Recommended)</option>
+                                <option value="20">Node.js 20 LTS</option>
+                                <option value="21">Node.js 21 (Latest)</option>
+                                <option value="16">Node.js 16 LTS</option>
+                            </select>
                         </div>
-                        <div>
-                            <label for="phpmyadminPort">PHPMyAdmin Port</label>
-                            <input type="number" id="phpmyadminPort" name="phpmyadminPort" min="1000" max="65535" placeholder="8080">
+
+                        <!-- Package Managers -->
+                        <div class="form-group full-width">
+                            <label class="form-label">Package Managers</label>
+                            <div class="checkbox-grid">
+                                <label class="checkbox-item">
+                                    <input type="checkbox" name="installBun" checked>
+                                    <span class="checkbox-label">Install Bun</span>
+                                    <span class="checkbox-help">Fast JavaScript runtime</span>
+                                </label>
+                                <label class="checkbox-item">
+                                    <input type="checkbox" name="installPnpm">
+                                    <span class="checkbox-label">Install pnpm</span>
+                                    <span class="checkbox-help">Efficient package manager</span>
+                                </label>
+                            </div>
                         </div>
-                        <div>
-                            <label for="mailhogPort">Mailhog Port</label>
-                            <input type="number" id="mailhogPort" name="mailhogPort" min="1000" max="65535" placeholder="8025">
+
+                        <!-- Services -->
+                        <div class="form-group full-width">
+                            <label class="form-label">Additional Services</label>
+                            <div class="checkbox-grid">
+                                <label class="checkbox-item">
+                                    <input type="checkbox" name="services" value="redis" checked>
+                                    <span class="checkbox-label">Redis Cache</span>
+                                    <span class="checkbox-help">In-memory data structure store</span>
+                                </label>
+                                <label class="checkbox-item">
+                                    <input type="checkbox" name="services" value="phpmyadmin">
+                                    <span class="checkbox-label">PHPMyAdmin</span>
+                                    <span class="checkbox-help">Database administration tool</span>
+                                </label>
+                                <label class="checkbox-item">
+                                    <input type="checkbox" name="services" value="mailhog">
+                                    <span class="checkbox-label">Mailhog</span>
+                                    <span class="checkbox-help">Email testing tool</span>
+                                </label>
+                            </div>
                         </div>
-                        <div>
-                            <label for="vitePort">Vite Port</label>
-                            <input type="number" id="vitePort" name="vitePort" min="1000" max="65535" placeholder="5173">
+
+                        <!-- Custom Ports -->
+                        <div class="form-group full-width">
+                            <label class="checkbox-item">
+                                <input type="checkbox" id="customPortsToggle">
+                                <span class="checkbox-label">Custom Ports (Advanced)</span>
+                                <span class="checkbox-help">Manually specify service ports</span>
+                            </label>
+                        </div>
+
+                        <div class="custom-ports-section" id="customPortsSection" style="display: none;">
+                            <div class="ports-grid">
+                                <div class="form-group">
+                                    <label for="appPort" class="form-label">App Port</label>
+                                    <input type="number" id="appPort" name="port" class="form-input" placeholder="8000" min="1000" max="65535">
+                                </div>
+                                <div class="form-group">
+                                    <label for="dbPort" class="form-label">MySQL Port</label>
+                                    <input type="number" id="dbPort" name="dbPort" class="form-input" placeholder="3306" min="1000" max="65535">
+                                </div>
+                                <div class="form-group">
+                                    <label for="redisPort" class="form-label">Redis Port</label>
+                                    <input type="number" id="redisPort" name="redisPort" class="form-input" placeholder="6379" min="1000" max="65535">
+                                </div>
+                                <div class="form-group">
+                                    <label for="phpmyadminPort" class="form-label">PHPMyAdmin Port</label>
+                                    <input type="number" id="phpmyadminPort" name="phpmyadminPort" class="form-input" placeholder="8080" min="1000" max="65535">
+                                </div>
+                                <div class="form-group">
+                                    <label for="mailhogPort" class="form-label">Mailhog Port</label>
+                                    <input type="number" id="mailhogPort" name="mailhogPort" class="form-input" placeholder="8025" min="1000" max="65535">
+                                </div>
+                                <div class="form-group">
+                                    <label for="vitePort" class="form-label">Vite Port</label>
+                                    <input type="number" id="vitePort" name="vitePort" class="form-input" placeholder="5173" min="1000" max="65535">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">
+                            <span class="btn-icon">🚀</span>
+                            Create Project
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- System Tab -->
+            <div class="tab-content" id="systemTab">
+                <div class="content-header">
+                    <h2>System Information</h2>
+                </div>
+
+                <div class="system-info" id="systemInfo">
+                    <div class="info-card">
+                        <h3>Server Status</h3>
+                        <div class="info-item">
+                            <span class="info-label">Status:</span>
+                            <span class="info-value status-running">Running</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Version:</span>
+                            <span class="info-value">1.0.0</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Projects:</span>
+                            <span class="info-value" id="totalProjects">0</span>
+                        </div>
+                    </div>
+
+                    <div class="info-card">
+                        <h3>Requirements</h3>
+                        <div class="info-item">
+                            <span class="info-label">Node.js:</span>
+                            <span class="info-value">✅ Required</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Docker:</span>
+                            <span class="info-value">✅ Required</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Composer:</span>
+                            <span class="info-value">✅ Required</span>
                         </div>
                     </div>
                 </div>
+            </div>
+        </main>
 
-                <div class="modal-actions">
-                    <button type="button" class="btn" onclick="hideCreateModal()">
-                        Cancel
-                    </button>
-                    <button type="submit" class="btn">
-                        Create Project
-                    </button>
+        <!-- Modals -->
+        <!-- Environment Editor Modal -->
+        <div class="modal" id="envModal">
+            <div class="modal-backdrop"></div>
+            <div class="modal-content large">
+                <div class="modal-header">
+                    <h3>Edit Environment - <span id="envProjectName"></span></h3>
+                    <button class="modal-close" onclick="closeEnvModal()">&times;</button>
                 </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Environment Editor Modal -->
-    <div id="envEditorModal" class="modal">
-        <div class="modal-content large">
-            <h2>Edit .env for <span id="envProjectName"></span></h2>
-            <div class="form-group">
-                <textarea id="envContent" rows="20" class="code-editor"></textarea>
-            </div>
-            <div class="modal-actions">
-                <button type="button" class="btn" onclick="hideEnvEditor()">
-                    Cancel
-                </button>
-                <button type="button" class="btn" id="saveEnvBtn">
-                    Save .env
-                </button>
+                <div class="modal-body">
+                    <textarea id="envContent" class="code-editor" rows="20" placeholder="Loading environment..."></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeEnvModal()">Cancel</button>
+                    <button class="btn btn-primary" id="saveEnvBtn">Save Changes</button>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- Artisan Commander Modal -->
-    <div id="artisanCommanderModal" class="modal">
-        <div class="modal-content large">
-            <h2>Artisan Command for <span id="artisanProjectName"></span></h2>
-            <div class="form-group">
-                <label for="artisanCommandInput">Custom Command:</label>
-                <input type="text" id="artisanCommandInput" placeholder="e.g., migrate --seed" class="text-input">
-                <div id="artisanCommandNote" class="command-note"></div>
-            </div>
+        <!-- Artisan Commander Modal -->
+        <div class="modal" id="artisanModal">
+            <div class="modal-backdrop"></div>
+            <div class="modal-content large">
+                <div class="modal-header">
+                    <h3>Artisan Commander - <span id="artisanProjectName"></span></h3>
+                    <button class="modal-close" onclick="closeArtisanModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="artisanInput" class="form-label">Command</label>
+                        <input type="text" id="artisanInput" class="form-input" placeholder="migrate --seed">
+                    </div>
 
-            <div class="form-group">
-                <label for="artisanCommandSearchInput">Search or Select a Command:</label>
-                <input type="text" id="artisanCommandSearchInput" placeholder="Search commands..." class="text-input">
-            </div>
-            <div id="artisanCommandList" class="artisan-command-list">
-                <p class="empty-state-small">Loading commands...</p>
-            </div>
-            <div class="modal-actions">
-                <button type="button" class="btn" onclick="hideArtisanCommander()">
-                    Close
-                </button>
-                <button type="button" class="btn" id="runArtisanBtn">
-                    Run Artisan Command
-                </button>
-            </div>
-            <div class="form-group">
-                <label>Output:</label>
-                <pre id="artisanOutput" class="code-output"></pre>
+                    <div class="form-group">
+                        <label class="form-label">Common Commands</label>
+                        <div class="commands-grid" id="commandsGrid">
+                            <!-- Commands will be loaded here -->
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Output</label>
+                        <pre id="artisanOutput" class="command-output">Ready to execute commands...</pre>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeArtisanModal()">Close</button>
+                    <button class="btn btn-primary" id="runArtisanBtn">Run Command</button>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- Logs Viewer Modal -->
-    <div id="logsModal" class="modal">
-        <div class="modal-content large">
-            <h2>Container Logs for <span id="logsProjectName"></span></h2>
-            <div class="form-group">
-                <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem;">
-                    <div>
-                        <label for="logsServiceSelect">Service:</label>
-                        <select id="logsServiceSelect" class="select-input" style="width: auto;">
+        <!-- Logs Viewer Modal -->
+        <div class="modal" id="logsModal">
+            <div class="modal-backdrop"></div>
+            <div class="modal-content large">
+                <div class="modal-header">
+                    <h3>Container Logs - <span id="logsProjectName"></span></h3>
+                    <button class="modal-close" onclick="closeLogsModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="logs-controls">
+                        <select id="logsService" class="form-select">
                             <option value="">All Services</option>
                             <option value="app">App</option>
                             <option value="nginx">Nginx</option>
@@ -223,27 +317,31 @@
                             <option value="redis">Redis</option>
                             <option value="vite">Vite</option>
                         </select>
-                    </div>
-                    <div>
-                        <label>
+                        <button class="btn btn-secondary" id="refreshLogsBtn">Refresh</button>
+                        <label class="checkbox-item">
                             <input type="checkbox" id="autoRefreshLogs">
-                            Auto-refresh (3s)
+                            <span class="checkbox-label">Auto-refresh</span>
                         </label>
                     </div>
+                    <pre id="logsContent" class="logs-output">Loading logs...</pre>
                 </div>
-                <pre id="logsContent" class="code-output">Loading logs...</pre>
-            </div>
-            <div class="modal-actions">
-                <button type="button" class="btn" onclick="hideLogsViewer()">
-                    Close
-                </button>
-                <button type="button" class="btn" id="refreshLogsBtn">
-                    Refresh Logs
-                </button>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeLogsModal()">Close</button>
+                </div>
             </div>
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Scripts -->
+    <script src="js/utils/api.js"></script>
+    <script src="js/utils/helpers.js"></script>
+    <script src="js/components/notifications.js"></script>
+    <script src="js/components/modal.js"></script>
+    <script src="js/components/project-card.js"></script>
+    <script src="js/components/terminal.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>

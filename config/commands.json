@@ -1,0 +1,318 @@
+[
+  {
+    "name": "Run Database Migrations",
+    "command": "migrate",
+    "category": "Database",
+    "description": "Run all pending database migrations"
+  },
+  {
+    "name": "Fresh Migration with Seeding",
+    "command": "migrate:fresh --seed",
+    "category": "Database",
+    "description": "Drop all tables and re-run all migrations with seeders"
+  },
+  {
+    "name": "Rollback Migration",
+    "command": "migrate:rollback",
+    "category": "Database",
+    "description": "Rollback the last database migration"
+  },
+  {
+    "name": "Run Database Seeders",
+    "command": "db:seed",
+    "category": "Database",
+    "description": "Run the database seeders"
+  },
+  {
+    "name": "Create Migration",
+    "command": "make:migration",
+    "category": "Generators",
+    "description": "Create a new database migration file",
+    "requiresInput": true,
+    "placeholder": "create_users_table"
+  },
+  {
+    "name": "Create Model",
+    "command": "make:model",
+    "category": "Generators",
+    "description": "Create a new Eloquent model",
+    "requiresInput": true,
+    "placeholder": "User"
+  },
+  {
+    "name": "Create Controller",
+    "command": "make:controller",
+    "category": "Generators",
+    "description": "Create a new controller",
+    "requiresInput": true,
+    "placeholder": "UserController"
+  },
+  {
+    "name": "Create Resource Controller",
+    "command": "make:controller",
+    "category": "Generators",
+    "description": "Create a new resource controller",
+    "requiresInput": true,
+    "placeholder": "UserController --resource"
+  },
+  {
+    "name": "Create Middleware",
+    "command": "make:middleware",
+    "category": "Generators",
+    "description": "Create a new middleware",
+    "requiresInput": true,
+    "placeholder": "EnsureTokenIsValid"
+  },
+  {
+    "name": "Create Request",
+    "command": "make:request",
+    "category": "Generators",
+    "description": "Create a new form request",
+    "requiresInput": true,
+    "placeholder": "StoreUserRequest"
+  },
+  {
+    "name": "Create Seeder",
+    "command": "make:seeder",
+    "category": "Generators",
+    "description": "Create a new database seeder",
+    "requiresInput": true,
+    "placeholder": "UserSeeder"
+  },
+  {
+    "name": "Create Factory",
+    "command": "make:factory",
+    "category": "Generators",
+    "description": "Create a new model factory",
+    "requiresInput": true,
+    "placeholder": "UserFactory"
+  },
+  {
+    "name": "Create Job",
+    "command": "make:job",
+    "category": "Generators",
+    "description": "Create a new job class",
+    "requiresInput": true,
+    "placeholder": "ProcessPodcast"
+  },
+  {
+    "name": "Create Event",
+    "command": "make:event",
+    "category": "Generators",
+    "description": "Create a new event class",
+    "requiresInput": true,
+    "placeholder": "UserRegistered"
+  },
+  {
+    "name": "Create Listener",
+    "command": "make:listener",
+    "category": "Generators",
+    "description": "Create a new event listener",
+    "requiresInput": true,
+    "placeholder": "SendWelcomeEmail"
+  },
+  {
+    "name": "Create Policy",
+    "command": "make:policy",
+    "category": "Generators",
+    "description": "Create a new authorization policy",
+    "requiresInput": true,
+    "placeholder": "UserPolicy"
+  },
+  {
+    "name": "Clear Application Cache",
+    "command": "cache:clear",
+    "category": "Cache & Config",
+    "description": "Flush the application cache"
+  },
+  {
+    "name": "Clear Configuration Cache",
+    "command": "config:clear",
+    "category": "Cache & Config",
+    "description": "Remove the configuration cache file"
+  },
+  {
+    "name": "Cache Configuration",
+    "command": "config:cache",
+    "category": "Cache & Config",
+    "description": "Create a cache file for faster configuration loading"
+  },
+  {
+    "name": "Clear Route Cache",
+    "command": "route:clear",
+    "category": "Cache & Config",
+    "description": "Remove the route cache file"
+  },
+  {
+    "name": "Cache Routes",
+    "command": "route:cache",
+    "category": "Cache & Config",
+    "description": "Create a route cache file for faster route registration"
+  },
+  {
+    "name": "Clear View Cache",
+    "command": "view:clear",
+    "category": "Cache & Config",
+    "description": "Clear all compiled view files"
+  },
+  {
+    "name": "Cache Views",
+    "command": "view:cache",
+    "category": "Cache & Config",
+    "description": "Compile all of the application's Blade templates"
+  },
+  {
+    "name": "Clear Event Cache",
+    "command": "event:clear",
+    "category": "Cache & Config",
+    "description": "Clear all cached events and listeners"
+  },
+  {
+    "name": "Cache Events",
+    "command": "event:cache",
+    "category": "Cache & Config",
+    "description": "Discover and cache the application's events and listeners"
+  },
+  {
+    "name": "Optimize Application",
+    "command": "optimize",
+    "category": "Optimization",
+    "description": "Cache the framework bootstrap files"
+  },
+  {
+    "name": "Clear Optimization",
+    "command": "optimize:clear",
+    "category": "Optimization",
+    "description": "Remove the cached bootstrap files"
+  },
+  {
+    "name": "Generate Application Key",
+    "command": "key:generate",
+    "category": "Security",
+    "description": "Set the application key"
+  },
+  {
+    "name": "Link Storage Directory",
+    "command": "storage:link",
+    "category": "Storage",
+    "description": "Create a symbolic link from public/storage to storage/app/public"
+  },
+  {
+    "name": "List Routes",
+    "command": "route:list",
+    "category": "Routing",
+    "description": "List all registered routes"
+  },
+  {
+    "name": "Run Queue Worker",
+    "command": "queue:work",
+    "category": "Queues",
+    "description": "Start processing jobs on the queue as a daemon"
+  },
+  {
+    "name": "Listen for Queue Jobs",
+    "command": "queue:listen",
+    "category": "Queues",
+    "description": "Listen to a given queue",
+    "longRunning": true
+  },
+  {
+    "name": "Restart Queue Workers",
+    "command": "queue:restart",
+    "category": "Queues",
+    "description": "Restart queue worker daemons after their current job"
+  },
+  {
+    "name": "Clear Failed Jobs",
+    "command": "queue:clear",
+    "category": "Queues",
+    "description": "Delete all of the jobs from the specified queue"
+  },
+  {
+    "name": "List Failed Jobs",
+    "command": "queue:failed",
+    "category": "Queues",
+    "description": "List all of the failed queue jobs"
+  },
+  {
+    "name": "Run Scheduled Commands",
+    "command": "schedule:run",
+    "category": "Scheduling",
+    "description": "Run the scheduled commands"
+  },
+  {
+    "name": "List Scheduled Commands",
+    "command": "schedule:list",
+    "category": "Scheduling",
+    "description": "List the scheduled commands"
+  },
+  {
+    "name": "Serve Application",
+    "command": "serve",
+    "category": "Development",
+    "description": "Serve the application on the PHP development server",
+    "longRunning": true
+  },
+  {
+    "name": "Enter Tinker Session",
+    "command": "tinker",
+    "category": "Development",
+    "description": "Interact with your application",
+    "interactive": true,
+    "note": "Interactive command - may not work well in web interface"
+  },
+  {
+    "name": "Install Breeze",
+    "command": "breeze:install",
+    "category": "Packages",
+    "description": "Install Laravel Breeze authentication scaffolding",
+    "requiresInput": true,
+    "placeholder": "blade"
+  },
+  {
+    "name": "Publish Package Assets",
+    "command": "vendor:publish",
+    "category": "Packages",
+    "description": "Publish any publishable assets from vendor packages",
+    "requiresInput": true,
+    "placeholder": "--provider=VendorPackageServiceProvider"
+  },
+  {
+    "name": "List All Commands",
+    "command": "list",
+    "category": "Utility",
+    "description": "List all available Artisan commands"
+  },
+  {
+    "name": "Show Command Help",
+    "command": "help",
+    "category": "Utility",
+    "description": "Display help for a command",
+    "requiresInput": true,
+    "placeholder": "migrate"
+  },
+  {
+    "name": "Show Application Version",
+    "command": "--version",
+    "category": "Utility",
+    "description": "Display the Laravel framework version"
+  },
+  {
+    "name": "Install Passport",
+    "command": "passport:install",
+    "category": "Packages",
+    "description": "Run the commands necessary to prepare Passport for use"
+  },
+  {
+    "name": "Create Passport Client",
+    "command": "passport:client",
+    "category": "Packages",
+    "description": "Create a client for issuing access tokens"
+  },
+  {
+    "name": "Install Sanctum",
+    "command": "sanctum:prune-expired",
+    "category": "Packages",
+    "description": "Prune tokens expired for more than specified hours"
+  }
+]

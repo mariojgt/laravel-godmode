@@ -5,12 +5,35 @@ server {
     access_log /var/log/nginx/access.log;
     root /var/www/html/public;
 
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "no-referrer-when-downgrade" always;
+
+    # Client settings
     client_max_body_size 100M;
+    client_body_timeout 60s;
+    client_header_timeout 60s;
+
+    # Gzip compression
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_proxied any;
+    gzip_comp_level 6;
+    gzip_types
+        text/plain
+        text/css
+        text/xml
+        text/javascript
+        application/javascript
+        application/xml+rss
+        application/json;
 
     # Handle Laravel routes
     location / {
         try_files $uri $uri/ /index.php?$query_string;
-        gzip_static on;
     }
 
     # Handle PHP files
@@ -22,25 +45,79 @@ server {
         include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
         fastcgi_param PATH_INFO $fastcgi_path_info;
+
+        # Timeout settings
         fastcgi_read_timeout 300;
+        fastcgi_send_timeout 300;
+        fastcgi_connect_timeout 300;
+
+        # Buffer settings
+        fastcgi_buffer_size 32k;
+        fastcgi_buffers 4 32k;
+        fastcgi_busy_buffers_size 64k;
     }
 
-    # Handle static assets
-    location ~* \.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+    # Handle static assets with caching
+    location ~* \.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|webp|avif)$ {
         expires 1y;
         add_header Cache-Control "public, immutable";
+        add_header Vary "Accept-Encoding";
         access_log off;
+
+        # Try files first, then fallback to Laravel
+        try_files $uri $uri/ /index.php?$query_string;
     }
 
-    # Deny access to hidden files
+    # Handle Vite HMR and assets in development
+    location ~ ^/(@@vite|@@id|node_modules|@vite|src)/ {
+        proxy_pass http://app:5173;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    # Handle Vite WebSocket for HMR
+    location /vite-dev-server {
+        proxy_pass http://app:5173;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header Origin $http_origin;
+    }
+
+    # Deny access to hidden files and sensitive directories
     location ~ /\. {
         deny all;
         access_log off;
         log_not_found off;
     }
 
-    # Security headers
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-XSS-Protection "1; mode=block" always;
+    location ~ ^/(\.env|\.git|\.gitignore|\.gitattributes|composer\.(json|lock)|package\.(json|lock)|phpunit\.xml|\.editorconfig)$ {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+
+    # Deny access to vendor and node_modules via web
+    location ~ ^/(vendor|node_modules)/ {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+
+    # Block common attack patterns
+    location ~* (wp-config\.php|wp-admin|wp-login\.php|xmlrpc\.php) {
+        return 404;
+    }
+
+    # Prevent execution of scripts in uploads directory
+    location ~* ^/storage/.*\.(php|pl|py|jsp|asp|sh|cgi)$ {
+        return 403;
+    }
 }
