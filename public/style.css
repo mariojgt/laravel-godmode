@@ -609,3 +609,644 @@ small {
         grid-template-columns: 1fr;
     }
 }
+
+/* Connection indicator */
+.connection-indicator {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    z-index: 2000;
+    transition: all 0.3s;
+}
+
+.connection-indicator.connected {
+    background: #10b981;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+}
+
+.connection-indicator.disconnected {
+    background: #ef4444;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+/* Enhanced project card states */
+.project-card.running {
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+.project-card.starting {
+    border-color: rgba(59, 130, 246, 0.3);
+    background: linear-gradient(45deg, #1e293b, rgba(59, 130, 246, 0.05));
+}
+
+.project-card.stopping {
+    border-color: rgba(245, 158, 11, 0.3);
+    background: linear-gradient(45deg, #1e293b, rgba(245, 158, 11, 0.05));
+}
+
+.project-card.error {
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* Enhanced status indicators */
+.status-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-direction: column;
+}
+
+.status-starting {
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    animation: pulse 1.5s infinite;
+}
+
+.status-stopping {
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    animation: pulse 1.5s infinite;
+}
+
+.status-partial {
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.status-error {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+/* Health indicator */
+.health-indicator {
+    font-size: 1.2rem;
+    cursor: help;
+    transition: transform 0.2s;
+}
+
+.health-indicator:hover {
+    transform: scale(1.2);
+}
+
+/* Container info */
+.container-info {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    margin-top: 0.25rem;
+}
+
+.container-count {
+    background: rgba(100, 116, 139, 0.1);
+    padding: 0.2rem 0.5rem;
+    border-radius: 0.25rem;
+    border: 1px solid rgba(100, 116, 139, 0.2);
+}
+
+/* Discovered project badge */
+.discovered-badge {
+    background: rgba(168, 85, 247, 0.1);
+    color: #a855f7;
+    padding: 0.2rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    border: 1px solid rgba(168, 85, 247, 0.2);
+    margin-left: 0.5rem;
+}
+
+/* Stats container */
+.stats-container {
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    margin: 1rem 0;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.5rem;
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    background: #1e293b;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    font-weight: 600;
+}
+
+.stat-value {
+    font-size: 0.75rem;
+    font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+    color: #60a5fa;
+}
+
+/* Enhanced button states */
+.btn:disabled {
+    background: #64748b;
+    cursor: not-allowed;
+    transform: none;
+    opacity: 0.6;
+}
+
+.btn-warning {
+    background: #f59e0b;
+}
+
+.btn-warning:hover {
+    background: #d97706;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+}
+
+.btn:disabled:hover {
+    transform: none;
+}
+
+/* Enhanced toasts */
+.toast.warning {
+    border-left: 4px solid #f59e0b;
+    background: #1e293b;
+    border: 1px solid #334155;
+}
+
+/* Enhanced grid for larger project cards */
+.projects-grid {
+    grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
+}
+
+/* Logs modal specific styles */
+#logsModal .modal-content {
+    max-height: 90vh;
+}
+
+#logsContent {
+    max-height: 500px;
+    overflow-y: auto;
+    font-size: 0.8rem;
+    line-height: 1.3;
+}
+
+/* Service select in logs modal */
+#logsServiceSelect {
+    min-width: 120px;
+    padding: 0.5rem;
+}
+
+/* Auto-refresh checkbox styling */
+#logsModal label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    margin-bottom: 0;
+}
+
+#logsModal input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+}
+
+/* Enhanced loading states */
+.loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #3b82f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+    .projects-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .connection-indicator {
+        top: 0.5rem;
+        right: 0.5rem;
+        width: 10px;
+        height: 10px;
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .status-container {
+        flex-direction: row;
+        gap: 0.25rem;
+    }
+
+    .health-indicator {
+        font-size: 1rem;
+    }
+}
+
+/* Dark mode improvements */
+body {
+    scrollbar-width: thin;
+    scrollbar-color: #475569 #1e293b;
+}
+
+body::-webkit-scrollbar {
+    width: 8px;
+}
+
+body::-webkit-scrollbar-track {
+    background: #1e293b;
+}
+
+body::-webkit-scrollbar-thumb {
+    background: #475569;
+    border-radius: 4px;
+}
+
+body::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+}
+
+/* Enhanced project card hover effects */
+.project-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.project-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+    transition: left 0.5s;
+}
+
+.project-card:hover::before {
+    left: 100%;
+}
+
+/* Enhanced action button transitions */
+.project-actions .btn {
+    transition: all 0.2s ease;
+}
+
+.project-actions .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.project-actions .btn-danger:hover {
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.project-actions .btn-success:hover {
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.project-actions .btn-warning:hover {
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+/* Enhanced focus states for accessibility */
+.btn:focus,
+input:focus,
+select:focus,
+textarea:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}
+
+/* Enhanced modal animations */
+.modal {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.modal.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-content {
+    transform: scale(0.9) translateY(-20px);
+    transition: transform 0.3s ease;
+}
+
+.modal.active .modal-content {
+    transform: scale(1) translateY(0);
+}
+
+/* Enhanced project card loading state */
+.project-card.loading {
+    position: relative;
+    overflow: hidden;
+}
+
+.project-card.loading::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.1), transparent);
+    animation: loading-shimmer 1.5s infinite;
+}
+
+@keyframes loading-shimmer {
+    0% { left: -100%; }
+    100% { left: 100%; }
+}
+
+/* Enhanced service badges with icons */
+.service-badge::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 0.25rem;
+    background: currentColor;
+}
+
+.version-badge::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 0.25rem;
+    background: currentColor;
+}
+
+.package-manager-badge::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 0.25rem;
+    background: currentColor;
+}
+
+/* Enhanced port links */
+.port-link {
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.port-link:hover {
+    color: #60a5fa;
+    text-shadow: 0 0 8px rgba(96, 165, 250, 0.3);
+}
+
+/* Enhanced empty state */
+.empty-state {
+    background: linear-gradient(135deg, #1e293b, #334155);
+    border-radius: 1rem;
+    border: 1px solid #475569;
+    margin: 2rem 0;
+}
+
+.empty-state h3 {
+    background: linear-gradient(135deg, #60a5fa, #a855f7);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Enhanced logs content */
+#logsContent {
+    background: #0f172a;
+    border: 1px solid #334155;
+    position: relative;
+}
+
+#logsContent::-webkit-scrollbar {
+    width: 8px;
+}
+
+#logsContent::-webkit-scrollbar-track {
+    background: #1e293b;
+}
+
+#logsContent::-webkit-scrollbar-thumb {
+    background: #475569;
+    border-radius: 4px;
+}
+
+/* Enhanced code output states */
+.code-output.loading::before {
+    content: 'Loading...';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #60a5fa;
+    font-weight: 600;
+}
+
+.code-output.success-output {
+    border-left: 4px solid #10b981;
+}
+
+.code-output.error-output {
+    border-left: 4px solid #ef4444;
+}
+
+/* Enhanced artisan command list */
+.artisan-command-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.artisan-command-list::-webkit-scrollbar-track {
+    background: #1e293b;
+}
+
+.artisan-command-list::-webkit-scrollbar-thumb {
+    background: #475569;
+    border-radius: 4px;
+}
+
+/* Command button enhanced states */
+.command-btn {
+    position: relative;
+    overflow: hidden;
+}
+
+.command-btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: rgba(59, 130, 246, 0.1);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.3s ease, height 0.3s ease;
+}
+
+.command-btn:hover::before {
+    width: 200%;
+    height: 200%;
+}
+
+.command-btn:active {
+    transform: scale(0.98);
+}
+
+/* Enhanced form elements */
+.form-group {
+    position: relative;
+}
+
+.text-input:focus,
+.select-input:focus,
+.code-editor:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Enhanced checkbox styling */
+.service-checkbox {
+    position: relative;
+    border: 1px solid transparent;
+    background: linear-gradient(135deg, #1e293b, #334155);
+}
+
+.service-checkbox:hover {
+    border-color: #3b82f6;
+    background: linear-gradient(135deg, #1e293b, rgba(59, 130, 246, 0.1));
+}
+
+.service-checkbox input:checked + span {
+    color: #60a5fa;
+    font-weight: 600;
+}
+
+/* Enhanced toast positioning for mobile */
+@media (max-width: 768px) {
+    .toast {
+        top: 1rem;
+        right: 1rem;
+        left: 1rem;
+        min-width: auto;
+        max-width: none;
+    }
+}
+
+/* Enhanced accessibility features */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+
+    .modal {
+        transition: none;
+    }
+
+    .modal-content {
+        transition: none;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .project-card {
+        border-width: 2px;
+    }
+
+    .btn {
+        border: 2px solid currentColor;
+    }
+
+    .status {
+        border-width: 2px;
+    }
+}
+
+/* Enhanced print styles */
+@media print {
+    .modal,
+    .toast,
+    .connection-indicator {
+        display: none !important;
+    }
+
+    .project-card {
+        break-inside: avoid;
+        border: 1px solid #000;
+        background: #fff;
+        color: #000;
+    }
+
+    .btn {
+        display: none;
+    }
+}
+
+/* Enhanced selection styling */
+::selection {
+    background: rgba(59, 130, 246, 0.3);
+    color: #f1f5f9;
+}
+
+::-moz-selection {
+    background: rgba(59, 130, 246, 0.3);
+    color: #f1f5f9;
+}
+
+/* Enhanced link hover effects */
+a {
+    transition: all 0.2s ease;
+}
+
+a:hover {
+    filter: brightness(1.2);
+}
+
+/* Enhanced code font stack */
+.code-output,
+.code-editor,
+.stat-value,
+.command-syntax {
+    font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+}

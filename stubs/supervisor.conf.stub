@@ -9,7 +9,7 @@ user=root
 [program:laravel-queue]
 process_name=%(program_name)s_%(process_num)02d
 command=php /var/www/html/artisan queue:work --sleep=3 --tries=3 --max-time=3600
-autostart=true
+autostart=false
 autorestart=true
 stopasgroup=true
 killasgroup=true
@@ -21,7 +21,7 @@ stopwaitsecs=3600
 
 [program:laravel-schedule]
 command=bash -c "while [ true ]; do (php /var/www/html/artisan schedule:run --verbose --no-interaction &); sleep 60; done"
-autostart=true
+autostart=false
 autorestart=true
 user=www
 redirect_stderr=true

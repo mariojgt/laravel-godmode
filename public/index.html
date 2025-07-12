@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple Laravel Manager</title>
+    <title>Enhanced Laravel Manager</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>Simple Laravel Manager</h1>
-            <p class="subtitle">Create and manage Laravel projects with ease</p>
+            <h1>Enhanced Laravel Manager</h1>
+            <p class="subtitle">Create and manage Laravel projects with real-time monitoring</p>
         </header>
 
         <div class="actions">
@@ -20,16 +20,22 @@
             <button class="btn" onclick="refreshProjects()">
                 Refresh
             </button>
+            <button class="btn" onclick="manager.discoverExistingProjects()" id="discoverBtn">
+                Discover Projects
+            </button>
         </div>
 
         <div id="projects-container">
             <div class="empty-state">
                 <h3>No projects yet</h3>
-                <p>Create your first Laravel project to get started</p>
+                <p>Create your first Laravel project or discover existing ones</p>
+                <button class="btn" onclick="showCreateModal()">Create New Project</button>
+                <button class="btn" onclick="manager.discoverExistingProjects()">Discover Existing</button>
             </div>
         </div>
     </div>
 
+    <!-- Create Project Modal -->
     <div id="createModal" class="modal">
         <div class="modal-content large">
             <h2>Create New Laravel Project</h2>
@@ -151,6 +157,7 @@
         </div>
     </div>
 
+    <!-- Environment Editor Modal -->
     <div id="envEditorModal" class="modal">
         <div class="modal-content large">
             <h2>Edit .env for <span id="envProjectName"></span></h2>
@@ -168,6 +175,7 @@
         </div>
     </div>
 
+    <!-- Artisan Commander Modal -->
     <div id="artisanCommanderModal" class="modal">
         <div class="modal-content large">
             <h2>Artisan Command for <span id="artisanProjectName"></span></h2>
@@ -195,6 +203,43 @@
             <div class="form-group">
                 <label>Output:</label>
                 <pre id="artisanOutput" class="code-output"></pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logs Viewer Modal -->
+    <div id="logsModal" class="modal">
+        <div class="modal-content large">
+            <h2>Container Logs for <span id="logsProjectName"></span></h2>
+            <div class="form-group">
+                <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem;">
+                    <div>
+                        <label for="logsServiceSelect">Service:</label>
+                        <select id="logsServiceSelect" class="select-input" style="width: auto;">
+                            <option value="">All Services</option>
+                            <option value="app">App</option>
+                            <option value="nginx">Nginx</option>
+                            <option value="db">Database</option>
+                            <option value="redis">Redis</option>
+                            <option value="vite">Vite</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>
+                            <input type="checkbox" id="autoRefreshLogs">
+                            Auto-refresh (3s)
+                        </label>
+                    </div>
+                </div>
+                <pre id="logsContent" class="code-output">Loading logs...</pre>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn" onclick="hideLogsViewer()">
+                    Close
+                </button>
+                <button type="button" class="btn" id="refreshLogsBtn">
+                    Refresh Logs
+                </button>
             </div>
         </div>
     </div>

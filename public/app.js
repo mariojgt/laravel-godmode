@@ -1,18 +1,142 @@
-class LaravelManager {
+class EnhancedLaravelManager {
     constructor() {
         this.projects = [];
         this.artisanCommands = [];
         this.filteredCommands = [];
+        this.ws = null;
+        this.reconnectAttempts = 0;
+        this.maxReconnectAttempts = 5;
+        this.isConnected = false;
         this.init();
     }
 
     init() {
         this.bindEvents();
+        this.initWebSocket();
         this.loadProjects();
         this.loadArtisanCommands();
+    }
 
-        // Auto-refresh every 30 seconds
-        setInterval(() => this.loadProjects(), 30000);
+    // WebSocket connection management
+    initWebSocket() {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}`;
+
+        try {
+            this.ws = new WebSocket(wsUrl);
+
+            this.ws.onopen = () => {
+                this.isConnected = true;
+                this.reconnectAttempts = 0;
+                this.updateConnectionStatus(true);
+                this.showToast('Connected to server', 'success');
+                console.log('WebSocket connected');
+            };
+
+            this.ws.onmessage = (event) => {
+                try {
+                    const message = JSON.parse(event.data);
+                    this.handleWebSocketMessage(message);
+                } catch (error) {
+                    console.error('Error parsing WebSocket message:', error);
+                }
+            };
+
+            this.ws.onclose = () => {
+                this.isConnected = false;
+                this.updateConnectionStatus(false);
+                console.log('WebSocket disconnected');
+
+                if (this.reconnectAttempts < this.maxReconnectAttempts) {
+                    this.reconnectAttempts++;
+                    this.showToast(`Connection lost. Reconnecting... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`, 'warning');
+                    setTimeout(() => this.initWebSocket(), 3000 * this.reconnectAttempts);
+                } else {
+                    this.showToast('Connection lost. Please refresh the page.', 'error');
+                }
+            };
+
+            this.ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                this.updateConnectionStatus(false);
+            };
+
+        } catch (error) {
+            console.error('Error initializing WebSocket:', error);
+            this.updateConnectionStatus(false);
+        }
+    }
+
+    handleWebSocketMessage(message) {
+        switch (message.type) {
+            case 'projects_update':
+                this.projects = message.data;
+                this.renderProjects();
+                break;
+
+            case 'project_created':
+                this.projects.push(message.data);
+                this.renderProjects();
+                this.showToast(`Project "${message.data.name}" created successfully!`, 'success');
+                break;
+
+            case 'project_status_change':
+                this.updateProjectStatus(message.data);
+                break;
+
+            case 'projects_discovered':
+                this.showToast(`Discovered ${message.data.length} existing projects!`, 'info');
+                this.loadProjects(); // Refresh the full list
+                break;
+
+            default:
+                console.log('Unknown WebSocket message type:', message.type);
+        }
+    }
+
+    updateProjectStatus(statusData) {
+        const project = this.projects.find(p => p.name === statusData.name);
+        if (project) {
+            project.status = statusData.status;
+            if (statusData.error) {
+                project.error = statusData.error;
+            }
+            this.renderProjects();
+
+            // Show status change notification
+            const statusMap = {
+                'starting': '🚀 Starting...',
+                'stopping': '⏹️ Stopping...',
+                'running': '✅ Running',
+                'stopped': '🔴 Stopped',
+                'error': '❌ Error'
+            };
+
+            this.showToast(
+                `${project.name}: ${statusMap[statusData.status] || statusData.status}`,
+                statusData.status === 'error' ? 'error' : 'info'
+            );
+        }
+    }
+
+    updateConnectionStatus(connected) {
+        const indicator = document.getElementById('connectionIndicator');
+        if (!indicator) {
+            // Create connection indicator if it doesn't exist
+            this.createConnectionIndicator();
+            return;
+        }
+
+        indicator.className = connected ? 'connection-indicator connected' : 'connection-indicator disconnected';
+        indicator.title = connected ? 'Connected to server' : 'Disconnected from server';
+    }
+
+    createConnectionIndicator() {
+        const indicator = document.createElement('div');
+        indicator.id = 'connectionIndicator';
+        indicator.className = 'connection-indicator disconnected';
+        indicator.title = 'Disconnected from server';
+        document.body.appendChild(indicator);
     }
 
     bindEvents() {
@@ -21,24 +145,33 @@ class LaravelManager {
             this.createProject();
         });
 
-        // Close create modal when clicking outside
+        // Discovery button
+        document.getElementById('discoverBtn').addEventListener('click', () => {
+            this.discoverExistingProjects();
+        });
+
+        // Close modals when clicking outside
         document.getElementById('createModal').addEventListener('click', (e) => {
             if (e.target.id === 'createModal') {
                 this.hideCreateModal();
             }
         });
 
-        // Close env editor modal when clicking outside
         document.getElementById('envEditorModal').addEventListener('click', (e) => {
             if (e.target.id === 'envEditorModal') {
                 this.hideEnvEditor();
             }
         });
 
-        // Close artisan commander modal when clicking outside
         document.getElementById('artisanCommanderModal').addEventListener('click', (e) => {
             if (e.target.id === 'artisanCommanderModal') {
                 this.hideArtisanCommander();
+            }
+        });
+
+        document.getElementById('logsModal').addEventListener('click', (e) => {
+            if (e.target.id === 'logsModal') {
+                this.hideLogsViewer();
             }
         });
 
@@ -69,6 +202,22 @@ class LaravelManager {
                 document.getElementById('artisanCommandInput').focus();
             }
         });
+
+        // Refresh logs button
+        document.getElementById('refreshLogsBtn').addEventListener('click', () => {
+            const projectName = document.getElementById('logsProjectName').textContent;
+            const service = document.getElementById('logsServiceSelect').value;
+            this.loadProjectLogs(projectName, service);
+        });
+
+        // Auto-refresh logs toggle
+        document.getElementById('autoRefreshLogs').addEventListener('change', (e) => {
+            if (e.target.checked) {
+                this.startLogsAutoRefresh();
+            } else {
+                this.stopLogsAutoRefresh();
+            }
+        });
     }
 
     async loadProjects() {
@@ -97,11 +246,31 @@ class LaravelManager {
                 this.renderArtisanCommandList();
             } else {
                 console.error('Failed to load artisan commands:', response.statusText);
-                this.showToast('Failed to load recommended Artisan commands.', 'error');
             }
         } catch (error) {
             console.error('Error loading artisan commands:', error);
-            this.showToast('Error loading recommended Artisan commands.', 'error');
+        }
+    }
+
+    async discoverExistingProjects() {
+        try {
+            this.showToast('Discovering existing projects...', 'info');
+            const response = await fetch('/api/projects/discover', {
+                method: 'POST'
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                if (result.discovered > 0) {
+                    this.showToast(`Discovered ${result.discovered} existing projects!`, 'success');
+                } else {
+                    this.showToast('No new projects discovered', 'info');
+                }
+            } else {
+                throw new Error('Failed to discover projects');
+            }
+        } catch (error) {
+            this.showToast(`Discovery failed: ${error.message}`, 'error');
         }
     }
 
@@ -166,7 +335,9 @@ class LaravelManager {
             container.innerHTML = `
                 <div class="empty-state">
                     <h3>No projects yet</h3>
-                    <p>Create your first Laravel project to get started</p>
+                    <p>Create your first Laravel project or discover existing ones</p>
+                    <button class="btn" onclick="showCreateModal()">Create New Project</button>
+                    <button class="btn" onclick="manager.discoverExistingProjects()">Discover Existing</button>
                 </div>
             `;
             return;
@@ -180,10 +351,10 @@ class LaravelManager {
     }
 
     renderProjectCard(project) {
-        const statusClass = project.status === 'running' ? 'status-running' : 'status-stopped';
-        const actionButton = project.status === 'running'
-            ? `<button class="btn btn-danger btn-sm" onclick="manager.stopProject('${project.name}')">Stop</button>`
-            : `<button class="btn btn-success btn-sm" onclick="manager.startProject('${project.name}')">Start</button>`;
+        const statusClass = this.getStatusClass(project.status);
+        const actionButton = this.getActionButton(project);
+        const healthIndicator = this.getHealthIndicator(project);
+        const statsDisplay = this.getStatsDisplay(project);
 
         const services = project.services || [];
         const servicesBadges = services.map(service => {
@@ -195,13 +366,11 @@ class LaravelManager {
             return `<span class="service-badge">${icons[service] || service}</span>`;
         }).join('');
 
-        // Add version badges
         const versionBadges = `
             <span class="version-badge">PHP ${project.phpVersion || '8.2'}</span>
             <span class="version-badge">Node ${project.nodeVersion || '18'}</span>
         `;
 
-        // Add package manager badges
         let packageManagerBadges = '';
         if (project.installBun) {
             packageManagerBadges += '<span class="package-manager-badge">Bun</span>';
@@ -210,19 +379,36 @@ class LaravelManager {
             packageManagerBadges += '<span class="package-manager-badge">pnpm</span>';
         }
 
+        const containerInfo = project.containers !== undefined ?
+            `<div class="container-info">
+                <span class="container-count">${project.runningContainers || 0}/${project.containers || 0} containers</span>
+            </div>` : '';
+
+        const discoveredBadge = project.discovered ?
+            '<span class="discovered-badge">Discovered</span>' : '';
+
         return `
-            <div class="project-card">
+            <div class="project-card ${project.status}">
                 <div class="project-header">
                     <div>
-                        <div class="project-name">${project.name}</div>
+                        <div class="project-name">
+                            ${project.name}
+                            ${discoveredBadge}
+                        </div>
                         <a href="http://localhost:${project.port}" target="_blank" class="project-url">
                             http://localhost:${project.port}
                         </a>
+                        ${containerInfo}
                     </div>
-                    <div class="status ${statusClass}">
-                        ${project.status}
+                    <div class="status-container">
+                        <div class="status ${statusClass}">
+                            ${project.status}
+                        </div>
+                        ${healthIndicator}
                     </div>
                 </div>
+
+                ${statsDisplay}
 
                 <div class="project-services">
                     ${versionBadges}
@@ -270,6 +456,7 @@ class LaravelManager {
                     <div>Stack: Laravel + Nginx + PHP-FPM + MySQL${services.includes('redis') ? ' + Redis' : ''}</div>
                     <div>PHP ${project.phpVersion || '8.2'} | Node ${project.nodeVersion || '18'}${project.installBun ? ' | Bun' : ''}${project.installPnpm ? ' | pnpm' : ''}</div>
                     <div>Created: ${new Date(project.created).toLocaleDateString()}</div>
+                    ${project.lastChecked ? `<div>Last checked: ${new Date(project.lastChecked).toLocaleTimeString()}</div>` : ''}
                 </div>
 
                 <div class="project-actions">
@@ -288,6 +475,9 @@ class LaravelManager {
                     <button class="btn btn-sm" onclick="manager.showArtisanCommander('${project.name}')">
                         Artisan
                     </button>
+                    <button class="btn btn-sm" onclick="manager.showLogsViewer('${project.name}')">
+                        Logs
+                    </button>
                     <button class="btn btn-danger btn-sm" onclick="manager.deleteProject('${project.name}')">
                         Delete
                     </button>
@@ -296,6 +486,132 @@ class LaravelManager {
         `;
     }
 
+    getStatusClass(status) {
+        const statusMap = {
+            'running': 'status-running',
+            'stopped': 'status-stopped',
+            'starting': 'status-starting',
+            'stopping': 'status-stopping',
+            'partial': 'status-partial',
+            'error': 'status-error'
+        };
+        return statusMap[status] || 'status-unknown';
+    }
+
+    getActionButton(project) {
+        const buttonMap = {
+            'running': `<button class="btn btn-danger btn-sm" onclick="manager.stopProject('${project.name}')">Stop</button>`,
+            'stopped': `<button class="btn btn-success btn-sm" onclick="manager.startProject('${project.name}')">Start</button>`,
+            'starting': `<button class="btn btn-sm" disabled>Starting...</button>`,
+            'stopping': `<button class="btn btn-sm" disabled>Stopping...</button>`,
+            'partial': `<button class="btn btn-warning btn-sm" onclick="manager.restartProject('${project.name}')">Restart</button>`,
+            'error': `<button class="btn btn-danger btn-sm" onclick="manager.startProject('${project.name}')">Retry</button>`
+        };
+        return buttonMap[project.status] || `<button class="btn btn-sm" onclick="manager.startProject('${project.name}')">Start</button>`;
+    }
+
+    getHealthIndicator(project) {
+        if (!project.health || project.status !== 'running') {
+            return '';
+        }
+
+        const healthClass = {
+            'healthy': 'health-good',
+            'degraded': 'health-warning',
+            'unhealthy': 'health-error',
+            'error': 'health-error'
+        }[project.health.overall] || 'health-unknown';
+
+        const healthIcon = {
+            'healthy': '🟢',
+            'degraded': '🟡',
+            'unhealthy': '🔴',
+            'error': '❌'
+        }[project.health.overall] || '❓';
+
+        return `<div class="health-indicator ${healthClass}" title="Health: ${project.health.overall}">${healthIcon}</div>`;
+    }
+
+    getStatsDisplay(project) {
+        if (!project.stats || project.status !== 'running') {
+            return '';
+        }
+
+        return `
+            <div class="stats-container">
+                <div class="stats-grid">
+                    ${project.stats.map(stat => `
+                        <div class="stat-item">
+                            <span class="stat-label">${stat.container}</span>
+                            <span class="stat-value">CPU: ${stat.cpu || 'N/A'}</span>
+                            <span class="stat-value">RAM: ${stat.memoryPercent || 'N/A'}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    // Logs viewer functionality
+    showLogsViewer(projectName) {
+        const logsModal = document.getElementById('logsModal');
+        const logsProjectName = document.getElementById('logsProjectName');
+        const logsContent = document.getElementById('logsContent');
+
+        logsProjectName.textContent = projectName;
+        logsContent.textContent = 'Loading logs...';
+        logsModal.classList.add('active');
+
+        this.loadProjectLogs(projectName);
+    }
+
+    hideLogsViewer() {
+        document.getElementById('logsModal').classList.remove('active');
+        this.stopLogsAutoRefresh();
+    }
+
+    async loadProjectLogs(projectName, service = '', lines = 100) {
+        try {
+            const logsContent = document.getElementById('logsContent');
+            const url = `/api/projects/${projectName}/logs?service=${service}&lines=${lines}`;
+
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (data.success) {
+                logsContent.textContent = data.logs || 'No logs available';
+            } else {
+                logsContent.textContent = `Error loading logs: ${data.error}`;
+            }
+
+            logsContent.scrollTop = logsContent.scrollHeight;
+        } catch (error) {
+            document.getElementById('logsContent').textContent = `Error: ${error.message}`;
+        }
+    }
+
+    startLogsAutoRefresh() {
+        if (this.logsRefreshInterval) {
+            clearInterval(this.logsRefreshInterval);
+        }
+
+        this.logsRefreshInterval = setInterval(() => {
+            const projectName = document.getElementById('logsProjectName').textContent;
+            const service = document.getElementById('logsServiceSelect').value;
+            if (projectName && document.getElementById('logsModal').classList.contains('active')) {
+                this.loadProjectLogs(projectName, service);
+            }
+        }, 3000);
+    }
+
+    stopLogsAutoRefresh() {
+        if (this.logsRefreshInterval) {
+            clearInterval(this.logsRefreshInterval);
+            this.logsRefreshInterval = null;
+        }
+    }
+
+    // Enhanced project operations
     async createProject() {
         const form = document.getElementById('createForm');
         const formData = new FormData(form);
@@ -310,13 +626,11 @@ class LaravelManager {
             return;
         }
 
-        // Get selected services
         const services = [];
         formData.getAll('services').forEach(service => {
             services.push(service);
         });
 
-        // Get custom ports if specified
         const customPorts = {};
         if (document.getElementById('customPortsToggle').checked) {
             const portFields = ['port', 'dbPort', 'redisPort', 'phpmyadminPort', 'mailhogPort', 'vitePort'];
@@ -348,11 +662,9 @@ class LaravelManager {
             });
 
             if (response.ok) {
-                const result = await response.json();
-                this.showToast(`Project "${name}" created successfully!`, 'success');
                 this.hideCreateModal();
                 form.reset();
-                this.loadProjects();
+                // The WebSocket will handle the success notification
             } else {
                 const error = await response.json();
                 throw new Error(error.error);
@@ -364,39 +676,40 @@ class LaravelManager {
 
     async startProject(name) {
         try {
-            this.showToast(`Starting ${name}...`, 'info');
-
             const response = await fetch(`/api/projects/${name}/start`, {
                 method: 'POST'
             });
 
-            if (response.ok) {
-                this.showToast(`${name} started successfully!`, 'success');
-                this.loadProjects();
-            } else {
+            if (!response.ok) {
                 throw new Error('Failed to start project');
             }
+            // WebSocket will handle the status updates
         } catch (error) {
-            this.showToast(`Failed to start ${name}`, 'error');
+            this.showToast(`Failed to start ${name}: ${error.message}`, 'error');
         }
     }
 
     async stopProject(name) {
         try {
-            this.showToast(`Stopping ${name}...`, 'info');
-
             const response = await fetch(`/api/projects/${name}/stop`, {
                 method: 'POST'
             });
 
-            if (response.ok) {
-                this.showToast(`${name} stopped successfully!`, 'success');
-                this.loadProjects();
-            } else {
+            if (!response.ok) {
                 throw new Error('Failed to stop project');
             }
+            // WebSocket will handle the status updates
         } catch (error) {
-            this.showToast(`Failed to stop ${name}`, 'error');
+            this.showToast(`Failed to stop ${name}: ${error.message}`, 'error');
+        }
+    }
+
+    async restartProject(name) {
+        try {
+            await this.stopProject(name);
+            setTimeout(() => this.startProject(name), 3000);
+        } catch (error) {
+            this.showToast(`Failed to restart ${name}: ${error.message}`, 'error');
         }
     }
 
@@ -419,10 +732,11 @@ class LaravelManager {
                 throw new Error('Failed to delete project');
             }
         } catch (error) {
-            this.showToast(`Failed to delete ${name}`, 'error');
+            this.showToast(`Failed to delete ${name}: ${error.message}`, 'error');
         }
     }
 
+    // Keep all existing modal and utility methods...
     showCreateModal() {
         document.getElementById('createModal').classList.add('active');
         document.getElementById('projectName').focus();
@@ -586,7 +900,7 @@ class LaravelManager {
             if (toast.parentNode) {
                 toast.remove();
             }
-        }, 3000);
+        }, 5000);
 
         toast.addEventListener('click', () => toast.remove());
     }
@@ -627,7 +941,15 @@ function hideArtisanCommander() {
     window.manager.hideArtisanCommander();
 }
 
+function showLogsViewer(projectName) {
+    window.manager.showLogsViewer(projectName);
+}
+
+function hideLogsViewer() {
+    window.manager.hideLogsViewer();
+}
+
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    window.manager = new LaravelManager();
+    window.manager = new EnhancedLaravelManager();
 });
