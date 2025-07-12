@@ -601,14 +601,16 @@ body {
 /* Code Components */
 .code-editor {
   font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', Consolas, 'Courier New', monospace;
-  background-color: hsl(var(--muted));
+/* Now make looks like shadcn/ui */
   border: 1px solid hsl(var(--border));
   border-radius: var(--radius);
   padding: var(--space-3);
   font-size: 0.875rem;
   line-height: 1.5;
-  resize: vertical;
-  min-height: 200px;
+  height: 300px;
+  overflow-y: auto;
+  width: 100%;
+  background: linear-gradient(135deg, hsl(220 13% 18%) 0%, hsl(220 13% 20%) 100%);
 }
 
 .command-output,
