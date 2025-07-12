@@ -200,3 +200,8 @@ uninstall-global:
 	@echo "$(CYAN)🗑️ Uninstalling globally...$(RESET)"
 	@npm uninstall -g simple-laravel-manager
 	@echo "$(GREEN)✅ Uninstalled globally$(RESET)"
+
+reset:
+	@echo "$(CYAN)🧹 Clearing Docker cache...$(RESET)"
+	@docker system prune -a --volumes -f
+	@echo "$(GREEN)✅ Docker cache cleared$(RESET)"
