@@ -1,0 +1,87 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - PHP_VERSION=8.2
+        - NODE_VERSION=8.2
+        - INSTALL_BUN=false
+        - INSTALL_PNPM=false
+    container_name: lartio_app
+    volumes:
+      - ./src:/var/www/html
+    working_dir: /var/www/html
+    depends_on:
+      - db
+      - redis
+    networks:
+      - lartio_network
+    restart: unless-stopped
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - PHP_VERSION=8.2
+      - NODE_VERSION=8.2
+    ports:
+      - "5174:5173"
+
+  nginx:
+    image: nginx:alpine
+    container_name: lartio_nginx
+    ports:
+      - "8001:80"
+    volumes:
+      - ./src:/var/www/html
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - app
+    networks:
+      - lartio_network
+    restart: unless-stopped
+
+  db:
+    image: mysql:8.0
+    container_name: lartio_db
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: lartio
+      MYSQL_USER: laravel
+      MYSQL_PASSWORD: password
+    ports:
+      - "9001:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql.cnf:/etc/mysql/conf.d/custom.cnf
+    networks:
+      - lartio_network
+    restart: unless-stopped
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+
+  redis:
+    image: redis:alpine
+    container_name: lartio_redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - lartio_network
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+
+
+
+
+
+volumes:
+  mysql_data:
+    driver: local
+
+  redis_data:
+    driver: local
+
+networks:
+  lartio_network:
+    driver: bridge

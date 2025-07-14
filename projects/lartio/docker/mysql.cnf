@@ -1,0 +1,51 @@
+[mysqld]
+# General Settings
+default_authentication_plugin = mysql_native_password
+character_set_server = utf8mb4
+collation_server = utf8mb4_unicode_ci
+default_time_zone = '+00:00'
+
+# Performance Settings
+innodb_buffer_pool_size = 128M
+innodb_log_file_size = 64M
+innodb_flush_log_at_trx_commit = 2
+innodb_flush_method = O_DIRECT
+
+# Connection Settings
+max_connections = 100
+max_connect_errors = 999999
+wait_timeout = 28800
+interactive_timeout = 28800
+
+# Query Cache (disabled in MySQL 8.0+)
+# query_cache_type = 1
+# query_cache_size = 32M
+
+# Binary Logging
+log_bin = mysql-bin
+binlog_format = ROW
+expire_logs_days = 7
+
+# Slow Query Log
+slow_query_log = 1
+slow_query_log_file = /var/log/mysql/slow.log
+long_query_time = 2
+
+# Error Log
+log_error = /var/log/mysql/error.log
+
+# General Log (disabled for performance)
+general_log = 0
+
+# SQL Mode
+sql_mode = STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO
+
+# Table Settings
+innodb_file_per_table = 1
+innodb_open_files = 400
+
+[mysql]
+default_character_set = utf8mb4
+
+[client]
+default_character_set = utf8mb4

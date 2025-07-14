@@ -1,0 +1,360 @@
+# lartio - Laravel Project Makefile
+.PHONY: help start stop restart build logs shell artisan composer npm bun pnpm status clean info install setup dev prod
+
+# Colors for output
+GREEN = \033[32m
+CYAN = \033[36m
+YELLOW = \033[33m
+RED = \033[31m
+RESET = \033[0m
+BOLD = \033[1m
+
+# Default target
+.DEFAULT_GOAL := help
+
+## Help - Show available commands
+help:
+	@echo "$(BOLD)🚀 lartio - Laravel Project Manager$(RESET)"
+	@echo ""
+	@echo "$(GREEN)Available commands:$(RESET)"
+	@echo ""
+	@echo "$(CYAN)  make start$(RESET)      - Start all containers"
+	@echo "$(CYAN)  make stop$(RESET)       - Stop all containers"
+	@echo "$(CYAN)  make restart$(RESET)    - Restart all containers"
+	@echo "$(CYAN)  make build$(RESET)      - Build containers"
+	@echo "$(CYAN)  make logs$(RESET)       - Show container logs"
+	@echo "$(CYAN)  make shell$(RESET)      - Open shell in app container"
+	@echo "$(CYAN)  make artisan$(RESET)    - Run artisan commands (e.g., make artisan CMD='migrate')"
+	@echo "$(CYAN)  make composer$(RESET)   - Run composer commands (e.g., make composer CMD='install')"
+	@echo "$(CYAN)  make npm$(RESET)        - Run npm commands (e.g., make npm CMD='install')"
+	@if [ "false" = "true" ]; then \
+		echo "$(CYAN)  make bun$(RESET)        - Run bun commands (e.g., make bun CMD='install')"; \
+	fi
+	@if [ "false" = "true" ]; then \
+		echo "$(CYAN)  make pnpm$(RESET)       - Run pnpm commands (e.g., make pnpm CMD='install')"; \
+	fi
+	@echo "$(CYAN)  make dev$(RESET)        - Start development environment"
+	@echo "$(CYAN)  make prod$(RESET)       - Start production environment"
+	@echo "$(CYAN)  make status$(RESET)     - Show container status"
+	@echo "$(CYAN)  make clean$(RESET)      - Clean up containers and volumes"
+	@echo "$(CYAN)  make install$(RESET)    - Install dependencies"
+	@echo "$(CYAN)  make setup$(RESET)      - Setup fresh Laravel installation"
+	@echo "$(CYAN)  make info$(RESET)       - Show project information"
+	@echo ""
+	@echo "$(YELLOW)💡 Quick examples:$(RESET)"
+	@echo "  make start"
+	@echo "  make artisan CMD='migrate'"
+	@echo "  make composer CMD='require laravel/breeze'"
+	@echo "  make npm CMD='run build'"
+	@if [ "false" = "true" ]; then \
+		echo "  make bun CMD='run build'"; \
+	fi
+	@echo ""
+
+## Start all containers
+start:
+	@echo "$(CYAN)🚀 Starting lartio containers...$(RESET)"
+	@docker-compose up -d
+	@echo "$(GREEN)✅ lartio started successfully!$(RESET)"
+	@echo ""
+	@$(MAKE) info
+
+## Stop all containers
+stop:
+	@echo "$(CYAN)⏹️ Stopping lartio containers...$(RESET)"
+	@docker-compose down
+	@echo "$(GREEN)✅ lartio stopped successfully!$(RESET)"
+
+## Restart all containers
+restart:
+	@echo "$(CYAN)🔄 Restarting lartio...$(RESET)"
+	@docker-compose down
+	@docker-compose up -d
+	@echo "$(GREEN)✅ lartio restarted successfully!$(RESET)"
+
+## Build containers
+build:
+	@echo "$(CYAN)🔨 Building lartio containers...$(RESET)"
+	@docker-compose build --no-cache
+	@echo "$(GREEN)✅ lartio built successfully!$(RESET)"
+
+## Show container logs
+logs:
+	@echo "$(CYAN)📋 lartio container logs:$(RESET)"
+	@docker-compose logs -f --tail=100
+
+## Open shell in app container
+shell:
+	@echo "$(CYAN)🐚 Opening shell in lartio app container...$(RESET)"
+	@docker-compose exec app /bin/bash
+
+## Run artisan commands
+artisan:
+	@if [ -z "$(CMD)" ]; then \
+		echo "$(YELLOW)Usage: make artisan CMD='command'$(RESET)"; \
+		echo "$(YELLOW)Example: make artisan CMD='migrate'$(RESET)"; \
+	else \
+		echo "$(CYAN)🎯 Running artisan $(CMD)...$(RESET)"; \
+		docker-compose exec app php artisan $(CMD); \
+	fi
+
+## Run composer commands
+composer:
+	@if [ -z "$(CMD)" ]; then \
+		echo "$(YELLOW)Usage: make composer CMD='command'$(RESET)"; \
+		echo "$(YELLOW)Example: make composer CMD='install'$(RESET)"; \
+	else \
+		echo "$(CYAN)📦 Running composer $(CMD)...$(RESET)"; \
+		docker-compose exec app composer $(CMD); \
+	fi
+
+## Run npm commands
+npm:
+	@if [ -z "$(CMD)" ]; then \
+		echo "$(YELLOW)Usage: make npm CMD='command'$(RESET)"; \
+		echo "$(YELLOW)Example: make npm CMD='install'$(RESET)"; \
+	else \
+		echo "$(CYAN)📦 Running npm $(CMD)...$(RESET)"; \
+		docker-compose exec app npm $(CMD); \
+	fi
+
+## Run bun commands (if installed)
+bun:
+	@if [ "false" != "true" ]; then \
+		echo "$(RED)❌ Bun is not installed in this project$(RESET)"; \
+		exit 1; \
+	fi
+	@if [ -z "$(CMD)" ]; then \
+		echo "$(YELLOW)Usage: make bun CMD='command'$(RESET)"; \
+		echo "$(YELLOW)Example: make bun CMD='install'$(RESET)"; \
+	else \
+		echo "$(CYAN)🟡 Running bun $(CMD)...$(RESET)"; \
+		docker-compose exec app bun $(CMD); \
+	fi
+
+## Run pnpm commands (if installed)
+pnpm:
+	@if [ "false" != "true" ]; then \
+		echo "$(RED)❌ pnpm is not installed in this project$(RESET)"; \
+		exit 1; \
+	fi
+	@if [ -z "$(CMD)" ]; then \
+		echo "$(YELLOW)Usage: make pnpm CMD='command'$(RESET)"; \
+		echo "$(YELLOW)Example: make pnpm CMD='install'$(RESET)"; \
+	else \
+		echo "$(CYAN)🧶 Running pnpm $(CMD)...$(RESET)"; \
+		docker-compose exec app pnpm $(CMD); \
+	fi
+
+## Start development environment
+dev:
+	@echo "$(CYAN)🔧 Starting lartio in development mode...$(RESET)"
+	@docker-compose up -d
+	@echo "$(CYAN)🎯 Running initial setup...$(RESET)"
+	@docker-compose exec app php artisan migrate --force
+	@docker-compose exec app php artisan storage:link
+	@if [ "false" = "true" ]; then \
+		echo "$(CYAN)🟡 Installing frontend dependencies with Bun...$(RESET)"; \
+		docker-compose exec app bun install; \
+	elif [ "false" = "true" ]; then \
+		echo "$(CYAN)🧶 Installing frontend dependencies with pnpm...$(RESET)"; \
+		docker-compose exec app pnpm install; \
+	else \
+		echo "$(CYAN)📦 Installing frontend dependencies with npm...$(RESET)"; \
+		docker-compose exec app npm install; \
+	fi
+	@echo "$(GREEN)✅ Development environment ready!$(RESET)"
+	@$(MAKE) info
+
+## Start production environment
+prod:
+	@echo "$(CYAN)🚀 Starting lartio in production mode...$(RESET)"
+	@docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+	@echo "$(CYAN)🎯 Running production setup...$(RESET)"
+	@docker-compose exec app php artisan config:cache
+	@docker-compose exec app php artisan route:cache
+	@docker-compose exec app php artisan view:cache
+	@docker-compose exec app php artisan migrate --force
+	@if [ "false" = "true" ]; then \
+		docker-compose exec app bun run build; \
+	elif [ "false" = "true" ]; then \
+		docker-compose exec app pnpm run build; \
+	else \
+		docker-compose exec app npm run build; \
+	fi
+	@echo "$(GREEN)✅ Production environment ready!$(RESET)"
+
+## Show container status
+status:
+	@echo "$(CYAN)📊 lartio Container Status:$(RESET)"
+	@echo ""
+	@docker-compose ps
+	@echo ""
+	@echo "$(CYAN)💾 Container Resource Usage:$(RESET)"
+	@docker stats --no-stream --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}" $(docker-compose ps -q) 2>/dev/null || echo "No running containers"
+
+## Clean up containers and volumes
+clean:
+	@echo "$(CYAN)🧹 Cleaning up lartio...$(RESET)"
+	@docker-compose down -v --remove-orphans
+	@docker-compose down --rmi all --volumes --remove-orphans 2>/dev/null || true
+	@echo "$(GREEN)✅ lartio cleaned up!$(RESET)"
+
+## Install Laravel dependencies
+install:
+	@echo "$(CYAN)📦 Installing dependencies for lartio...$(RESET)"
+	@docker-compose exec app composer install --optimize-autoloader
+	@if [ "false" = "true" ]; then \
+		echo "$(CYAN)🟡 Installing frontend dependencies with Bun...$(RESET)"; \
+		docker-compose exec app bun install; \
+	elif [ "false" = "true" ]; then \
+		echo "$(CYAN)🧶 Installing frontend dependencies with pnpm...$(RESET)"; \
+		docker-compose exec app pnpm install; \
+	else \
+		echo "$(CYAN)📦 Installing frontend dependencies with npm...$(RESET)"; \
+		docker-compose exec app npm install; \
+	fi
+	@echo "$(GREEN)✅ Dependencies installed!$(RESET)"
+
+## Setup fresh Laravel installation
+setup:
+	@echo "$(CYAN)⚙️ Setting up lartio...$(RESET)"
+	@docker-compose exec app php artisan key:generate --force
+	@docker-compose exec app php artisan storage:link
+	@docker-compose exec app php artisan migrate:fresh --seed --force
+	@docker-compose exec app php artisan optimize:clear
+	@echo "$(GREEN)✅ lartio setup complete!$(RESET)"
+
+## Show project information
+info:
+	@echo "$(BOLD)📋 lartio - Project Information$(RESET)"
+	@echo ""
+	@echo "$(GREEN)🔗 Service URLs:$(RESET)"
+	@echo -e "🌐 Application: http://localhost:8001\n🗄️ Database: localhost:9001\n⚡ Vite Dev: http://localhost:5174\n🔴 Redis: localhost:6380" | sed 's/^/  /'
+	@echo ""
+	@echo "$(GREEN)📁 Project Structure:$(RESET)"
+	@echo "  📂 src/          - Laravel application"
+	@echo "  📂 docker/       - Docker configurations"
+	@echo "  📄 .env          - Environment variables"
+	@echo "  📄 Makefile      - This command interface"
+	@echo ""
+	@echo "$(GREEN)🛠️ Package Managers Available:$(RESET)"
+	@echo "  📦 npm           - Node Package Manager"
+	@if [ "false" = "true" ]; then \
+		echo "  🟡 bun           - Fast JavaScript runtime & package manager"; \
+	fi
+	@if [ "false" = "true" ]; then \
+		echo "  🧶 pnpm          - Fast, disk space efficient package manager"; \
+	fi
+	@echo ""
+	@echo "$(GREEN)🔧 Development Tools:$(RESET)"
+	@echo "  make shell       - Access container shell"
+	@echo "  make logs        - View container logs"
+	@echo "  make artisan     - Run Laravel Artisan commands"
+	@echo "  make status      - Check container health"
+	@if [ "true" = "true" ]; then \
+		echo "  🔴 Redis         - Available for caching and sessions"; \
+	fi
+	@if [ "false" = "true" ]; then \
+		echo "  🗄️ PHPMyAdmin    - Database management interface"; \
+	fi
+	@if [ "false" = "true" ]; then \
+		echo "  📧 Mailhog       - Email testing and debugging"; \
+	fi
+	@echo ""
+
+## Advanced Commands
+
+## Run database migrations
+migrate:
+	@echo "$(CYAN)🗃️ Running database migrations...$(RESET)"
+	@docker-compose exec app php artisan migrate --force
+	@echo "$(GREEN)✅ Migrations completed!$(RESET)"
+
+## Seed the database
+seed:
+	@echo "$(CYAN)🌱 Seeding database...$(RESET)"
+	@docker-compose exec app php artisan db:seed --force
+	@echo "$(GREEN)✅ Database seeded!$(RESET)"
+
+## Fresh migration with seeding
+fresh:
+	@echo "$(CYAN)🔄 Fresh migration with seeding...$(RESET)"
+	@docker-compose exec app php artisan migrate:fresh --seed --force
+	@echo "$(GREEN)✅ Fresh database setup completed!$(RESET)"
+
+## Clear all caches
+clear-cache:
+	@echo "$(CYAN)🧹 Clearing all caches...$(RESET)"
+	@docker-compose exec app php artisan optimize:clear
+	@docker-compose exec app php artisan config:clear
+	@docker-compose exec app php artisan cache:clear
+	@docker-compose exec app php artisan route:clear
+	@docker-compose exec app php artisan view:clear
+	@echo "$(GREEN)✅ All caches cleared!$(RESET)"
+
+## Optimize for production
+optimize:
+	@echo "$(CYAN)⚡ Optimizing for production...$(RESET)"
+	@docker-compose exec app php artisan config:cache
+	@docker-compose exec app php artisan route:cache
+	@docker-compose exec app php artisan view:cache
+	@docker-compose exec app php artisan optimize
+	@echo "$(GREEN)✅ Production optimization completed!$(RESET)"
+
+## Run tests
+test:
+	@echo "$(CYAN)🧪 Running tests...$(RESET)"
+	@docker-compose exec app php artisan test
+	@echo "$(GREEN)✅ Tests completed!$(RESET)"
+
+## Generate IDE helper files
+ide-helper:
+	@echo "$(CYAN)💡 Generating IDE helper files...$(RESET)"
+	@docker-compose exec app php artisan ide-helper:generate
+	@docker-compose exec app php artisan ide-helper:models
+	@docker-compose exec app php artisan ide-helper:meta
+	@echo "$(GREEN)✅ IDE helper files generated!$(RESET)"
+
+## Update dependencies
+update:
+	@echo "$(CYAN)📦 Updating dependencies...$(RESET)"
+	@docker-compose exec app composer update
+	@if [ "false" = "true" ]; then \
+		docker-compose exec app bun update; \
+	elif [ "false" = "true" ]; then \
+		docker-compose exec app pnpm update; \
+	else \
+		docker-compose exec app npm update; \
+	fi
+	@echo "$(GREEN)✅ Dependencies updated!$(RESET)"
+
+## Backup database
+backup-db:
+	@echo "$(CYAN)💾 Creating database backup...$(RESET)"
+	@docker-compose exec db mysqldump -u laravel -ppassword lartio > backup-$(shell date +%Y%m%d-%H%M%S).sql
+	@echo "$(GREEN)✅ Database backup created!$(RESET)"
+
+## Monitor logs in real-time
+monitor:
+	@echo "$(CYAN)👀 Monitoring lartio logs (Ctrl+C to stop)...$(RESET)"
+	@docker-compose logs -f
+
+## Show detailed container information
+inspect:
+	@echo "$(CYAN)🔍 Container inspection for lartio:$(RESET)"
+	@echo ""
+	@docker-compose exec app php --version
+	@docker-compose exec app composer --version
+	@if [ "false" = "true" ]; then \
+		echo "Bun version:"; \
+		docker-compose exec app bun --version; \
+	fi
+	@if [ "false" = "true" ]; then \
+		echo "pnpm version:"; \
+		docker-compose exec app pnpm --version; \
+	fi
+	@echo "Node version:"
+	@docker-compose exec app node --version
+	@echo "NPM version:"
+	@docker-compose exec app npm --version
