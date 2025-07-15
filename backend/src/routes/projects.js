@@ -193,7 +193,7 @@ router.put('/:id', async (req, res) => {
     projects[projectIndex] = { ...project, ...req.body, updatedAt: new Date().toISOString() };
 
     // If regenerateDocker flag is set and ports changed, regenerate Docker configs
-    if (req.body.regenerateDocker && req.body.ports) {
+    // if (req.body.regenerateDocker && req.body.ports) {
       try {
         console.log(`🔄 Regenerating Docker configuration for project: ${project.name}`);
 
@@ -213,7 +213,7 @@ router.put('/:id', async (req, res) => {
         // Return error instead of continuing - this is important for port changes
         return res.status(500).json({ error: 'Failed to regenerate Docker configuration: ' + error.message });
       }
-    }
+    // }
 
     await saveProjects(projects);
 

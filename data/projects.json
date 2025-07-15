@@ -19,19 +19,19 @@
         "vite": 5173
       }
     },
-    "status": "stopped",
+    "status": "error",
     "createdAt": "2025-07-15T21:00:17.988Z",
     "ports": {
-      "app": 7001,
+      "app": 7003,
       "vite": 5173,
       "db": 3306,
       "redis": 6379,
-      "phpmyadmin": 8080,
+      "phpmyadmin": 7005,
       "mailhog": 8025
     },
     "path": "/Users/mariotarosso/Documents/laravel-godmode/projects/mario",
     "regenerateDocker": true,
-    "updatedAt": "2025-07-15T21:02:20.428Z",
-    "progress": "Checking Docker setup..."
+    "updatedAt": "2025-07-15T21:08:02.873Z",
+    "progress": "Start failed: Command failed: docker-compose build --no-cache && docker-compose up -d\nno configuration file provided: not found\n"
   }
 ]
