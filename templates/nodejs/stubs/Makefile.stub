@@ -1,0 +1,307 @@
+# {{PROJECT_NAME}} - Node.js Project Makefile
+.PHONY: help start stop restart build logs shell npm yarn bun pnpm status clean info install setup dev prod
+
+# Colors for output
+GREEN = \033[32m
+CYAN = \033[36m
+YELLOW = \033[33m
+RED = \033[31m
+RESET = \033[0m
+BOLD = \033[1m
+
+# Default target
+.DEFAULT_GOAL := help
+
+## Help - Show available commands
+help:
+	@echo "$(BOLD)🚀 {{PROJECT_NAME}} - Node.js Project Manager$(RESET)"
+	@echo ""
+	@echo "$(GREEN)Available commands:$(RESET)"
+	@echo ""
+	@echo "$(CYAN)  make start$(RESET)      - Start all containers"
+	@echo "$(CYAN)  make stop$(RESET)       - Stop all containers"
+	@echo "$(CYAN)  make restart$(RESET)    - Restart all containers"
+	@echo "$(CYAN)  make build$(RESET)      - Build containers"
+	@echo "$(CYAN)  make logs$(RESET)       - Show container logs"
+	@echo "$(CYAN)  make shell$(RESET)      - Open shell in app container"
+	@echo "$(CYAN)  make npm$(RESET)        - Run npm commands (e.g., make npm CMD='install')"
+	@if [ "{{HAS_BUN}}" = "true" ]; then \
+		echo "$(CYAN)  make bun$(RESET)        - Run bun commands (e.g., make bun CMD='install')"; \
+	fi
+	@if [ "{{HAS_PNPM}}" = "true" ]; then \
+		echo "$(CYAN)  make pnpm$(RESET)       - Run pnpm commands (e.g., make pnpm CMD='install')"; \
+	fi
+	@echo "$(CYAN)  make yarn$(RESET)       - Run yarn commands (e.g., make yarn CMD='install')"
+	@echo "$(CYAN)  make dev$(RESET)        - Start development environment"
+	@echo "$(CYAN)  make prod$(RESET)       - Start production environment"
+	@echo "$(CYAN)  make status$(RESET)     - Show container status"
+	@echo "$(CYAN)  make clean$(RESET)      - Clean up containers and volumes"
+	@echo "$(CYAN)  make install$(RESET)    - Install dependencies"
+	@echo "$(CYAN)  make setup$(RESET)      - Setup fresh Node.js installation"
+	@echo "$(CYAN)  make info$(RESET)       - Show project information"
+	@echo ""
+	@echo "$(YELLOW)💡 Quick examples:$(RESET)"
+	@echo "  make start"
+	@echo "  make npm CMD='run build'"
+	@echo "  make npm CMD='test'"
+	@if [ "{{HAS_BUN}}" = "true" ]; then \
+		echo "  make bun CMD='run build'"; \
+	fi
+	@echo ""
+
+## Start all containers
+start:
+	@echo "$(CYAN)🚀 Starting {{PROJECT_NAME}} containers...$(RESET)"
+	@docker-compose up -d
+	@echo "$(GREEN)✅ {{PROJECT_NAME}} started successfully!$(RESET)"
+	@echo ""
+	@$(MAKE) info
+
+## Stop all containers
+stop:
+	@echo "$(CYAN)⏹️ Stopping {{PROJECT_NAME}} containers...$(RESET)"
+	@docker-compose down
+	@echo "$(GREEN)✅ {{PROJECT_NAME}} stopped successfully!$(RESET)"
+
+## Restart all containers
+restart:
+	@echo "$(CYAN)🔄 Restarting {{PROJECT_NAME}}...$(RESET)"
+	@docker-compose down
+	@docker-compose up -d
+	@echo "$(GREEN)✅ {{PROJECT_NAME}} restarted successfully!$(RESET)"
+
+## Build containers
+build:
+	@echo "$(CYAN)🔨 Building {{PROJECT_NAME}} containers...$(RESET)"
+	@docker-compose build --no-cache
+	@echo "$(GREEN)✅ {{PROJECT_NAME}} built successfully!$(RESET)"
+
+## Show container logs
+logs:
+	@echo "$(CYAN)📋 {{PROJECT_NAME}} container logs:$(RESET)"
+	@docker-compose logs -f --tail=100
+
+## Open shell in app container
+shell:
+	@echo "$(CYAN)🐚 Opening shell in {{PROJECT_NAME}} app container...$(RESET)"
+	@docker-compose exec app /bin/sh
+
+## Run npm commands
+npm:
+	@if [ -z "$(CMD)" ]; then \
+		echo "$(YELLOW)Usage: make npm CMD='command'$(RESET)"; \
+		echo "$(YELLOW)Example: make npm CMD='install'$(RESET)"; \
+	else \
+		echo "$(CYAN)📦 Running npm $(CMD)...$(RESET)"; \
+		docker-compose exec app npm $(CMD); \
+	fi
+
+## Run yarn commands
+yarn:
+	@if [ -z "$(CMD)" ]; then \
+		echo "$(YELLOW)Usage: make yarn CMD='command'$(RESET)"; \
+		echo "$(YELLOW)Example: make yarn CMD='install'$(RESET)"; \
+	else \
+		echo "$(CYAN)🧶 Running yarn $(CMD)...$(RESET)"; \
+		docker-compose exec app yarn $(CMD); \
+	fi
+
+## Run bun commands (if installed)
+bun:
+	@if [ "{{HAS_BUN}}" != "true" ]; then \
+		echo "$(RED)❌ Bun is not installed in this project$(RESET)"; \
+		exit 1; \
+	fi
+	@if [ -z "$(CMD)" ]; then \
+		echo "$(YELLOW)Usage: make bun CMD='command'$(RESET)"; \
+		echo "$(YELLOW)Example: make bun CMD='install'$(RESET)"; \
+	else \
+		echo "$(CYAN)🟡 Running bun $(CMD)...$(RESET)"; \
+		docker-compose exec app bun $(CMD); \
+	fi
+
+## Run pnpm commands (if installed)
+pnpm:
+	@if [ "{{HAS_PNPM}}" != "true" ]; then \
+		echo "$(RED)❌ pnpm is not installed in this project$(RESET)"; \
+		exit 1; \
+	fi
+	@if [ -z "$(CMD)" ]; then \
+		echo "$(YELLOW)Usage: make pnpm CMD='command'$(RESET)"; \
+		echo "$(YELLOW)Example: make pnpm CMD='install'$(RESET)"; \
+	else \
+		echo "$(CYAN)🧶 Running pnpm $(CMD)...$(RESET)"; \
+		docker-compose exec app pnpm $(CMD); \
+	fi
+
+## Start development environment
+dev:
+	@echo "$(CYAN)🔧 Starting {{PROJECT_NAME}} in development mode...$(RESET)"
+	@docker-compose up -d
+	@echo "$(CYAN)📦 Installing dependencies...$(RESET)"
+	@if [ "{{HAS_BUN}}" = "true" ]; then \
+		echo "$(CYAN)🟡 Installing dependencies with Bun...$(RESET)"; \
+		docker-compose exec app bun install; \
+	elif [ "{{HAS_PNPM}}" = "true" ]; then \
+		echo "$(CYAN)🧶 Installing dependencies with pnpm...$(RESET)"; \
+		docker-compose exec app pnpm install; \
+	else \
+		echo "$(CYAN)📦 Installing dependencies with npm...$(RESET)"; \
+		docker-compose exec app npm install; \
+	fi
+	@echo "$(GREEN)✅ Development environment ready!$(RESET)"
+	@$(MAKE) info
+
+## Start production environment
+prod:
+	@echo "$(CYAN)🚀 Starting {{PROJECT_NAME}} in production mode...$(RESET)"
+	@docker-compose -f docker-compose.yml up -d
+	@echo "$(CYAN)🎯 Running production setup...$(RESET)"
+	@if [ "{{HAS_BUN}}" = "true" ]; then \
+		docker-compose exec app bun install --production; \
+		docker-compose exec app bun run build; \
+	elif [ "{{HAS_PNPM}}" = "true" ]; then \
+		docker-compose exec app pnpm install --production; \
+		docker-compose exec app pnpm run build; \
+	else \
+		docker-compose exec app npm ci --production; \
+		docker-compose exec app npm run build; \
+	fi
+	@echo "$(GREEN)✅ Production environment ready!$(RESET)"
+
+## Show container status
+status:
+	@echo "$(CYAN)📊 {{PROJECT_NAME}} Container Status:$(RESET)"
+	@echo ""
+	@docker-compose ps
+	@echo ""
+	@echo "$(CYAN)💾 Container Resource Usage:$(RESET)"
+	@docker stats --no-stream --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}" $(docker-compose ps -q) 2>/dev/null || echo "No running containers"
+
+## Clean up containers and volumes
+clean:
+	@echo "$(CYAN)🧹 Cleaning up {{PROJECT_NAME}}...$(RESET)"
+	@docker-compose down -v --remove-orphans
+	@docker-compose down --rmi all --volumes --remove-orphans 2>/dev/null || true
+	@echo "$(GREEN)✅ {{PROJECT_NAME}} cleaned up!$(RESET)"
+
+## Install Node.js dependencies
+install:
+	@echo "$(CYAN)📦 Installing dependencies for {{PROJECT_NAME}}...$(RESET)"
+	@if [ "{{HAS_BUN}}" = "true" ]; then \
+		echo "$(CYAN)🟡 Installing dependencies with Bun...$(RESET)"; \
+		docker-compose exec app bun install; \
+	elif [ "{{HAS_PNPM}}" = "true" ]; then \
+		echo "$(CYAN)🧶 Installing dependencies with pnpm...$(RESET)"; \
+		docker-compose exec app pnpm install; \
+	else \
+		echo "$(CYAN)📦 Installing dependencies with npm...$(RESET)"; \
+		docker-compose exec app npm install; \
+	fi
+	@echo "$(GREEN)✅ Dependencies installed!$(RESET)"
+
+## Setup fresh Node.js installation
+setup:
+	@echo "$(CYAN)⚙️ Setting up {{PROJECT_NAME}}...$(RESET)"
+	@$(MAKE) install
+	@echo "$(GREEN)✅ {{PROJECT_NAME}} setup complete!$(RESET)"
+
+## Show project information
+info:
+	@echo "$(BOLD)📋 {{PROJECT_NAME}} - Project Information$(RESET)"
+	@echo ""
+	@echo "$(GREEN)🔗 Service URLs:$(RESET)"
+	@echo -e "{{SERVICES_INFO}}" | sed 's/^/  /'
+	@echo ""
+	@echo "$(GREEN)📁 Project Structure:$(RESET)"
+	@echo "  📂 src/          - Node.js application"
+	@echo "  📂 docker/       - Docker configurations"
+	@echo "  📄 .env          - Environment variables"
+	@echo "  📄 package.json  - Node.js dependencies"
+	@echo "  📄 Makefile      - This command interface"
+	@echo ""
+	@echo "$(GREEN)🛠️ Package Managers Available:$(RESET)"
+	@echo "  📦 npm           - Node Package Manager"
+	@echo "  🧶 yarn          - Yarn Package Manager"
+	@if [ "{{HAS_BUN}}" = "true" ]; then \
+		echo "  🟡 bun           - Fast JavaScript runtime & package manager"; \
+	fi
+	@if [ "{{HAS_PNPM}}" = "true" ]; then \
+		echo "  🧶 pnpm          - Fast, disk space efficient package manager"; \
+	fi
+	@echo ""
+	@echo "$(GREEN)🔧 Development Tools:$(RESET)"
+	@echo "  make shell       - Access container shell"
+	@echo "  make logs        - View container logs"
+	@echo "  make npm         - Run npm commands"
+	@echo "  make status      - Check container health"
+	@if [ "{{HAS_REDIS}}" = "true" ]; then \
+		echo "  🔴 Redis         - Available for caching and sessions"; \
+	fi
+	@if [ "{{HAS_PHPMYADMIN}}" = "true" ]; then \
+		echo "  🗄️ PHPMyAdmin    - Database management interface"; \
+	fi
+	@if [ "{{HAS_MAILHOG}}" = "true" ]; then \
+		echo "  📧 Mailhog       - Email testing and debugging"; \
+	fi
+	@echo ""
+
+## Run tests
+test:
+	@echo "$(CYAN)🧪 Running tests...$(RESET)"
+	@docker-compose exec app npm test
+	@echo "$(GREEN)✅ Tests completed!$(RESET)"
+
+## Lint code
+lint:
+	@echo "$(CYAN)🔍 Linting code...$(RESET)"
+	@docker-compose exec app npm run lint
+	@echo "$(GREEN)✅ Linting completed!$(RESET)"
+
+## Format code
+format:
+	@echo "$(CYAN)💅 Formatting code...$(RESET)"
+	@docker-compose exec app npm run format
+	@echo "$(GREEN)✅ Code formatted!$(RESET)"
+
+## Update dependencies
+update:
+	@echo "$(CYAN)📦 Updating dependencies...$(RESET)"
+	@if [ "{{HAS_BUN}}" = "true" ]; then \
+		docker-compose exec app bun update; \
+	elif [ "{{HAS_PNPM}}" = "true" ]; then \
+		docker-compose exec app pnpm update; \
+	else \
+		docker-compose exec app npm update; \
+	fi
+	@echo "$(GREEN)✅ Dependencies updated!$(RESET)"
+
+## Backup project
+backup:
+	@echo "$(CYAN)💾 Creating project backup...$(RESET)"
+	@tar -czf backup-$(shell date +%Y%m%d-%H%M%S).tar.gz src/ docker/ .env Makefile docker-compose.yml
+	@echo "$(GREEN)✅ Project backup created!$(RESET)"
+
+## Monitor logs in real-time
+monitor:
+	@echo "$(CYAN)👀 Monitoring {{PROJECT_NAME}} logs (Ctrl+C to stop)...$(RESET)"
+	@docker-compose logs -f
+
+## Show detailed container information
+inspect:
+	@echo "$(CYAN)🔍 Container inspection for {{PROJECT_NAME}}:$(RESET)"
+	@echo ""
+	@echo "Node.js version:"
+	@docker-compose exec app node --version
+	@echo "NPM version:"
+	@docker-compose exec app npm --version
+	@if [ "{{HAS_BUN}}" = "true" ]; then \
+		echo "Bun version:"; \
+		docker-compose exec app bun --version; \
+	fi
+	@if [ "{{HAS_PNPM}}" = "true" ]; then \
+		echo "pnpm version:"; \
+		docker-compose exec app pnpm --version; \
+	fi
+	@echo "Yarn version:"
+	@docker-compose exec app yarn --version 2>/dev/null || echo "Yarn not installed"

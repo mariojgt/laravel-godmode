@@ -1,0 +1,19 @@
+{
+  "name": "app-manager-frontend",
+  "version": "1.0.0",
+  "description": "Full-stack Application Manager Frontend",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "build": "echo 'Frontend build completed'"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

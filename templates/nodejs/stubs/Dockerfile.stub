@@ -1,0 +1,77 @@
+FROM node:{{NODE_VERSION}}-alpine
+
+# Install system dependencies
+RUN apk add --no-cache \
+    git \
+    curl \
+    bash \
+    mysql-client \
+    python3 \
+    make \
+    g++
+
+# Install Bun (if enabled)
+RUN if [ "{{INSTALL_BUN}}" = "true" ]; then \
+        npm install -g bun; \
+    fi
+
+# Install pnpm (if enabled)
+RUN if [ "{{INSTALL_PNPM}}" = "true" ]; then \
+        npm install -g pnpm; \
+    fi
+
+# Install common Node.js development tools
+RUN npm install -g \
+    nodemon \
+    pm2 \
+    typescript \
+    ts-node \
+    @types/node
+
+# Create application user (handle existing GID gracefully)
+RUN if ! getent group 1000 >/dev/null 2>&1; then \
+        addgroup -g 1000 app; \
+    else \
+        addgroup app; \
+    fi && \
+    if ! getent passwd 1000 >/dev/null 2>&1; then \
+        adduser -u 1000 -G app -s /bin/sh -D app; \
+    else \
+        adduser -G app -s /bin/sh -D app; \
+    fi
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files first for better caching
+COPY src/package*.json ./
+
+# Install dependencies based on available package managers
+RUN if [ "{{INSTALL_BUN}}" = "true" ] && [ -f "bun.lockb" ]; then \
+        bun install; \
+    elif [ "{{INSTALL_PNPM}}" = "true" ] && [ -f "pnpm-lock.yaml" ]; then \
+        pnpm install; \
+    elif [ -f "yarn.lock" ]; then \
+        npm install -g yarn && yarn install; \
+    else \
+        npm install; \
+    fi
+
+# Copy application files
+COPY src/ ./
+
+# Set permissions for app user
+RUN chown -R app:app /app
+
+# Switch to application user
+USER app
+
+# Expose port
+EXPOSE 3000 5173
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:3000/health || exit 1
+
+# Start command
+CMD ["npm", "run", "dev"]

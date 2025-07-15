@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laravel God Mode</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@300;400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <div class="logo-icon">🚀</div>
+                    <h1>Laravel God Mode</h1>
+                </div>
+                <nav class="nav">
+                    <button class="nav-btn active" data-view="dashboard">Dashboard</button>
+                    <button class="nav-btn" data-view="templates">Templates</button>
+                    <button class="nav-btn" data-view="settings">Settings</button>
+                </nav>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main">
+            <!-- Dashboard View -->
+            <div id="dashboard-view" class="view active">
+                <div class="view-header">
+                    <h2>Project Dashboard</h2>
+                    <button class="btn btn-primary" id="create-project-btn">
+                        <span class="btn-icon">+</span>
+                        Create Project
+                    </button>
+                </div>
+
+                <div class="projects-grid" id="projects-grid">
+                    <!-- Projects will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Templates View -->
+            <div id="templates-view" class="view">
+                <div class="view-header">
+                    <h2>Available Templates</h2>
+                </div>
+
+                <div class="templates-grid" id="templates-grid">
+                    <!-- Templates will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Settings View -->
+            <div id="settings-view" class="view">
+                <div class="view-header">
+                    <h2>Settings</h2>
+                </div>
+
+                <div class="settings-content">
+                    <div class="setting-group">
+                        <h3>General</h3>
+                        <div class="setting-item">
+                            <label>Auto-start projects</label>
+                            <input type="checkbox" id="auto-start">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Modals -->
+        <div id="create-project-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Create New Project</h3>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="create-project-form">
+                        <div class="form-group">
+                            <label for="project-name">Project Name</label>
+                            <input type="text" id="project-name" name="name" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="project-template">Template</label>
+                            <select id="project-template" name="template" required>
+                                <option value="">Select a template</option>
+                            </select>
+                        </div>
+
+                        <div id="template-config" class="template-config">
+                            <!-- Template-specific configuration will appear here -->
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-secondary" data-action="cancel">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Create Project</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Terminal Modal -->
+        <div id="terminal-modal" class="modal">
+            <div class="modal-content modal-large">
+                <div class="modal-header">
+                    <h3>Terminal - <span id="terminal-project-name"></span></h3>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div id="terminal-container" class="terminal-container">
+                        <!-- Terminal will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="loading-overlay">
+            <div class="loading-spinner"></div>
+            <p>Loading...</p>
+        </div>
+
+        <!-- Toast Notifications -->
+        <div id="toast-container" class="toast-container"></div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        // Configuration - Set backend port from environment
+        window.BACKEND_PORT = '5001'; // This should match BACKEND_PORT in .env
+    </script>
+    <script src="js/utils/api.js"></script>
+    <script src="js/utils/websocket.js"></script>
+    <script src="js/utils/toast.js"></script>
+    <script src="js/components/modal.js"></script>
+    <script src="js/components/project-card.js"></script>
+    <script src="js/components/template-card.js"></script>
+    <script src="js/views/dashboard.js"></script>
+    <script src="js/views/templates.js"></script>
+    <script src="js/views/settings.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

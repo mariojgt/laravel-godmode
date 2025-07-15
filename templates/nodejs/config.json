@@ -1,0 +1,165 @@
+{
+  "name": "Node.js",
+  "description": "JavaScript runtime with Express.js framework for building APIs and web applications",
+  "icon": "⬢",
+  "type": "nodejs",
+  "category": "Backend Runtime",
+
+  "versions": {
+    "node": {
+      "default": "18",
+      "options": ["21", "20", "18", "16"],
+      "labels": {
+        "21": "Node.js 21 (Latest)",
+        "20": "Node.js 20 LTS",
+        "18": "Node.js 18 LTS (Recommended)",
+        "16": "Node.js 16 LTS"
+      }
+    }
+  },
+
+  "packageManagers": {
+    "npm": {
+      "required": true,
+      "description": "Node package manager"
+    },
+    "bun": {
+      "required": false,
+      "default": true,
+      "description": "Fast JavaScript runtime & package manager"
+    },
+    "pnpm": {
+      "required": false,
+      "default": false,
+      "description": "Fast, disk space efficient package manager"
+    },
+    "yarn": {
+      "required": false,
+      "default": false,
+      "description": "Yarn package manager"
+    }
+  },
+
+  "services": {
+    "mysql": {
+      "required": true,
+      "description": "MySQL database server",
+      "defaultPort": 3306,
+      "icon": "🗄️"
+    },
+    "redis": {
+      "required": false,
+      "default": true,
+      "description": "In-memory data structure store",
+      "defaultPort": 6379,
+      "icon": "🔴"
+    },
+    "phpmyadmin": {
+      "required": false,
+      "default": false,
+      "description": "Database administration tool",
+      "defaultPort": 8080,
+      "icon": "🔧",
+      "depends": ["mysql"]
+    },
+    "mailhog": {
+      "required": false,
+      "default": false,
+      "description": "Email testing tool",
+      "defaultPort": 8025,
+      "icon": "📧"
+    }
+  },
+
+  "ports": {
+    "app": {
+      "default": 3000,
+      "description": "Main application port"
+    },
+    "dev": {
+      "default": 5173,
+      "description": "Development server"
+    }
+  },
+
+  "commands": {
+    "install": "npm init -y",
+    "setup": [
+      "npm install express cors helmet morgan dotenv mysql2 redis",
+      "npm install -D nodemon jest eslint prettier"
+    ],
+    "dev": "npm run dev",
+    "build": "npm run build"
+  },
+
+  "stubs": [
+    "docker-compose.yml.stub",
+    "Dockerfile.stub",
+    "mysql.cnf.stub",
+    ".env.stub",
+    "package.json.stub",
+    "index.js.stub",
+    "Makefile.stub"
+  ],
+
+  "environment": {
+    "NODE_ENV": "development",
+    "PORT": "3000",
+    "DB_HOST": "db",
+    "DB_PORT": "3306",
+    "DB_NAME": "{{PROJECT_NAME}}",
+    "DB_USER": "nodejs",
+    "DB_PASSWORD": "password"
+  },
+
+  "commonCommands": [
+    {
+      "name": "start",
+      "command": "npm start",
+      "description": "Start the application",
+      "category": "Development"
+    },
+    {
+      "name": "dev",
+      "command": "npm run dev",
+      "description": "Start development server",
+      "category": "Development"
+    },
+    {
+      "name": "test",
+      "command": "npm test",
+      "description": "Run tests",
+      "category": "Testing"
+    },
+    {
+      "name": "lint",
+      "command": "npm run lint",
+      "description": "Lint code",
+      "category": "Code Quality"
+    },
+    {
+      "name": "build",
+      "command": "npm run build",
+      "description": "Build for production",
+      "category": "Build"
+    },
+    {
+      "name": "install",
+      "command": "npm install",
+      "description": "Install dependencies",
+      "category": "Dependencies"
+    },
+    {
+      "name": "update",
+      "command": "npm update",
+      "description": "Update dependencies",
+      "category": "Dependencies"
+    },
+    {
+      "name": "audit",
+      "command": "npm audit",
+      "description": "Check for vulnerabilities",
+      "category": "Security"
+    }
+  ]
+}

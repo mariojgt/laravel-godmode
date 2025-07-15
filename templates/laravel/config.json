@@ -1,0 +1,190 @@
+{
+  "name": "Laravel",
+  "description": "Full-stack PHP framework with Eloquent ORM, Blade templating, and Artisan CLI",
+  "icon": "🅻",
+  "type": "laravel",
+  "category": "Backend Framework",
+
+  "versions": {
+    "php": {
+      "default": "8.2",
+      "options": ["8.3", "8.2", "8.1", "8.0", "7.4"],
+      "labels": {
+        "8.3": "PHP 8.3 (Latest)",
+        "8.2": "PHP 8.2 (Recommended)",
+        "8.1": "PHP 8.1",
+        "8.0": "PHP 8.0",
+        "7.4": "PHP 7.4 (Legacy)"
+      }
+    },
+    "node": {
+      "default": "18",
+      "options": ["21", "20", "18", "16"],
+      "labels": {
+        "21": "Node.js 21 (Latest)",
+        "20": "Node.js 20 LTS",
+        "18": "Node.js 18 LTS (Recommended)",
+        "16": "Node.js 16 LTS"
+      }
+    }
+  },
+
+  "packageManagers": {
+    "composer": {
+      "required": true,
+      "description": "PHP dependency manager"
+    },
+    "npm": {
+      "required": true,
+      "description": "Node package manager"
+    },
+    "bun": {
+      "required": false,
+      "default": true,
+      "description": "Fast JavaScript runtime & package manager"
+    },
+    "pnpm": {
+      "required": false,
+      "default": false,
+      "description": "Fast, disk space efficient package manager"
+    },
+    "yarn": {
+      "required": false,
+      "default": false,
+      "description": "Yarn package manager"
+    }
+  },
+
+  "services": {
+    "mysql": {
+      "required": true,
+      "description": "MySQL database server",
+      "defaultPort": 3306,
+      "icon": "🗄️"
+    },
+    "nginx": {
+      "required": true,
+      "description": "Web server",
+      "icon": "🌐"
+    },
+    "redis": {
+      "required": false,
+      "default": true,
+      "description": "In-memory data structure store",
+      "defaultPort": 6379,
+      "icon": "🔴"
+    },
+    "phpmyadmin": {
+      "required": false,
+      "default": false,
+      "description": "Database administration tool",
+      "defaultPort": 8080,
+      "icon": "🔧",
+      "depends": ["mysql"]
+    },
+    "mailhog": {
+      "required": false,
+      "default": false,
+      "description": "Email testing tool",
+      "defaultPort": 8025,
+      "icon": "📧"
+    }
+  },
+
+  "ports": {
+    "app": {
+      "default": 8000,
+      "description": "Main application port"
+    },
+    "vite": {
+      "default": 5173,
+      "description": "Vite development server"
+    }
+  },
+
+  "commands": {
+    "install": "composer create-project laravel/laravel . --prefer-dist --no-dev",
+    "setup": [
+      "php artisan key:generate --force",
+      "php artisan storage:link",
+      "php artisan migrate --force"
+    ],
+    "dev": "php artisan serve --host=0.0.0.0 --port=8000",
+    "build": "npm run build"
+  },
+
+  "stubs": [
+    "docker-compose.yml.stub",
+    "Dockerfile.stub",
+    "nginx.conf.stub",
+    "supervisor.conf.stub",
+    "php.ini.stub",
+    "mysql.cnf.stub",
+    ".env.stub",
+    "Makefile.stub"
+  ],
+
+  "environment": {
+    "APP_ENV": "local",
+    "APP_DEBUG": "true",
+    "DB_CONNECTION": "mysql",
+    "DB_HOST": "db",
+    "DB_PORT": "3306",
+    "DB_DATABASE": "{{PROJECT_NAME}}",
+    "DB_USERNAME": "laravel",
+    "DB_PASSWORD": "password"
+  },
+
+  "commonCommands": [
+    {
+      "name": "migrate",
+      "command": "migrate",
+      "description": "Run database migrations",
+      "category": "Database"
+    },
+    {
+      "name": "migrate:fresh",
+      "command": "migrate:fresh --seed",
+      "description": "Fresh migration with seeding",
+      "category": "Database"
+    },
+    {
+      "name": "make:controller",
+      "command": "make:controller UserController",
+      "description": "Create a new controller",
+      "category": "Generate",
+      "prompt": "Controller name:"
+    },
+    {
+      "name": "make:model",
+      "command": "make:model User -m",
+      "description": "Create model with migration",
+      "category": "Generate",
+      "prompt": "Model name:"
+    },
+    {
+      "name": "tinker",
+      "command": "tinker",
+      "description": "Interact with your application",
+      "category": "Debug"
+    },
+    {
+      "name": "queue:work",
+      "command": "queue:work",
+      "description": "Start processing jobs",
+      "category": "Queue"
+    },
+    {
+      "name": "cache:clear",
+      "command": "cache:clear",
+      "description": "Clear application cache",
+      "category": "Cache"
+    },
+    {
+      "name": "route:list",
+      "command": "route:list",
+      "description": "List all routes",
+      "category": "Debug"
+    }
+  ]
+}

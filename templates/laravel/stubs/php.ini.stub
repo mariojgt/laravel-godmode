@@ -1,0 +1,58 @@
+[PHP]
+; Performance Settings
+memory_limit = 256M
+max_execution_time = 300
+max_input_time = 300
+max_input_vars = 3000
+
+; Upload Settings
+upload_max_filesize = 100M
+post_max_size = 100M
+file_uploads = On
+
+; Session Settings
+session.gc_maxlifetime = 7200
+session.cookie_lifetime = 0
+session.cookie_secure = 0
+session.cookie_httponly = 1
+session.use_strict_mode = 1
+
+; Security Settings
+expose_php = Off
+allow_url_fopen = On
+allow_url_include = Off
+
+; Error Reporting (Development)
+display_errors = On
+display_startup_errors = On
+log_errors = On
+error_log = /var/log/php/error.log
+error_reporting = E_ALL
+
+; OPcache Settings
+opcache.enable = 1
+opcache.enable_cli = 1
+opcache.memory_consumption = 128
+opcache.interned_strings_buffer = 16
+opcache.max_accelerated_files = 10000
+opcache.revalidate_freq = 2
+opcache.fast_shutdown = 1
+opcache.validate_timestamps = 1
+
+; Realpath Cache
+realpath_cache_size = 4M
+realpath_cache_ttl = 600
+
+; Date Settings
+date.timezone = UTC
+
+; MySQL Settings
+mysql.default_host = db
+mysql.default_user = laravel
+mysql.default_password = password
+
+; Misc Settings
+short_open_tag = Off
+magic_quotes_gpc = Off
+register_globals = Off
+default_charset = "UTF-8"
