@@ -12,7 +12,7 @@ class App {
         this.connectWebSocket();
         this.showInitialView();
 
-        console.log('🚀 Application Manager initialized');
+        console.log('🚀 Laravel God Mode initialized');
     }
 
     setupNavigation() {

@@ -132,6 +132,25 @@ class Dashboard {
         const originalText = submitBtn ? submitBtn.textContent : 'Create Project';
 
         try {
+            // Check port conflicts
+            if (projectData.config.ports) {
+                submitBtn.textContent = 'Checking ports...';
+                const portCheck = await api.checkPorts(projectData.config.ports);
+
+                if (!portCheck.available) {
+                    const conflictMessages = portCheck.conflicts.map(c =>
+                        `${c.service} (${c.port}) is used by ${c.conflictingProject}`
+                    ).join('\n');
+
+                    const proceed = confirm(`Port conflicts detected:\n\n${conflictMessages}\n\nDo you want to continue anyway?`);
+                    if (!proceed) {
+                        submitBtn.textContent = originalText;
+                        submitBtn.disabled = false;
+                        return;
+                    }
+                }
+            }
+
             // Show loading
             if (submitBtn) {
                 submitBtn.textContent = 'Creating...';
@@ -200,9 +219,16 @@ class Dashboard {
                 const project = this.projects[projectIndex];
                 if (project.status === 'ready') {
                     toast.success(`Project "${project.name}" is ready!`);
+                } else if (project.status === 'running') {
+                    toast.success(`Project "${project.name}" started successfully!`);
+                } else if (project.status === 'stopped') {
+                    toast.info(`Project "${project.name}" stopped.`);
                 } else if (project.status === 'error') {
-                    toast.error(`Project "${project.name}" creation failed`);
+                    toast.error(`Project "${project.name}" error: ${project.progress || 'Unknown error'}`);
                 }
+            } else {
+                // New project created, reload all projects
+                this.loadProjects();
             }
         }
     }

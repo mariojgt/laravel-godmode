@@ -94,6 +94,12 @@ class API {
         });
     }
 
+    async rebuildProject(id) {
+        return this.request(`/projects/${id}/rebuild`, {
+            method: 'POST'
+        });
+    }
+
     // Templates
     async getTemplates() {
         return this.request('/templates');
@@ -169,6 +175,14 @@ class API {
         return this.request(`/terminal/${sessionId}/exec`, {
             method: 'POST',
             body: JSON.stringify({ command })
+        });
+    }
+
+    // Port management
+    async checkPorts(ports, excludeProjectId = null) {
+        return this.request('/projects/check-ports', {
+            method: 'POST',
+            body: JSON.stringify({ ports, excludeProjectId })
         });
     }
 }

@@ -1,4 +1,4 @@
-# Full-stack Application Manager
+# Laravel Godmode - Full Stack Application Manager
 
 A modern, clean, and modular application to manage development projects with different templates (Laravel, Node.js, etc.), using Docker for orchestration.
 

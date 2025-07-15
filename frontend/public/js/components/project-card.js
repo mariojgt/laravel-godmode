@@ -85,6 +85,11 @@ class ProjectCard {
             buttons.push(`<button class="btn btn-sm btn-secondary" onclick="projectActions.stop('${this.project.id}')">Stop</button>`);
         }
 
+        // Rebuild button for error status or general maintenance
+        if (status === 'error' || status === 'stopped' || status === 'ready') {
+            buttons.push(`<button class="btn btn-sm btn-warning" onclick="projectActions.rebuild('${this.project.id}')" title="Force rebuild containers">🔄 Rebuild</button>`);
+        }
+
         // Terminal button (only when running)
         if (status === 'running') {
             buttons.push(`<button class="btn btn-sm btn-secondary" onclick="projectActions.openTerminal('${this.project.id}')">Terminal</button>`);
@@ -142,23 +147,64 @@ class ProjectCard {
 class ProjectActions {
     async start(projectId) {
         try {
-            toast.info('Starting project...');
+            // Show immediate feedback
+            toast.info('Starting project containers...');
+
+            // Update UI immediately to show starting status
+            const projectCard = document.querySelector(`[data-project-id="${projectId}"]`);
+            if (projectCard) {
+                const statusElement = projectCard.querySelector('.project-status');
+                if (statusElement) {
+                    statusElement.textContent = 'Starting...';
+                    statusElement.className = 'project-status status-starting';
+                }
+            }
+
             await api.startProject(projectId);
-            toast.success('Project started successfully');
-            dashboard.loadProjects(); // Refresh projects
+            // Note: Real-time updates will come via WebSocket
+
         } catch (error) {
             toast.error(`Failed to start project: ${error.message}`);
+            dashboard.loadProjects(); // Refresh on error
         }
     }
 
     async stop(projectId) {
         try {
-            toast.info('Stopping project...');
+            // Show immediate feedback
+            toast.info('Stopping project containers...');
+
+            // Update UI immediately to show stopping status
+            const projectCard = document.querySelector(`[data-project-id="${projectId}"]`);
+            if (projectCard) {
+                const statusElement = projectCard.querySelector('.project-status');
+                if (statusElement) {
+                    statusElement.textContent = 'Stopping...';
+                    statusElement.className = 'project-status status-stopping';
+                }
+            }
+
             await api.stopProject(projectId);
-            toast.success('Project stopped successfully');
-            dashboard.loadProjects(); // Refresh projects
+            // Note: Real-time updates will come via WebSocket
+
         } catch (error) {
             toast.error(`Failed to stop project: ${error.message}`);
+            dashboard.loadProjects(); // Refresh on error
+        }
+    }
+
+    async rebuild(projectId) {
+        if (!confirm('This will rebuild all containers from scratch. Continue?')) {
+            return;
+        }
+
+        try {
+            toast.info('Rebuilding project containers...');
+            await api.rebuildProject(projectId);
+            toast.success('Project rebuilt successfully');
+            dashboard.loadProjects(); // Refresh projects
+        } catch (error) {
+            toast.error(`Failed to rebuild project: ${error.message}`);
         }
     }
 
@@ -451,28 +497,52 @@ class ProjectActions {
 
     showPortEditor(project) {
         const ports = project.ports || {};
+
+        // Define all possible services with descriptions
+        const allServices = {
+            app: { description: 'Main Application', default: project.template === 'laravel' ? 8000 : 3000 },
+            vite: { description: 'Vite Dev Server', default: 5173 },
+            db: { description: 'MySQL Database', default: 3306 },
+            redis: { description: 'Redis Cache', default: 6379 },
+            phpmyadmin: { description: 'PHPMyAdmin', default: 8080 },
+            mailhog: { description: 'Mailhog Email Testing', default: 8025 }
+        };
+
         const modal = document.createElement('div');
         modal.className = 'modal active';
 
-        const portInputs = Object.entries(ports).map(([name, port]) => `
-            <div class="form-group">
-                <label for="port-${name}">${name.toUpperCase()} Port</label>
-                <input type="number" id="port-${name}" name="${name}" value="${port}" min="1000" max="65535">
-            </div>
-        `).join('');
+        const portInputs = Object.entries(allServices).map(([serviceName, serviceInfo]) => {
+            const currentPort = ports[serviceName] || serviceInfo.default;
+            return `
+                <div class="form-group">
+                    <label for="port-${serviceName}">
+                        ${serviceInfo.description}
+                        <span class="port-hint">Current: ${currentPort}</span>
+                    </label>
+                    <input type="number" id="port-${serviceName}" name="${serviceName}"
+                           value="${currentPort}" min="1000" max="65535"
+                           class="port-input" data-service="${serviceName}">
+                    <div id="port-${serviceName}-status" class="port-status"></div>
+                </div>
+            `;
+        }).join('');
 
         modal.innerHTML = `
             <div class="modal-content">
                 <div class="modal-header">
-                    <h3>Edit Ports - ${project.name}</h3>
+                    <h3>Edit Service Ports - ${project.name}</h3>
                     <button class="modal-close" onclick="this.closest('.modal').remove()">&times;</button>
                 </div>
                 <div class="modal-body">
+                    <div class="port-editor-info">
+                        <p>⚠️ Changing ports will restart all containers</p>
+                        <p>💡 Ports will be checked for conflicts automatically</p>
+                    </div>
                     <form id="ports-form">
                         ${portInputs}
                         <div class="form-actions">
                             <button type="button" class="btn btn-secondary" onclick="this.closest('.modal').remove()">Cancel</button>
-                            <button type="submit" class="btn btn-primary">Update & Restart</button>
+                            <button type="button" class="btn btn-primary" onclick="projectActions.checkPortsAndUpdate('${project.id}')">Check Ports & Update</button>
                         </div>
                     </form>
                 </div>
@@ -481,12 +551,61 @@ class ProjectActions {
 
         document.body.appendChild(modal);
 
-        // Handle form submission
-        const form = document.getElementById('ports-form');
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.updateProjectPorts(project.id, e.target);
+        // Add real-time port checking
+        const inputs = modal.querySelectorAll('.port-input');
+        inputs.forEach(input => {
+            input.addEventListener('blur', () => {
+                this.checkSinglePort(input.dataset.service, input.value, project.id);
+            });
         });
+    }
+
+    async checkSinglePort(serviceName, port, projectId) {
+        try {
+            const result = await api.checkPorts({ [serviceName]: port }, projectId);
+            const statusDiv = document.getElementById(`port-${serviceName}-status`);
+
+            if (result.available) {
+                statusDiv.innerHTML = '<span class="port-available">✅ Available</span>';
+                statusDiv.className = 'port-status available';
+            } else {
+                const conflict = result.conflicts[0];
+                statusDiv.innerHTML = `<span class="port-conflict">❌ Used by: ${conflict.conflictingProject}</span>`;
+                statusDiv.className = 'port-status conflict';
+            }
+        } catch (error) {
+            console.error('Port check failed:', error);
+        }
+    }
+
+    async checkPortsAndUpdate(projectId) {
+        try {
+            const form = document.getElementById('ports-form');
+            const formData = new FormData(form);
+            const newPorts = {};
+
+            for (const [name, port] of formData.entries()) {
+                newPorts[name] = parseInt(port, 10);
+            }
+
+            // Check all ports for conflicts
+            const portCheck = await api.checkPorts(newPorts, projectId);
+
+            if (!portCheck.available) {
+                const conflictMessages = portCheck.conflicts.map(c =>
+                    `${c.service} (${c.port}) is used by ${c.conflictingProject}`
+                ).join('\n');
+
+                const proceed = confirm(`Port conflicts detected:\n\n${conflictMessages}\n\nDo you want to continue anyway?`);
+                if (!proceed) return;
+            }
+
+            // Update ports
+            await this.updateProjectPorts(projectId, form);
+
+        } catch (error) {
+            toast.error(`Failed to check ports: ${error.message}`);
+        }
     }
 
     async updateProjectPorts(projectId, form) {
@@ -498,27 +617,58 @@ class ProjectActions {
                 newPorts[name] = parseInt(port, 10);
             }
 
-            // Update project configuration
-            const project = await api.getProject(projectId);
-            project.ports = newPorts;
+            toast.info('Regenerating Docker configuration with new ports...');
 
-            await api.updateProject(projectId, { ports: newPorts });
+            // Update project configuration with regenerateDocker flag
+            // This will use the SAME process as project creation but only for Docker files
+            await api.updateProject(projectId, {
+                ports: newPorts,
+                regenerateDocker: true
+            });
 
-            toast.success('Ports updated! Restarting containers...');
+            toast.success('Docker files regenerated with new ports!');
 
-            // Restart the project
-            await api.stopProject(projectId);
-            await api.startProject(projectId);
-
-            // Close modal
+            // Close modal first
             const modal = document.querySelector('.modal');
             if (modal) modal.remove();
 
-            // Refresh projects
+            // Ask user if they want to restart now
+            const shouldRestart = confirm(
+                'Docker configuration updated successfully!\n\n' +
+                'Files regenerated:\n' +
+                '• docker-compose.yml\n' +
+                '• Supporting Docker configs\n\n' +
+                'Would you like to restart the containers now to apply the changes?'
+            );
+
+            if (shouldRestart) {
+                try {
+                    toast.info('Restarting containers with new configuration...');
+
+                    // Stop containers
+                    await api.stopProject(projectId);
+
+                    // Wait for containers to fully stop
+                    await new Promise(resolve => setTimeout(resolve, 3000));
+
+                    // Start with new configuration
+                    await api.startProject(projectId);
+
+                    toast.success('Containers restarted with new ports! 🎉');
+                } catch (error) {
+                    toast.error(`Restart failed: ${error.message}`);
+                    toast.info('Try manually stopping and starting the project.');
+                }
+            } else {
+                toast.info('Configuration updated. Restart the project when ready to apply changes.');
+            }
+
+            // Refresh projects to show updated data
             dashboard.loadProjects();
 
         } catch (error) {
-            toast.error(`Failed to update ports: ${error.message}`);
+            toast.error(`Failed to update configuration: ${error.message}`);
+            console.error('Port update error:', error);
         }
     }
 

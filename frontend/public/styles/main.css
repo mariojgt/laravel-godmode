@@ -186,6 +186,79 @@
     opacity: 0.5;
 }
 
+/* Port Editor */
+.port-editor-info {
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: var(--radius-md);
+    padding: var(--space-md);
+    margin-bottom: var(--space-lg);
+}
+
+.port-editor-info p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--accent);
+}
+
+.port-editor-info p:not(:last-child) {
+    margin-bottom: 0.5rem;
+}
+
+.port-hint {
+    display: block;
+    font-size: 0.75rem;
+    color: rgba(203, 213, 225, 0.6);
+    font-weight: 400;
+    margin-top: 0.25rem;
+}
+
+.port-input {
+    width: 100%;
+    padding: var(--space-sm);
+    background: var(--background);
+    border: 1px solid rgba(100, 255, 218, 0.2);
+    border-radius: var(--radius-md);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    transition: var(--transition);
+}
+
+.port-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(100, 255, 218, 0.1);
+}
+
+.port-status {
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    text-align: center;
+}
+
+.port-status.available {
+    background: rgba(34, 197, 94, 0.1);
+    color: #22C55E;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.port-status.conflict {
+    background: rgba(239, 68, 68, 0.1);
+    color: #EF4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.port-available {
+    font-weight: 500;
+}
+
+.port-conflict {
+    font-weight: 500;
+}
+
 /* Environment Editor *//* Reset & Base Styles */
 * {
     margin: 0;
@@ -394,6 +467,15 @@ body {
     background: #DC2626;
 }
 
+.btn-warning {
+    background: #F59E0B;
+    color: white;
+}
+
+.btn-warning:hover {
+    background: #D97706;
+}
+
 .btn-icon {
     font-size: 1rem;
     line-height: 1;
@@ -472,6 +554,23 @@ body {
 .status-creating {
     background: rgba(245, 158, 11, 0.2);
     color: var(--accent);
+}
+
+.status-starting {
+    background: rgba(59, 130, 246, 0.2);
+    color: #3B82F6;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+.status-stopping {
+    background: rgba(156, 163, 175, 0.2);
+    color: #9CA3AF;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
 }
 
 .project-meta {

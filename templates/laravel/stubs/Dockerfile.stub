@@ -45,9 +45,17 @@ RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS \
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Create application user
-RUN addgroup -g 1000 www && \
-    adduser -u 1000 -G www -s /bin/sh -D www
+# Create application user (handle existing GID gracefully)
+RUN if ! getent group 1000 >/dev/null 2>&1; then \
+        addgroup -g 1000 www; \
+    else \
+        addgroup www; \
+    fi && \
+    if ! getent passwd 1000 >/dev/null 2>&1; then \
+        adduser -u 1000 -G www -s /bin/sh -D www; \
+    else \
+        adduser -G www -s /bin/sh -D www; \
+    fi
 
 # Set working directory
 WORKDIR /var/www/html

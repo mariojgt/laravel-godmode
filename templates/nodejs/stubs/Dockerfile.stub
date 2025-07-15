@@ -28,9 +28,17 @@ RUN npm install -g \
     ts-node \
     @types/node
 
-# Create application user
-RUN addgroup -g 1000 app && \
-    adduser -u 1000 -G app -s /bin/sh -D app
+# Create application user (handle existing GID gracefully)
+RUN if ! getent group 1000 >/dev/null 2>&1; then \
+        addgroup -g 1000 app; \
+    else \
+        addgroup app; \
+    fi && \
+    if ! getent passwd 1000 >/dev/null 2>&1; then \
+        adduser -u 1000 -G app -s /bin/sh -D app; \
+    else \
+        adduser -G app -s /bin/sh -D app; \
+    fi
 
 # Set working directory
 WORKDIR /app
@@ -52,7 +60,7 @@ RUN if [ "{{INSTALL_BUN}}" = "true" ] && [ -f "bun.lockb" ]; then \
 # Copy application files
 COPY src/ ./
 
-# Set permissions
+# Set permissions for app user
 RUN chown -R app:app /app
 
 # Switch to application user

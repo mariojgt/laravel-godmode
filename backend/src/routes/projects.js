@@ -64,6 +64,53 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Check port availability - MUST be before /:id routes
+router.post('/check-ports', async (req, res) => {
+  try {
+    const { ports, excludeProjectId } = req.body;
+    const projects = await loadProjects();
+
+    const conflicts = [];
+
+    for (const [serviceName, port] of Object.entries(ports)) {
+      // Check if port is in use by other projects
+      const conflictingProject = projects.find(p =>
+        p.id !== excludeProjectId &&
+        p.ports &&
+        Object.values(p.ports).includes(parseInt(port))
+      );
+
+      if (conflictingProject) {
+        conflicts.push({
+          service: serviceName,
+          port: port,
+          conflictingProject: conflictingProject.name
+        });
+      }
+
+      // Check if port is in use by system
+      try {
+        await execAsync(`lsof -i :${port}`, { timeout: 2000 });
+        conflicts.push({
+          service: serviceName,
+          port: port,
+          conflictingProject: 'System/Other Process'
+        });
+      } catch (error) {
+        // Port is free (lsof returns non-zero when no process uses the port)
+      }
+    }
+
+    res.json({
+      available: conflicts.length === 0,
+      conflicts
+    });
+  } catch (error) {
+    console.error('Failed to check ports:', error);
+    res.status(500).json({ error: 'Failed to check port availability' });
+  }
+});
+
 // Create new project
 router.post('/', async (req, res) => {
   try {
@@ -130,7 +177,55 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Get project .env file
+// Update project
+router.put('/:id', async (req, res) => {
+  try {
+    const projects = await loadProjects();
+    const projectIndex = projects.findIndex(p => p.id === req.params.id);
+
+    if (projectIndex === -1) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    const project = projects[projectIndex];
+
+    // Update project data
+    projects[projectIndex] = { ...project, ...req.body, updatedAt: new Date().toISOString() };
+
+    // If regenerateDocker flag is set and ports changed, regenerate Docker configs
+    if (req.body.regenerateDocker && req.body.ports) {
+      try {
+        console.log(`🔄 Regenerating Docker configuration for project: ${project.name}`);
+
+        // Load template configuration
+        const templateConfigPath = path.join(TEMPLATES_DIR, project.template, 'config.json');
+        const templateConfig = JSON.parse(await fs.readFile(templateConfigPath, 'utf8'));
+
+        // Update project with new ports
+        projects[projectIndex].ports = req.body.ports;
+
+        // Regenerate docker-compose.yml with new ports
+        await regenerateDockerCompose(projects[projectIndex], templateConfig);
+
+        console.log(`✅ Docker configuration regenerated for: ${project.name}`);
+      } catch (error) {
+        console.error('Failed to regenerate Docker config:', error);
+        // Return error instead of continuing - this is important for port changes
+        return res.status(500).json({ error: 'Failed to regenerate Docker configuration: ' + error.message });
+      }
+    }
+
+    await saveProjects(projects);
+
+    // Broadcast update to all clients
+    global.broadcastProjectUpdate && global.broadcastProjectUpdate(req.params.id, projects[projectIndex]);
+
+    res.json(projects[projectIndex]);
+  } catch (error) {
+    console.error('Failed to update project:', error);
+    res.status(500).json({ error: 'Failed to update project' });
+  }
+});
 router.get('/:id/env', async (req, res) => {
   try {
     const projects = await loadProjects();
@@ -185,12 +280,16 @@ router.post('/:id/start', async (req, res) => {
       return res.status(404).json({ error: 'Project not found' });
     }
 
-    await startProject(project);
-
-    project.status = 'running';
+    // Update status immediately and broadcast
+    project.status = 'starting';
+    project.progress = 'Starting containers...';
     await saveProjects(projects);
+    global.broadcastProjectUpdate && global.broadcastProjectUpdate(project.id, project);
 
-    res.json({ message: 'Project started successfully' });
+    // Start project asynchronously
+    startProjectAsync(project);
+
+    res.json({ message: 'Project start initiated' });
   } catch (error) {
     console.error('Failed to start project:', error);
     res.status(500).json({ error: 'Failed to start project: ' + error.message });
@@ -207,19 +306,61 @@ router.post('/:id/stop', async (req, res) => {
       return res.status(404).json({ error: 'Project not found' });
     }
 
-    await stopProject(project);
-
-    project.status = 'stopped';
+    // Update status immediately and broadcast
+    project.status = 'stopping';
+    project.progress = 'Stopping containers...';
     await saveProjects(projects);
+    global.broadcastProjectUpdate && global.broadcastProjectUpdate(project.id, project);
 
-    res.json({ message: 'Project stopped successfully' });
+    // Stop project asynchronously
+    stopProjectAsync(project);
+
+    res.json({ message: 'Project stop initiated' });
   } catch (error) {
     console.error('Failed to stop project:', error);
     res.status(500).json({ error: 'Failed to stop project: ' + error.message });
   }
 });
 
-// Get container logs
+// Rebuild project
+router.post('/:id/rebuild', async (req, res) => {
+  try {
+    const projects = await loadProjects();
+    const project = projects.find(p => p.id === req.params.id);
+
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    // Stop containers first
+    try {
+      await stopProject(project);
+    } catch (error) {
+      console.warn('Failed to stop containers:', error.message);
+    }
+
+    // Force rebuild without cache
+    try {
+      await execAsync('docker-compose down --volumes --remove-orphans', { cwd: project.path });
+      await execAsync('docker system prune -f', { cwd: project.path });
+      await execAsync('docker-compose build --no-cache', { cwd: project.path });
+      await execAsync('docker-compose up -d', { cwd: project.path });
+
+      project.status = 'running';
+      await saveProjects(projects);
+
+      res.json({ message: 'Project rebuilt successfully' });
+    } catch (error) {
+      project.status = 'error';
+      await saveProjects(projects);
+      throw error;
+    }
+
+  } catch (error) {
+    console.error('Failed to rebuild project:', error);
+    res.status(500).json({ error: 'Failed to rebuild project: ' + error.message });
+  }
+});
 router.get('/:id/logs/:container?', async (req, res) => {
   try {
     const projects = await loadProjects();
@@ -453,30 +594,31 @@ async function generateDockerConfig(project, templateConfig) {
     if (stubFile.endsWith('.stub')) {
       const stubContent = await fs.readFile(path.join(stubsPath, stubFile), 'utf8');
       let outputFile = stubFile.replace('.stub', '');
-
-      // Handle special file naming
-      if (stubFile === 'project-Makefile-simple.stub') {
-        outputFile = 'Makefile';
-      }
-
       let outputPath;
 
-      // Main Docker files go in project root
+      console.log(`Processing stub: ${stubFile} -> ${outputFile}`);
+
+      // Main Docker files and Makefile go in project root
       if (outputFile === 'docker-compose.yml' || outputFile === 'Dockerfile' || outputFile === 'Makefile') {
         outputPath = path.join(project.path, outputFile);
+        console.log(`Root file: ${outputFile} -> ${outputPath}`);
       }
       // Environment files go in src directory
       else if (outputFile === '.env') {
         outputPath = path.join(project.path, 'src', outputFile);
+        console.log(`Src file: ${outputFile} -> ${outputPath}`);
       }
-      // Supporting config files go in docker directory
+      // All other supporting config files go in docker directory
       else {
         outputPath = path.join(dockerPath, outputFile);
+        console.log(`Docker file: ${outputFile} -> ${outputPath}`);
       }
 
       // Replace template variables
       const processedContent = replaceTemplateVariables(stubContent, project, templateConfig);
       await fs.writeFile(outputPath, processedContent);
+
+      console.log(`✅ Generated: ${outputPath}`);
     }
   }
 }
@@ -489,17 +631,26 @@ function replaceTemplateVariables(content, project, templateConfig) {
   processed = processed.replace(/\{\{PHP_VERSION\}\}/g, project.config.versions?.php || templateConfig.versions?.php?.default || '8.2');
   processed = processed.replace(/\{\{NODE_VERSION\}\}/g, project.config.versions?.node || templateConfig.versions?.node?.default || '18');
 
-  // Port replacements - handle both object and direct port values
-  const ports = { ...templateConfig.ports, ...project.config.ports };
-  Object.entries(ports).forEach(([key, config]) => {
-    const port = typeof config === 'object' ? config.default : config;
-    processed = processed.replace(new RegExp(`\\{\\{${key.toUpperCase()}_PORT\\}\\}`, 'g'), port);
+  // Port replacements - handle both template defaults and project overrides
+  const projectPorts = project.ports || {};
+  const templatePorts = templateConfig.ports || {};
+
+  // Map project ports to template variables
+  const portMappings = {
+    'APP_PORT': projectPorts.app || templatePorts.app?.default || (project.template === 'laravel' ? 8000 : 3000),
+    'VITE_PORT': projectPorts.vite || templatePorts.vite?.default || 5173,
+    'DB_PORT': projectPorts.db || 3306,
+    'REDIS_PORT': projectPorts.redis || 6379,
+    'PHPMYADMIN_PORT': projectPorts.phpmyadmin || 8080,
+    'MAILHOG_PORT': projectPorts.mailhog || 8025
+  };
+
+  // Apply port replacements
+  Object.entries(portMappings).forEach(([key, port]) => {
+    processed = processed.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), port);
   });
 
-  // Add specific port replacements that might be missing
-  processed = processed.replace(/\{\{DB_PORT\}\}/g, project.config.ports?.db || 3306);
-  processed = processed.replace(/\{\{APP_PORT\}\}/g, project.config.ports?.app || templateConfig.ports?.app?.default || 8000);
-  processed = processed.replace(/\{\{VITE_PORT\}\}/g, project.config.ports?.vite || templateConfig.ports?.vite?.default || 5173);
+  console.log(`🔄 Applied port mappings:`, portMappings);
 
   // Package manager flags
   processed = processed.replace(/\{\{INSTALL_BUN\}\}/g, project.config.packageManagers?.bun ? 'true' : 'false');
@@ -747,10 +898,70 @@ async function getProjectStatus(project) {
   }
 }
 
+async function regenerateDockerCompose(project, templateConfig) {
+  // Load the docker-compose.yml stub
+  const stubPath = path.join(TEMPLATES_DIR, project.template, 'stubs', 'docker-compose.yml.stub');
+  const stubContent = await fs.readFile(stubPath, 'utf8');
+
+  // Replace template variables with updated project data
+  const processedContent = replaceTemplateVariables(stubContent, project, templateConfig);
+
+  // Write the updated docker-compose.yml
+  const composePath = path.join(project.path, 'docker-compose.yml');
+  await fs.writeFile(composePath, processedContent);
+
+  console.log(`✅ Updated docker-compose.yml with new ports:`, project.ports);
+}
+
+async function startProjectAsync(project) {
+  const projects = await loadProjects();
+  const projectIndex = projects.findIndex(p => p.id === project.id);
+
+  if (projectIndex === -1) return;
+
+  try {
+    console.log(`🚀 Starting project: ${project.name}`);
+
+    projects[projectIndex].progress = 'Checking Docker setup...';
+    await saveProjects(projects);
+    global.broadcastProjectUpdate && global.broadcastProjectUpdate(project.id, projects[projectIndex]);
+
+    await startProject(project);
+
+    projects[projectIndex].status = 'running';
+    projects[projectIndex].progress = 'Project started successfully';
+    delete projects[projectIndex].progress;
+    await saveProjects(projects);
+    global.broadcastProjectUpdate && global.broadcastProjectUpdate(project.id, projects[projectIndex]);
+
+    console.log(`✅ Project started: ${project.name}`);
+
+  } catch (error) {
+    console.error('❌ Project start failed:', error);
+
+    projects[projectIndex].status = 'error';
+    projects[projectIndex].progress = `Start failed: ${error.message}`;
+    await saveProjects(projects);
+    global.broadcastProjectUpdate && global.broadcastProjectUpdate(project.id, projects[projectIndex]);
+  }
+}
+
 async function startProject(project) {
-  const { stdout, stderr } = await execAsync('docker-compose up -d', { cwd: project.path });
-  console.log('Docker compose up output:', stdout);
-  if (stderr) console.warn('Docker compose warnings:', stderr);
+  try {
+    // Clean up any potential cached layers first
+    await execAsync('docker system prune -f', { cwd: project.path }).catch(() => {});
+
+    // Build and start containers
+    const { stdout, stderr } = await execAsync('docker-compose up -d --build', { cwd: project.path });
+    console.log('Docker compose up output:', stdout);
+    if (stderr) console.warn('Docker compose warnings:', stderr);
+  } catch (error) {
+    // If build fails, try without cache
+    console.warn('Build failed, retrying without cache...');
+    const { stdout, stderr } = await execAsync('docker-compose build --no-cache && docker-compose up -d', { cwd: project.path });
+    console.log('Docker compose rebuild output:', stdout);
+    if (stderr) console.warn('Docker compose warnings:', stderr);
+  }
 }
 
 async function stopProject(project) {
@@ -760,3 +971,69 @@ async function stopProject(project) {
 }
 
 module.exports = router;
+
+async function startProjectAsync(project) {
+  const projects = await loadProjects();
+  const projectIndex = projects.findIndex(p => p.id === project.id);
+
+  if (projectIndex === -1) return;
+
+  try {
+    console.log(`🚀 Starting project: ${project.name}`);
+
+    projects[projectIndex].progress = 'Checking Docker setup...';
+    await saveProjects(projects);
+    global.broadcastProjectUpdate && global.broadcastProjectUpdate(project.id, projects[projectIndex]);
+
+    await startProject(project);
+
+    projects[projectIndex].status = 'running';
+    projects[projectIndex].progress = 'Project started successfully';
+    delete projects[projectIndex].progress;
+    await saveProjects(projects);
+    global.broadcastProjectUpdate && global.broadcastProjectUpdate(project.id, projects[projectIndex]);
+
+    console.log(`✅ Project started: ${project.name}`);
+
+  } catch (error) {
+    console.error('❌ Project start failed:', error);
+
+    projects[projectIndex].status = 'error';
+    projects[projectIndex].progress = `Start failed: ${error.message}`;
+    await saveProjects(projects);
+    global.broadcastProjectUpdate && global.broadcastProjectUpdate(project.id, projects[projectIndex]);
+  }
+}
+
+async function stopProjectAsync(project) {
+  const projects = await loadProjects();
+  const projectIndex = projects.findIndex(p => p.id === project.id);
+
+  if (projectIndex === -1) return;
+
+  try {
+    console.log(`⏹️ Stopping project: ${project.name}`);
+
+    projects[projectIndex].progress = 'Stopping containers...';
+    await saveProjects(projects);
+    global.broadcastProjectUpdate && global.broadcastProjectUpdate(project.id, projects[projectIndex]);
+
+    await stopProject(project);
+
+    projects[projectIndex].status = 'stopped';
+    projects[projectIndex].progress = 'Project stopped successfully';
+    delete projects[projectIndex].progress;
+    await saveProjects(projects);
+    global.broadcastProjectUpdate && global.broadcastProjectUpdate(project.id, projects[projectIndex]);
+
+    console.log(`✅ Project stopped: ${project.name}`);
+
+  } catch (error) {
+    console.error('❌ Project stop failed:', error);
+
+    projects[projectIndex].status = 'error';
+    projects[projectIndex].progress = `Stop failed: ${error.message}`;
+    await saveProjects(projects);
+    global.broadcastProjectUpdate && global.broadcastProjectUpdate(project.id, projects[projectIndex]);
+  }
+}
