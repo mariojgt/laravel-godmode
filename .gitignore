@@ -52,3 +52,5 @@ vendor/
 
 # ignore evehintg in the /src directory
 /src/*
+
+/projects

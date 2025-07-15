@@ -1,0 +1,86 @@
+# {{PROJECT_NAME}} - Laravel Project Commands
+.PHONY: help start stop restart build logs shell artisan composer npm status
+
+# Colors
+GREEN = \033[32m
+CYAN = \033[36m
+YELLOW = \033[33m
+RESET = \033[0m
+
+.DEFAULT_GOAL := help
+
+## Help
+help:
+	@echo "$(CYAN)🚀 {{PROJECT_NAME}} Commands$(RESET)"
+	@echo ""
+	@echo "$(GREEN)Available commands:$(RESET)"
+	@echo "  make start     - Start containers"
+	@echo "  make stop      - Stop containers"
+	@echo "  make restart   - Restart containers"
+	@echo "  make build     - Build containers"
+	@echo "  make logs      - Show logs"
+	@echo "  make shell     - Open app shell"
+	@echo "  make artisan   - Run artisan command (e.g., make artisan CMD='migrate')"
+	@echo "  make composer  - Run composer command"
+	@echo "  make npm       - Run npm command"
+	@echo "  make status    - Show container status"
+	@echo ""
+
+## Start containers
+start:
+	@echo "$(CYAN)🚀 Starting {{PROJECT_NAME}}...$(RESET)"
+	@docker-compose up -d
+	@echo "$(GREEN)✅ {{PROJECT_NAME}} started!$(RESET)"
+	@echo "$(CYAN)🌐 App: http://localhost:{{APP_PORT}}$(RESET)"
+
+## Stop containers
+stop:
+	@echo "$(CYAN)⏹️ Stopping {{PROJECT_NAME}}...$(RESET)"
+	@docker-compose down
+	@echo "$(GREEN)✅ {{PROJECT_NAME}} stopped!$(RESET)"
+
+## Restart containers
+restart: stop start
+
+## Build containers
+build:
+	@echo "$(CYAN)🔨 Building {{PROJECT_NAME}}...$(RESET)"
+	@docker-compose build --no-cache
+	@echo "$(GREEN)✅ Build complete!$(RESET)"
+
+## Show logs
+logs:
+	@docker-compose logs -f --tail=100
+
+## Open shell
+shell:
+	@docker-compose exec app /bin/bash
+
+## Run artisan commands
+artisan:
+	@if [ -z "$(CMD)" ]; then \
+		echo "$(YELLOW)Usage: make artisan CMD='command'$(RESET)"; \
+	else \
+		docker-compose exec app php artisan $(CMD); \
+	fi
+
+## Run composer commands
+composer:
+	@if [ -z "$(CMD)" ]; then \
+		echo "$(YELLOW)Usage: make composer CMD='command'$(RESET)"; \
+	else \
+		docker-compose exec app composer $(CMD); \
+	fi
+
+## Run npm commands
+npm:
+	@if [ -z "$(CMD)" ]; then \
+		echo "$(YELLOW)Usage: make npm CMD='command'$(RESET)"; \
+	else \
+		docker-compose exec app npm $(CMD); \
+	fi
+
+## Show status
+status:
+	@echo "$(CYAN)📊 {{PROJECT_NAME}} Status:$(RESET)"
+	@docker-compose ps

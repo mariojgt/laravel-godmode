@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - NODE_VERSION={{NODE_VERSION}}
+        - INSTALL_BUN={{INSTALL_BUN}}
+        - INSTALL_PNPM={{INSTALL_PNPM}}
+        - PROJECT_TYPE=nodejs
+    container_name: {{PROJECT_NAME}}_app
+    ports:
+      - "{{APP_PORT}}:3000"
+      - "{{VITE_PORT}}:5173"
+    volumes:
+      - ./src:/app
+    working_dir: /app
+    depends_on:
+      - db{{REDIS_DEPENDS}}
+    networks:
+      - {{PROJECT_NAME}}_network
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_NAME={{PROJECT_NAME}}
+      - DB_USER=nodejs
+      - DB_PASSWORD=password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    command: npm run dev
+
+  db:
+    image: mysql:8.0
+    container_name: {{PROJECT_NAME}}_db
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: {{PROJECT_NAME}}
+      MYSQL_USER: nodejs
+      MYSQL_PASSWORD: password
+    ports:
+      - "{{DB_PORT}}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql.cnf:/etc/mysql/conf.d/custom.cnf
+    networks:
+      - {{PROJECT_NAME}}_network
+    restart: unless-stopped
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+{{REDIS_SERVICE}}
+
+{{PHPMYADMIN_SERVICE}}
+
+{{MAILHOG_SERVICE}}
+
+volumes:
+  mysql_data:
+    driver: local
+{{REDIS_VOLUME}}
+
+networks:
+  {{PROJECT_NAME}}_network:
+    driver: bridge

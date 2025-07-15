@@ -1,0 +1,106 @@
+FROM php:{{PHP_VERSION}}-fpm-alpine
+
+# Install system dependencies
+RUN apk add --no-cache \
+    git \
+    curl \
+    libpng-dev \
+    oniguruma-dev \
+    libxml2-dev \
+    libzip-dev \
+    zip \
+    unzip \
+    supervisor \
+    mysql-client \
+    nodejs \
+    npm \
+    bash
+
+# Install Bun via npm (if enabled) - more reliable than curl install
+RUN if [ "{{INSTALL_BUN}}" = "true" ]; then \
+        npm install -g bun; \
+    fi
+
+# Install pnpm (if enabled)
+RUN if [ "{{INSTALL_PNPM}}" = "true" ]; then \
+        npm install -g pnpm; \
+    fi
+
+# Install PHP extensions
+RUN docker-php-ext-install \
+    pdo_mysql \
+    mbstring \
+    exif \
+    pcntl \
+    bcmath \
+    gd \
+    zip
+
+# Install Redis extension
+RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS \
+    && pecl install redis \
+    && docker-php-ext-enable redis \
+    && apk del .build-deps
+
+# Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Create application user
+RUN addgroup -g 1000 www && \
+    adduser -u 1000 -G www -s /bin/sh -D www
+
+# Set working directory
+WORKDIR /var/www/html
+
+# Create supervisor log directory
+RUN mkdir -p /var/log/supervisor
+
+# Copy supervisor configuration
+COPY docker/supervisor.conf /etc/supervisor/conf.d/laravel.conf
+
+# Copy application files from src directory
+COPY src/ /var/www/html/
+
+# Set permissions
+RUN chown -R www:www /var/www/html \
+    && chmod -R 755 /var/www/html/storage \
+    && chmod -R 755 /var/www/html/bootstrap/cache
+
+# Install Laravel dependencies if composer.json exists
+RUN if [ -f composer.json ]; then \
+        composer install --no-dev --optimize-autoloader --no-interaction; \
+    fi
+
+# Generate Laravel application key if artisan exists and no key is set
+RUN if [ -f artisan ] && ! grep -q "^APP_KEY=.*[^=]" .env 2>/dev/null; then \
+        php artisan key:generate --no-interaction --force; \
+    fi
+
+# Create supervisord main config
+RUN echo '[unix_http_server]' > /etc/supervisord.conf && \
+    echo 'file=/var/run/supervisor.sock' >> /etc/supervisord.conf && \
+    echo 'chmod=0700' >> /etc/supervisord.conf && \
+    echo '' >> /etc/supervisord.conf && \
+    echo '[supervisord]' >> /etc/supervisord.conf && \
+    echo 'logfile=/var/log/supervisor/supervisord.log' >> /etc/supervisord.conf && \
+    echo 'pidfile=/var/run/supervisord.pid' >> /etc/supervisord.conf && \
+    echo 'childlogdir=/var/log/supervisor' >> /etc/supervisord.conf && \
+    echo 'nodaemon=true' >> /etc/supervisord.conf && \
+    echo 'user=root' >> /etc/supervisord.conf && \
+    echo 'silent=false' >> /etc/supervisord.conf && \
+    echo 'loglevel=info' >> /etc/supervisord.conf && \
+    echo '' >> /etc/supervisord.conf && \
+    echo '[rpcinterface:supervisor]' >> /etc/supervisord.conf && \
+    echo 'supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface' >> /etc/supervisord.conf && \
+    echo '' >> /etc/supervisord.conf && \
+    echo '[supervisorctl]' >> /etc/supervisord.conf && \
+    echo 'serverurl=unix:///var/run/supervisor.sock' >> /etc/supervisord.conf && \
+    echo '' >> /etc/supervisord.conf && \
+    echo '[include]' >> /etc/supervisord.conf && \
+    echo 'files = /etc/supervisor/conf.d/*.conf' >> /etc/supervisord.conf
+
+# Expose port
+EXPOSE 9000
+
+# Start supervisor
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
