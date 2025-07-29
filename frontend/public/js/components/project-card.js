@@ -750,21 +750,80 @@ class ProjectActions {
         try {
             const project = await api.getProject(projectId);
 
-            // Try to open with VS Code command
-            const success = await api.openProjectInVSCode(projectId);
+            // Get preferred editor from settings
+            const preferredEditor = window.settings ? window.settings.get('preferredEditor') : 'vscode';
+
+            // Try to open with preferred editor
+            const success = await api.openProjectInEditor(projectId, preferredEditor);
 
             if (success) {
-                toast.success(`Opening ${project.name} in VS Code...`);
+                const editorName = this.getEditorName(preferredEditor);
+                toast.success(`Opening ${project.name} in ${editorName}...`);
             } else {
                 // Fallback: show manual instructions
-                this.showVSCodeInstructions(project);
+                this.showEditorInstructions(project, preferredEditor);
             }
         } catch (error) {
-            toast.error(`Failed to open in VS Code: ${error.message}`);
+            toast.error(`Failed to open in editor: ${error.message}`);
             // Try fallback
             const project = await api.getProject(projectId);
-            this.showVSCodeInstructions(project);
+            const preferredEditor = window.settings ? window.settings.get('preferredEditor') : 'vscode';
+            this.showEditorInstructions(project, preferredEditor);
         }
+    }
+
+    showEditorInstructions(project, editor) {
+        const editorName = this.getEditorName(editor);
+        const command = this.getEditorCommand(editor, project.path);
+
+        const modal = document.createElement('div');
+        modal.className = 'modal active';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Open in ${editorName}</h3>
+                    <button class="modal-close" onclick="this.closest('.modal').remove()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p>Open this project in ${editorName}:</p>
+                    <div class="path-display">
+                        <code>${project.path}</code>
+                        <button class="btn btn-xs btn-secondary" onclick="navigator.clipboard.writeText('${project.path}'); toast.success('Path copied!')">📋 Copy</button>
+                    </div>
+                    <p><strong>Terminal command:</strong></p>
+                    <div class="path-display">
+                        <code>${command}</code>
+                        <button class="btn btn-xs btn-secondary" onclick="navigator.clipboard.writeText('${command}'); toast.success('Command copied!')">📋 Copy</button>
+                    </div>
+                    <p><small>💡 You can change your preferred editor in Settings</small></p>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    getEditorName(editor) {
+        const editors = {
+            vscode: 'Visual Studio Code',
+            webstorm: 'WebStorm',
+            phpstorm: 'PhpStorm',
+            sublime: 'Sublime Text',
+            atom: 'Atom',
+            cursor: 'Cursor'
+        };
+        return editors[editor] || editor;
+    }
+
+    getEditorCommand(editor, projectPath) {
+        const commands = {
+            vscode: `code "${projectPath}"`,
+            webstorm: `webstorm "${projectPath}"`,
+            phpstorm: `phpstorm "${projectPath}"`,
+            sublime: `subl "${projectPath}"`,
+            atom: `atom "${projectPath}"`,
+            cursor: `cursor "${projectPath}"`
+        };
+        return commands[editor] || `${editor} "${projectPath}"`;
     }
 
     showVSCodeInstructions(project) {

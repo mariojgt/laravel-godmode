@@ -424,9 +424,10 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// Open project in VS Code
-router.post('/:id/open-vscode', async (req, res) => {
+// Open project in any editor
+router.post('/:id/open-editor', async (req, res) => {
   try {
+    const { editor = 'vscode' } = req.body;
     const projects = await loadProjects();
     const project = projects.find(p => p.id === req.params.id);
 
@@ -436,9 +437,23 @@ router.post('/:id/open-vscode', async (req, res) => {
 
     const { spawn } = require('child_process');
 
+    // Map editor commands
+    const editorCommands = {
+      vscode: 'code',
+      webstorm: 'webstorm',
+      phpstorm: 'phpstorm',
+      sublime: 'subl',
+      atom: 'atom',
+      cursor: 'cursor'
+    };
+
+    const command = editorCommands[editor] || editor;
+
     try {
-      // Try to open with VS Code
-      const child = spawn('code', [project.path], {
+      console.log(`🚀 Opening ${project.name} in ${editor}...`);
+
+      // Try to open with the specified editor
+      const child = spawn(command, [project.path], {
         detached: true,
         stdio: 'ignore'
       });
@@ -446,22 +461,24 @@ router.post('/:id/open-vscode', async (req, res) => {
       child.unref();
 
       res.json({
-        message: `Opening ${project.name} in VS Code`,
-        projectPath: project.path
+        message: `Opening ${project.name} in ${editor}`,
+        projectPath: project.path,
+        editor
       });
 
     } catch (error) {
-      // VS Code not found or failed
+      // Editor not found or failed
       res.status(500).json({
-        error: 'Failed to open VS Code',
+        error: `Failed to open ${editor}`,
         projectPath: project.path,
-        suggestion: `Try running: code "${project.path}"`
+        suggestion: `Try running: ${command} "${project.path}"`,
+        editor
       });
     }
 
   } catch (error) {
-    console.error('Failed to open project in VS Code:', error);
-    res.status(500).json({ error: 'Failed to open project in VS Code' });
+    console.error('Failed to open project in editor:', error);
+    res.status(500).json({ error: 'Failed to open project in editor' });
   }
 });
 

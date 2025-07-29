@@ -4,7 +4,8 @@ class Settings {
         this.settings = {
             autoStart: false,
             refreshInterval: 30000,
-            theme: 'dark'
+            theme: 'dark',
+            preferredEditor: 'vscode'
         };
         this.init();
     }
@@ -51,6 +52,18 @@ class Settings {
                 this.saveSettings();
             });
         }
+    }
+
+    getEditorName(editorId) {
+        const editors = {
+            vscode: 'Visual Studio Code',
+            webstorm: 'WebStorm',
+            phpstorm: 'PhpStorm',
+            sublime: 'Sublime Text',
+            atom: 'Atom',
+            cursor: 'Cursor'
+        };
+        return editors[editorId] || editorId;
     }
 
     get(key) {

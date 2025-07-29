@@ -215,6 +215,13 @@ class API {
             throw error;
         }
     }
+
+    async openProjectInEditor(projectId, editor = 'vscode') {
+        return this.request(`/projects/${projectId}/open-editor`, {
+            method: 'POST',
+            body: JSON.stringify({ editor })
+        });
+    }
 }
 
 // Create global API instance
