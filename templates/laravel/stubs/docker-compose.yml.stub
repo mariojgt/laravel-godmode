@@ -11,6 +11,7 @@ services:
         - INSTALL_BUN={{INSTALL_BUN}}
         - INSTALL_PNPM={{INSTALL_PNPM}}
     container_name: {{PROJECT_NAME}}_app
+    platform: linux/amd64
     volumes:
       - ./src:/var/www/html
     working_dir: /var/www/html
