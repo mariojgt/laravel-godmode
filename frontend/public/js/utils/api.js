@@ -191,6 +191,30 @@ class API {
             method: 'POST'
         });
     }
+
+    // Import SQL file to project database
+    async importSQLFile(projectId, formData) {
+        const url = `${this.baseURL}/projects/${projectId}/import-sql`;
+
+        try {
+            console.log(`Importing SQL file for project: ${projectId}`);
+            const response = await fetch(url, {
+                method: 'POST',
+                body: formData, // Don't set Content-Type, let browser set it for FormData
+                credentials: 'include'
+            });
+
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({ error: `HTTP ${response.status}: ${response.statusText}` }));
+                throw new Error(error.error || `HTTP ${response.status}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('SQL import failed:', error);
+            throw error;
+        }
+    }
 }
 
 // Create global API instance

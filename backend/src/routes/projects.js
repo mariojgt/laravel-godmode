@@ -4,7 +4,7 @@ const fs = require('fs').promises;
 const path = require('path');
 const { spawn, exec } = require('child_process');
 const { promisify } = require('util');
-
+const multer = require('multer');
 const execAsync = promisify(exec);
 
 const router = express.Router();
@@ -462,6 +462,84 @@ router.post('/:id/open-vscode', async (req, res) => {
   } catch (error) {
     console.error('Failed to open project in VS Code:', error);
     res.status(500).json({ error: 'Failed to open project in VS Code' });
+  }
+});
+
+// Configure multer for file uploads
+const upload = multer({
+  dest: 'uploads/',
+  fileFilter: (req, file, cb) => {
+    if (file.originalname.endsWith('.sql')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only .sql files are allowed'));
+    }
+  },
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  }
+});
+
+// Import SQL file to project database
+router.post('/:id/import-sql', upload.single('sqlFile'), async (req, res) => {
+  try {
+    const projects = await loadProjects();
+    const project = projects.find(p => p.id === req.params.id);
+
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No SQL file provided' });
+    }
+
+    const sqlFilePath = req.file.path;
+    const sqlbackDir = path.join(project.path, 'sqlback');
+
+    try {
+      console.log(`📥 Importing SQL file to ${project.name} database...`);
+
+      // Create sqlback directory if it doesn't exist
+      await fs.mkdir(sqlbackDir, { recursive: true });
+
+      // Move the uploaded file to the sqlback directory with timestamp
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const targetPath = path.join(sqlbackDir, `uploaded_${timestamp}_${req.file.originalname}`);
+
+      await fs.rename(sqlFilePath, targetPath);
+      console.log(`📁 File moved to: ${targetPath}`);
+
+      // Run make import command
+      const { stdout, stderr } = await execAsync('make import', {
+        cwd: project.path,
+        timeout: 60000 // 60 second timeout
+      });
+
+      console.log(`✅ SQL imported successfully for ${project.name}`);
+      console.log('Make output:', stdout);
+
+      res.json({
+        message: `SQL file imported successfully to ${project.name}`,
+        filename: req.file.originalname,
+        size: req.file.size,
+        location: `sqlback/${path.basename(targetPath)}`
+      });
+
+    } catch (error) {
+      // Clean up uploaded file on error
+      await fs.unlink(sqlFilePath).catch(() => {});
+
+      console.error('SQL import failed:', error);
+      res.status(500).json({
+        error: 'Failed to import SQL file',
+        details: error.message
+      });
+    }
+
+  } catch (error) {
+    console.error('Failed to import SQL:', error);
+    res.status(500).json({ error: 'Failed to import SQL file' });
   }
 });
 

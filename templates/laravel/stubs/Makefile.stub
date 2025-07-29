@@ -1,5 +1,5 @@
 # {{PROJECT_NAME}} - Laravel Project Commands
-.PHONY: help start stop restart build logs shell artisan composer npm status
+.PHONY: help start stop restart build logs shell artisan composer npm status backup import
 
 # Colors
 GREEN = \033[32m
@@ -24,6 +24,8 @@ help:
 	@echo "  make composer  - Run composer command"
 	@echo "  make npm       - Run npm command"
 	@echo "  make status    - Show container status"
+	@echo "  make backup    - Backup database to sqlback/ folder"
+	@echo "  make import    - Import latest SQL file from sqlback/ folder"
 	@echo ""
 
 ## Start containers
@@ -84,3 +86,28 @@ npm:
 status:
 	@echo "$(CYAN)📊 {{PROJECT_NAME}} Status:$(RESET)"
 	@docker-compose ps
+
+## Backup database
+backup:
+	@echo "$(CYAN)💾 Creating database backup...$(RESET)"
+	@mkdir -p sqlback
+	@docker-compose exec db mysqldump -u root -ppassword {{PROJECT_NAME}} > sqlback/backup_$(shell date +%Y%m%d_%H%M%S).sql
+	@echo "$(GREEN)✅ Database backed up to sqlback/ folder$(RESET)"
+	@ls -la sqlback/
+
+## Import SQL file
+import:
+	@echo "$(CYAN)📥 Importing latest SQL file...$(RESET)"
+	@if [ ! -d "sqlback" ]; then \
+		echo "$(YELLOW)❌ sqlback/ folder not found. Please create it and add SQL files.$(RESET)"; \
+		exit 1; \
+	fi
+	@LATEST_SQL=$$(ls -t sqlback/*.sql 2>/dev/null | head -n1); \
+	if [ -z "$$LATEST_SQL" ]; then \
+		echo "$(YELLOW)❌ No SQL files found in sqlback/ folder$(RESET)"; \
+		exit 1; \
+	else \
+		echo "$(CYAN)📥 Importing: $$LATEST_SQL$(RESET)"; \
+		docker-compose exec -T db mysql -u root -ppassword {{PROJECT_NAME}} < "$$LATEST_SQL"; \
+		echo "$(GREEN)✅ SQL file imported successfully!$(RESET)"; \
+	fi

@@ -70,6 +70,9 @@ class ProjectCard {
                             📧 Mail
                         </button>` : ''
                     }
+                    <button class="btn btn-xs btn-secondary" onclick="projectActions.importSQL('${this.project.id}')" title="Import SQL File">
+                        📥 SQL
+                    </button>
                     <button class="btn btn-xs btn-primary" onclick="projectActions.editPorts('${this.project.id}')" title="Edit Ports">
                         ⚙️ Ports
                     </button>
@@ -147,6 +150,47 @@ class ProjectCard {
             return new Date(dateString).toLocaleDateString();
         } catch {
             return 'Unknown';
+        }
+    }
+
+    async importSQL(projectId) {
+        try {
+            // Create file input
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = '.sql';
+            fileInput.style.display = 'none';
+
+            fileInput.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                if (!file.name.endsWith('.sql')) {
+                    toast.error('Please select a .sql file');
+                    return;
+                }
+
+                try {
+                    toast.info(`Importing ${file.name}...`);
+
+                    const formData = new FormData();
+                    formData.append('sqlFile', file);
+
+                    const result = await api.importSQLFile(projectId, formData);
+                    toast.success(`SQL file imported successfully!`);
+
+                } catch (error) {
+                    toast.error(`Failed to import SQL: ${error.message}`);
+                }
+            };
+
+            // Trigger file selector
+            document.body.appendChild(fileInput);
+            fileInput.click();
+            document.body.removeChild(fileInput);
+
+        } catch (error) {
+            toast.error(`Failed to import SQL: ${error.message}`);
         }
     }
 }
@@ -747,6 +791,47 @@ class ProjectActions {
             </div>
         `;
         document.body.appendChild(modal);
+    }
+
+    async importSQL(projectId) {
+        try {
+            // Create file input
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = '.sql';
+            fileInput.style.display = 'none';
+
+            fileInput.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                if (!file.name.endsWith('.sql')) {
+                    toast.error('Please select a .sql file');
+                    return;
+                }
+
+                try {
+                    toast.info(`Importing ${file.name}...`);
+
+                    const formData = new FormData();
+                    formData.append('sqlFile', file);
+
+                    const result = await api.importSQLFile(projectId, formData);
+                    toast.success(`SQL file imported successfully!`);
+
+                } catch (error) {
+                    toast.error(`Failed to import SQL: ${error.message}`);
+                }
+            };
+
+            // Trigger file selector
+            document.body.appendChild(fileInput);
+            fileInput.click();
+            document.body.removeChild(fileInput);
+
+        } catch (error) {
+            toast.error(`Failed to import SQL: ${error.message}`);
+        }
     }
 }
 
