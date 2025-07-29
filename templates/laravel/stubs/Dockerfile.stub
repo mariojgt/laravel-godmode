@@ -83,14 +83,14 @@ RUN chown -R www:www /var/www/html \
     && chmod -R 755 /var/www/html/storage \
     && chmod -R 755 /var/www/html/bootstrap/cache
 
-# Install Laravel dependencies if composer.json exists
+# Install Laravel dependencies if composer.json exists (skip discovery to avoid DB connection)
 RUN if [ -f composer.json ]; then \
-    composer install --no-dev --optimize-autoloader --no-interaction; \
+    composer install --no-dev --optimize-autoloader --no-interaction --no-scripts; \
     fi
 
-# Generate Laravel application key if artisan exists and no key is set
+# Generate Laravel application key if artisan exists and no key is set (skip if no DB available)
 RUN if [ -f artisan ] && ! grep -q "^APP_KEY=.*[^=]" .env 2>/dev/null; then \
-    php artisan key:generate --no-interaction --force; \
+    php artisan key:generate --no-interaction --force || true; \
     fi
 
 # Create supervisord main config
