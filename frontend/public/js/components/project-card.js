@@ -52,21 +52,29 @@ class ProjectCard {
     }
 
     renderServiceStatus() {
-        // Show quick service access buttons
+        const ports = this.project.ports || {};
+
         return `
             <div class="service-status">
                 <div class="service-buttons">
                     <button class="btn btn-xs btn-secondary" onclick="projectActions.openService('${this.project.id}', 'app')" title="Open Application">
                         🌐 App
                     </button>
-                    <button class="btn btn-xs btn-secondary" onclick="projectActions.openService('${this.project.id}', 'phpmyadmin')" title="Open PHPMyAdmin">
-                        🗄️ DB
-                    </button>
-                    <button class="btn btn-xs btn-secondary" onclick="projectActions.openService('${this.project.id}', 'mailhog')" title="Open Mailhog">
-                        📧 Mail
-                    </button>
+                    ${ports.phpmyadmin ?
+                        `<button class="btn btn-xs btn-secondary" onclick="projectActions.openService('${this.project.id}', 'phpmyadmin')" title="Open PHPMyAdmin">
+                            🗄️ DB
+                        </button>` : ''
+                    }
+                    ${ports.mailhog ?
+                        `<button class="btn btn-xs btn-secondary" onclick="projectActions.openService('${this.project.id}', 'mailhog')" title="Open Mailhog">
+                            📧 Mail
+                        </button>` : ''
+                    }
                     <button class="btn btn-xs btn-primary" onclick="projectActions.editPorts('${this.project.id}')" title="Edit Ports">
                         ⚙️ Ports
+                    </button>
+                    <button class="btn btn-xs btn-primary" onclick="projectActions.openInVSCode('${this.project.id}')" title="Open in VS Code">
+                        💻 Code
                     </button>
                 </div>
             </div>
@@ -692,6 +700,53 @@ class ProjectActions {
                 toast.error(`Failed to update port: ${error.message}`);
             }
         }
+    }
+
+    async openInVSCode(projectId) {
+        try {
+            const project = await api.getProject(projectId);
+
+            // Try to open with VS Code command
+            const success = await api.openProjectInVSCode(projectId);
+
+            if (success) {
+                toast.success(`Opening ${project.name} in VS Code...`);
+            } else {
+                // Fallback: show manual instructions
+                this.showVSCodeInstructions(project);
+            }
+        } catch (error) {
+            toast.error(`Failed to open in VS Code: ${error.message}`);
+            // Try fallback
+            const project = await api.getProject(projectId);
+            this.showVSCodeInstructions(project);
+        }
+    }
+
+    showVSCodeInstructions(project) {
+        const modal = document.createElement('div');
+        modal.className = 'modal active';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Open in VS Code</h3>
+                    <button class="modal-close" onclick="this.closest('.modal').remove()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p>Open this project in VS Code:</p>
+                    <div class="path-display">
+                        <code>${project.path}</code>
+                        <button class="btn btn-xs btn-secondary" onclick="navigator.clipboard.writeText('${project.path}'); toast.success('Path copied!')">📋 Copy</button>
+                    </div>
+                    <p><strong>Terminal command:</strong></p>
+                    <div class="path-display">
+                        <code>code "${project.path}"</code>
+                        <button class="btn btn-xs btn-secondary" onclick="navigator.clipboard.writeText('code &quot;${project.path}&quot;'); toast.success('Command copied!')">📋 Copy</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
     }
 }
 

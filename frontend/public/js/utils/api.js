@@ -185,6 +185,12 @@ class API {
             body: JSON.stringify({ ports, excludeProjectId })
         });
     }
+
+    async openProjectInVSCode(projectId) {
+        return this.request(`/projects/${projectId}/open-vscode`, {
+            method: 'POST'
+        });
+    }
 }
 
 // Create global API instance

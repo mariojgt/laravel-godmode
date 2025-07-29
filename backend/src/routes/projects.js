@@ -424,6 +424,47 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// Open project in VS Code
+router.post('/:id/open-vscode', async (req, res) => {
+  try {
+    const projects = await loadProjects();
+    const project = projects.find(p => p.id === req.params.id);
+
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    const { spawn } = require('child_process');
+
+    try {
+      // Try to open with VS Code
+      const child = spawn('code', [project.path], {
+        detached: true,
+        stdio: 'ignore'
+      });
+
+      child.unref();
+
+      res.json({
+        message: `Opening ${project.name} in VS Code`,
+        projectPath: project.path
+      });
+
+    } catch (error) {
+      // VS Code not found or failed
+      res.status(500).json({
+        error: 'Failed to open VS Code',
+        projectPath: project.path,
+        suggestion: `Try running: code "${project.path}"`
+      });
+    }
+
+  } catch (error) {
+    console.error('Failed to open project in VS Code:', error);
+    res.status(500).json({ error: 'Failed to open project in VS Code' });
+  }
+});
+
 // Helper functions
 async function createProjectAsync(project) {
   const projects = await loadProjects();
