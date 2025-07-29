@@ -99,6 +99,18 @@
     "vite": {
       "default": 5173,
       "description": "Vite development server"
+    },
+    "phpmyadmin": {
+      "default": 8080,
+      "description": "phpMyAdmin web interface"
+    },
+    "mailhog": {
+      "default": 8025,
+      "description": "MailHog web interface"
+    },
+    "redis": {
+      "default": 6379,
+      "description": "Redis server port"
     }
   },
 
