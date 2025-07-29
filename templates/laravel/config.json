@@ -7,11 +7,12 @@
 
   "versions": {
     "php": {
-      "default": "8.2",
-      "options": ["8.3", "8.2", "8.1", "8.0", "7.4"],
+      "default": "8.3",
+      "options": ["8.4", "8.3", "8.2", "8.1", "8.0", "7.4"],
       "labels": {
-        "8.3": "PHP 8.3 (Latest)",
-        "8.2": "PHP 8.2 (Recommended)",
+        "8.4": "PHP 8.4 (Latest)",
+        "8.3": "PHP 8.3 (Recommended)",
+        "8.2": "PHP 8.2",
         "8.1": "PHP 8.1",
         "8.0": "PHP 8.0",
         "7.4": "PHP 7.4 (Legacy)"

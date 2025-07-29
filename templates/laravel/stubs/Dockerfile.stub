@@ -1,6 +1,6 @@
 FROM php:{{PHP_VERSION}}-fpm-alpine
 
-# Install system dependencies
+# Install system dependencies including WebP support
 RUN apk add --no-cache \
     git \
     curl \
@@ -8,6 +8,9 @@ RUN apk add --no-cache \
     oniguruma-dev \
     libxml2-dev \
     libzip-dev \
+    libwebp-dev \
+    libjpeg-turbo-dev \
+    freetype-dev \
     zip \
     unzip \
     supervisor \
@@ -18,13 +21,19 @@ RUN apk add --no-cache \
 
 # Install Bun via npm (if enabled) - more reliable than curl install
 RUN if [ "{{INSTALL_BUN}}" = "true" ]; then \
-        npm install -g bun; \
+    npm install -g bun; \
     fi
 
 # Install pnpm (if enabled)
 RUN if [ "{{INSTALL_PNPM}}" = "true" ]; then \
-        npm install -g pnpm; \
+    npm install -g pnpm; \
     fi
+
+# Configure and install GD extension with WebP support
+RUN docker-php-ext-configure gd \
+    --with-freetype \
+    --with-jpeg \
+    --with-webp
 
 # Install PHP extensions
 RUN docker-php-ext-install \
@@ -47,14 +56,14 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 # Create application user (handle existing GID gracefully)
 RUN if ! getent group 1000 >/dev/null 2>&1; then \
-        addgroup -g 1000 www; \
+    addgroup -g 1000 www; \
     else \
-        addgroup www; \
+    addgroup www; \
     fi && \
     if ! getent passwd 1000 >/dev/null 2>&1; then \
-        adduser -u 1000 -G www -s /bin/sh -D www; \
+    adduser -u 1000 -G www -s /bin/sh -D www; \
     else \
-        adduser -G www -s /bin/sh -D www; \
+    adduser -G www -s /bin/sh -D www; \
     fi
 
 # Set working directory
@@ -76,12 +85,12 @@ RUN chown -R www:www /var/www/html \
 
 # Install Laravel dependencies if composer.json exists
 RUN if [ -f composer.json ]; then \
-        composer install --no-dev --optimize-autoloader --no-interaction; \
+    composer install --no-dev --optimize-autoloader --no-interaction; \
     fi
 
 # Generate Laravel application key if artisan exists and no key is set
 RUN if [ -f artisan ] && ! grep -q "^APP_KEY=.*[^=]" .env 2>/dev/null; then \
-        php artisan key:generate --no-interaction --force; \
+    php artisan key:generate --no-interaction --force; \
     fi
 
 # Create supervisord main config
