@@ -52,23 +52,8 @@ stdout_logfile_maxbytes=10MB
 stdout_logfile_backups=3
 priority=25
 
-[program:vite-dev]
-command=bash -c "if [ -f package.json ] && [ \"$APP_ENV\" = \"local\" ]; then if command -v bun >/dev/null 2>&1 && [ \"{{INSTALL_BUN}}\" = \"true\" ]; then bun run dev --host 0.0.0.0 --port 5173; elif command -v pnpm >/dev/null 2>&1 && [ \"{{INSTALL_PNPM}}\" = \"true\" ]; then pnpm run dev --host 0.0.0.0 --port 5173; else npm run dev -- --host 0.0.0.0 --port 5173; fi; else sleep infinity; fi"
-autostart=true
-autorestart=true
-user=www
-redirect_stderr=true
-stdout_logfile=/var/log/supervisor/vite.log
-stderr_logfile=/var/log/supervisor/vite-error.log
-stdout_logfile_maxbytes=10MB
-stderr_logfile_maxbytes=10MB
-stdout_logfile_backups=3
-stderr_logfile_backups=3
-environment=NODE_ENV="development"
-priority=30
-
 [group:laravel]
-programs=php-fpm,vite-dev
+programs=php-fpm
 priority=10
 
 [group:laravel-workers]
