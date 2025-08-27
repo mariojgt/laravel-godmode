@@ -26,7 +26,7 @@ class ProjectCard {
         const serviceStatus = this.project.status === 'running' ? this.renderServiceStatus() : '';
 
         return `
-            <div class="project-card" data-project-id="${this.project.id}">
+            <div class="project-card" data-project-id="${this.project.id}" onclick="ProjectCard.selectProject('${this.project.id}')">
                 <div class="project-header">
                     <h3 class="project-title">${this.project.name}</h3>
                     <span class="project-status ${statusClass}">${statusText}</span>
@@ -44,7 +44,7 @@ class ProjectCard {
 
                 ${serviceStatus}
 
-                <div class="project-actions">
+                <div class="project-actions" onclick="event.stopPropagation()">
                     ${this.renderActionButtons()}
                 </div>
             </div>
@@ -150,6 +150,28 @@ class ProjectCard {
             return new Date(dateString).toLocaleDateString();
         } catch {
             return 'Unknown';
+        }
+    }
+
+    static selectProject(projectId) {
+        // Remove previous selection
+        document.querySelectorAll('.project-card').forEach(card => {
+            card.classList.remove('selected');
+        });
+
+        // Select current project card
+        const currentCard = document.querySelector(`[data-project-id="${projectId}"]`);
+        if (currentCard) {
+            currentCard.classList.add('selected');
+        }
+
+        // Find project data
+        const project = window.dashboard?.projects?.find(p => p.id === projectId);
+        if (project) {
+            // Dispatch project selection event for Laravel manager
+            document.dispatchEvent(new CustomEvent('project-selected', {
+                detail: { project }
+            }));
         }
     }
 

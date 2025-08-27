@@ -222,6 +222,111 @@ class API {
             body: JSON.stringify({ editor })
         });
     }
+
+    // Laravel-specific API methods
+    async getLaravelStatus(projectId) {
+        return this.request(`/laravel/${projectId}/status`);
+    }
+
+    async runArtisanCommand(projectId, command, args = []) {
+        return this.request(`/laravel/${projectId}/artisan`, {
+            method: 'POST',
+            body: JSON.stringify({ command, args })
+        });
+    }
+
+    async getQueueStatus(projectId) {
+        return this.request(`/laravel/${projectId}/queue/status`);
+    }
+
+    async startQueueWorker(projectId, options = {}) {
+        return this.request(`/laravel/${projectId}/queue/start`, {
+            method: 'POST',
+            body: JSON.stringify(options)
+        });
+    }
+
+    async stopQueueWorkers(projectId) {
+        return this.request(`/laravel/${projectId}/queue/stop`, {
+            method: 'POST'
+        });
+    }
+
+    async getQueueJobs(projectId, status = 'all', limit = 50) {
+        return this.request(`/laravel/${projectId}/queue/jobs?status=${status}&limit=${limit}`);
+    }
+
+    async clearCache(projectId, types = ['all']) {
+        return this.request(`/laravel/${projectId}/cache/clear`, {
+            method: 'POST',
+            body: JSON.stringify({ types })
+        });
+    }
+
+    async runMigrations(projectId, fresh = false, seed = false) {
+        return this.request(`/laravel/${projectId}/migrate`, {
+            method: 'POST',
+            body: JSON.stringify({ fresh, seed })
+        });
+    }
+
+    async getLaravelLogs(projectId, type = 'laravel', lines = 100) {
+        return this.request(`/laravel/${projectId}/logs?type=${type}&lines=${lines}`);
+    }
+
+    async getScheduleStatus(projectId) {
+        return this.request(`/laravel/${projectId}/schedule/status`);
+    }
+
+    async runScheduler(projectId) {
+        return this.request(`/laravel/${projectId}/schedule/run`, {
+            method: 'POST'
+        });
+    }
+
+    // Service management
+    async getServiceStatus(projectId) {
+        return this.request(`/services/${projectId}`);
+    }
+
+    async controlService(projectId, service, action) {
+        return this.request(`/services/${projectId}/${service}/${action}`, {
+            method: 'POST'
+        });
+    }
+
+    async getServiceHealth(projectId) {
+        return this.request(`/services/${projectId}/health`);
+    }
+
+    async getServiceMetrics(projectId) {
+        return this.request(`/services/${projectId}/metrics`);
+    }
+
+    // Generic get/post methods for flexibility
+    async get(endpoint) {
+        return this.request(endpoint);
+    }
+
+    async post(endpoint, data = {}) {
+        return this.request(endpoint, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    async put(endpoint, data = {}) {
+        return this.request(endpoint, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+    }
+
+    async delete(endpoint) {
+        return this.request(endpoint, {
+            method: 'DELETE'
+        });
+    }
 }
 
 // Create global API instance

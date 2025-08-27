@@ -1,51 +1,84 @@
-# Laravel Godmode - Full Stack Application Manager
+# 🚀 Laravel God Mode - The Free Laravel Herd Alternative
 
-A modern, clean, and modular application to manage development projects with different templates (Laravel, Node.js, etc.), using Docker for orchestration.
+> **A powerful, Docker-based Laravel development environment manager that brings Laravel Herd-like features to any system, completely free!**
+
+Laravel God Mode is designed to be the ultimate free alternative to Laravel Herd, providing a beautiful interface to manage Laravel projects with Docker. It offers all the convenience features you love about Laravel Herd but runs entirely on Docker containers.
 
 ## ✨ Features
 
-- **Template-based Project Creation** - Laravel, Node.js, and custom templates
-- **Real-time Terminal Output** - WebSocket-powered terminal interface
-- **Project Management Dashboard** - Visual status monitoring
-- **Integrated Terminal per Project** - Run commands directly
-- **Live Docker Configuration Editing** - Update configs on the fly
-- **Environment File Editor** - Manage .env files easily
-- **Real-time Logs Viewer** - Stream container logs
-- **Project Backups** - Automated backup system
-- **Modern UI** - Clean, responsive design with your brand guidelines
+### 🎯 **Laravel Herd-like Experience**
+- **One-click project creation** with Laravel templates
+- **Real-time service monitoring** - see what's running at a glance
+- **Queue management** - start/stop workers, monitor jobs
+- **Database tools** - phpMyAdmin integration, migrations, seeders
+- **Cache management** - clear caches with one click
+- **Artisan commands** - run commands directly from the UI
+- **Logs viewer** - real-time container and Laravel logs
+
+### 🐳 **Docker-Powered**
+- **Full isolation** - each project runs in its own containers
+- **Port management** - automatic port conflict detection
+- **Service health monitoring** - database, Redis, queue workers
+- **Resource monitoring** - CPU, memory usage per container
+- **One-command setup** - `make dev` gets everything running
+
+### 🛠️ **Developer Tools**
+- **Integrated terminal** - run commands in project containers
+- **Environment editor** - edit .env files with syntax highlighting
+- **SQL import/export** - drag & drop SQL file imports
+- **Multiple editors** - VS Code, PhpStorm, WebStorm support
+- **Hot reload** - changes reflect immediately
+
+### 🌐 **Modern UI**
+- **Dark theme** with beautiful gradients
+- **Responsive design** - works on all screen sizes
+- **Real-time updates** - WebSocket-powered live updates
+- **Toast notifications** - clear feedback on all actions
+- **Keyboard shortcuts** - power user friendly
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- Node.js 18+
-- Docker & Docker Compose
-- Git
+- **Docker & Docker Compose** (latest versions recommended)
+- **Node.js 18+**
+- **Make** (for convenient commands)
 
 ### Installation
 
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
-   cd full-stack-app-manager
+   cd laravel-godmode
    ```
 
-2. **Install dependencies**
+2. **Install dependencies and start**
    ```bash
-   make install
+   make install  # Install all dependencies
+   make dev      # Start in development mode
    ```
 
-3. **Start the application**
-   ```bash
-   make dev
+3. **Open your browser**
+   ```
+   Frontend: http://localhost:3000
+   Backend:  http://localhost:5000
    ```
 
-4. **Open your browser**
-   - Frontend: http://localhost:3000
-   - Backend: http://localhost:5000
+### First Laravel Project
+
+1. Click **"Create Project"** in the dashboard
+2. Choose **Laravel** template
+3. Configure your settings:
+   - PHP version (7.4 - 8.3)
+   - Node.js version
+   - Enable Redis, phpMyAdmin, MailHog as needed
+   - Set custom ports or use defaults
+4. Click **"Create Project"**
+5. Watch the magic happen! ✨
 
 ## 📋 Available Commands
 
+### Global Commands
 ```bash
 make help          # Show all available commands
 make install       # Install all dependencies
@@ -55,159 +88,115 @@ make stop          # Stop the application
 make restart       # Restart the application
 make status        # Show application status
 make clean         # Clean build artifacts
+```
+
+### Development
+```bash
+make logs          # Show application logs
 make deps          # Check dependencies
+make check         # Run health checks
 ```
 
-## 📁 Project Structure
+## 🎯 Laravel Project Management
 
-```
-├── backend/              # Node.js backend server
-│   ├── src/
-│   │   ├── routes/       # API routes
-│   │   ├── controllers/  # Business logic
-│   │   └── utils/        # Utilities
-│   └── package.json
-├── frontend/             # Vanilla JS frontend
-│   ├── public/
-│   │   ├── js/           # JavaScript modules
-│   │   ├── styles/       # CSS stylesheets
-│   │   └── index.html
-│   └── package.json
-├── templates/            # Project templates
-│   ├── laravel/          # Laravel template
-│   └── nodejs/           # Node.js template
-├── data/                 # Application data
-│   └── projects.json     # Projects metadata
-├── backups/              # Project backups
-└── Makefile              # Command interface
-```
+Once you've created a Laravel project, you get:
 
-## 🔷 Creating Projects
+### **Service Dashboard**
+- **Container Status** - See which services are running
+- **Health Indicators** - Real-time health monitoring
+- **Port Information** - Quick access to all services
+- **Resource Usage** - Monitor CPU and memory
 
-1. Click **"Create Project"** on the dashboard
-2. Choose a template (Laravel, Node.js, etc.)
-3. Configure versions and services
-4. Set port mappings
-5. Click **"Create Project"**
+### **Artisan Integration**
+Quick access to common commands:
+- `migrate` - Run database migrations
+- `migrate:fresh --seed` - Fresh install with sample data
+- `cache:clear` - Clear all caches
+- `route:list` - View all routes
+- `tinker` - Open Laravel Tinker
+- **Custom commands** - Run any artisan command
 
-The system will:
-- Generate Docker configurations
-- Set up the development environment
-- Start the containers
-- Provide terminal access
+### **Queue Management**
+- **Start/Stop Workers** - Control queue processing
+- **Job Monitoring** - See pending, processing, failed jobs
+- **Failed Job Recovery** - Retry failed jobs
+- **Real-time Updates** - Watch jobs being processed
 
-## 🛠️ Templates
+### **Database Tools**
+- **Migration Runner** - Run migrations with one click
+- **Fresh Migrations** - Reset database with seeders
+- **phpMyAdmin Access** - Direct database management
+- **SQL Import** - Drag & drop SQL files to import
+- **Backup Tools** - Create database backups
 
-### Laravel Template
-- PHP 7.4 - 8.3 support
-- MySQL database
-- Redis caching
-- Nginx web server
-- Optional PHPMyAdmin
-- Optional MailHog
+### **Cache Management**
+- **Clear All Caches** - One-click cache clearing
+- **Selective Clearing** - Clear config, views, routes separately
+- **Cache Status** - See which cache driver is active
+- **Redis Monitoring** - Monitor Redis when enabled
 
-### Node.js Template
-- Node.js 16-21 support
-- Express.js framework
-- MySQL database
-- Optional Redis
-- Package manager choice (npm, yarn, bun, pnpm)
+### **Development Tools**
+- **Live Logs** - Real-time Laravel, Nginx, MySQL logs
+- **Container Terminal** - Run commands in containers
+- **Environment Editor** - Edit .env files in-browser
+- **Editor Integration** - Open projects in VS Code, PhpStorm, etc.
 
-## 🎨 UI Design
+## 🎯 Laravel Herd Comparison
 
-The interface follows modern design principles:
-- **Clean & minimalistic** layout
-- **Teal (#64FFDA)** primary color
-- **Purple (#8B5CF6)** secondary color
-- **Amber (#F59E0B)** accent color
-- **Dark theme** with proper contrast
-- **Inter** font family for text
-- **Fira Code** for code/terminal
+| Feature | Laravel Herd | Laravel God Mode |
+|---------|--------------|------------------|
+| **Price** | $99/year | **Free** |
+| **Platform** | macOS only | **Any OS with Docker** |
+| **Project Isolation** | Shared environment | **Full Docker isolation** |
+| **Service Management** | ✅ | ✅ |
+| **Queue Monitoring** | ✅ | ✅ |
+| **Database Tools** | ✅ | ✅ |
+| **Custom PHP Versions** | ✅ | ✅ |
+| **Port Management** | ✅ | ✅ |
+| **Editor Integration** | ✅ | ✅ |
+| **Real-time Logs** | ✅ | ✅ |
+| **Cache Management** | ✅ | ✅ |
+| **Terminal Access** | ✅ | ✅ |
+| **Open Source** | ❌ | ✅ |
+| **Customizable** | ❌ | ✅ |
 
-## 🔧 Development
+## � Troubleshooting
 
-### Backend Development
+### Common Issues
+
+**Port conflicts**
 ```bash
-cd backend
-npm run dev
+make kill-ports  # Kill processes on default ports
+make status      # Check application status
 ```
 
-### Frontend Development
+**Docker issues**
 ```bash
-cd frontend
-npm run dev
+docker system prune -f  # Clean Docker system
+make restart            # Restart application
 ```
 
-### Adding New Templates
+**Project won't start**
+```bash
+cd projects/your-project
+make logs               # Check container logs
+make build              # Rebuild containers
+```
 
-1. Create template directory in `templates/`
-2. Add `config.json` with template metadata
-3. Create stub files in `stubs/` directory
-4. Template will automatically appear in the UI
+**Frontend not connecting to backend**
+- Check `window.BACKEND_PORT` in `frontend/public/index.html`
+- Verify backend is running on port 5000
+- Check browser console for errors
 
-## 📡 API Endpoints
+### Health Checks
+```bash
+make check       # Run application health checks
+make status      # Show service status
+make deps        # Verify dependencies
+```
 
-### Projects
-- `GET /api/projects` - List all projects
-- `POST /api/projects` - Create new project
-- `GET /api/projects/:id` - Get project details
-- `PUT /api/projects/:id` - Update project
-- `DELETE /api/projects/:id` - Delete project
-- `POST /api/projects/:id/start` - Start project
-- `POST /api/projects/:id/stop` - Stop project
+---
 
-### Templates
-- `GET /api/templates` - List available templates
-- `GET /api/templates/:id` - Get template details
-- `GET /api/templates/:id/stubs` - Get template files
+**Made with ❤️ for the Laravel community**
 
-### Terminal
-- `POST /api/terminal/create` - Create terminal session
-- `POST /api/terminal/:id/input` - Send input to terminal
-- `DELETE /api/terminal/:id` - Kill terminal session
-
-## 🔌 WebSocket Events
-
-- `connected` - WebSocket connection established
-- `project_update` - Project status changed
-- `terminal_output` - Terminal output data
-- `log_update` - Container log update
-
-## 📦 Dependencies
-
-### Backend
-- `express` - Web framework
-- `cors` - Cross-origin resource sharing
-- `ws` - WebSocket server
-- `dockerode` - Docker API client
-- `node-pty` - Terminal interface
-- `uuid` - Unique ID generation
-
-### Frontend
-- Pure vanilla JavaScript
-- No build tools required
-- Modern ES6+ features
-- CSS Grid & Flexbox
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
-
-## 📄 License
-
-MIT License - see LICENSE file for details
-
-## 🆘 Support
-
-If you encounter issues:
-
-1. Check the logs: `make logs`
-2. Verify dependencies: `make deps`
-3. Check application status: `make status`
-4. Restart the application: `make restart`
-
-For additional help, please open an issue on GitHub.
+*Laravel God Mode - Because everyone deserves a great development experience, for free.*

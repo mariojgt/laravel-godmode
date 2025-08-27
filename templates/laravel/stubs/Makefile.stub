@@ -1,113 +1,320 @@
 # {{PROJECT_NAME}} - Laravel Project Commands
-.PHONY: help start stop restart build logs shell artisan composer npm status backup import
+.PHONY: help start stop restart build logs shell artisan composer npm status backup import setup fresh queue-work queue-stop cache-clear optimize install-app
 
 # Colors
 GREEN = \033[32m
 CYAN = \033[36m
 YELLOW = \033[33m
+RED = \033[31m
+PURPLE = \033[35m
 RESET = \033[0m
 
 .DEFAULT_GOAL := help
 
 ## Help
 help:
-	@echo "$(CYAN)🚀 {{PROJECT_NAME}} Commands$(RESET)"
+	@echo "$(CYAN)🚀 {{PROJECT_NAME}} - Laravel GodMode Commands$(RESET)"
 	@echo ""
-	@echo "$(GREEN)Available commands:$(RESET)"
-	@echo "  make start     - Start containers"
-	@echo "  make stop      - Stop containers"
-	@echo "  make restart   - Restart containers"
-	@echo "  make build     - Build containers"
-	@echo "  make logs      - Show logs"
-	@echo "  make shell     - Open app shell"
-	@echo "  make artisan   - Run artisan command (e.g., make artisan CMD='migrate')"
-	@echo "  make composer  - Run composer command"
-	@echo "  make npm       - Run npm command"
-	@echo "  make status    - Show container status"
-	@echo "  make backup    - Backup database to sqlback/ folder"
-	@echo "  make import    - Import latest SQL file from sqlback/ folder"
+	@echo "$(GREEN)🐳 Container Management:$(RESET)"
+	@echo "  make start         - Start all containers"
+	@echo "  make stop          - Stop all containers"
+	@echo "  make restart       - Restart all containers"
+	@echo "  make build         - Build containers from scratch"
+	@echo "  make logs          - Show container logs"
+	@echo "  make status        - Show container status"
+	@echo ""
+	@echo "$(GREEN)🛠️  Development:$(RESET)"
+	@echo "  make shell         - Open application shell"
+	@echo "  make setup         - Initial Laravel setup"
+	@echo "  make fresh         - Fresh install with sample data"
+	@echo "  make install-app   - Install/update dependencies"
+	@echo ""
+	@echo "$(GREEN)🎨 Laravel Commands:$(RESET)"
+	@echo "  make artisan       - Run artisan command (e.g., make artisan CMD='migrate')"
+	@echo "  make migrate       - Run database migrations"
+	@echo "  make migrate-fresh - Fresh migrations with seeders"
+	@echo "  make seed          - Run database seeders"
+	@echo "  make tinker        - Open Laravel Tinker"
+	@echo ""
+	@echo "$(GREEN)⚡ Performance & Cache:$(RESET)"
+	@echo "  make cache-clear   - Clear all Laravel caches"
+	@echo "  make optimize      - Optimize Laravel (production ready)"
+	@echo "  make config-cache  - Cache configuration files"
+	@echo "  make route-cache   - Cache routes"
+	@echo "  make view-cache    - Cache views"
+	@echo ""
+	@echo "$(GREEN)🚀 Queue Management:$(RESET)"
+	@echo "  make queue-work    - Start queue worker"
+	@echo "  make queue-stop    - Stop all queue workers"
+	@echo "  make queue-retry   - Retry failed jobs"
+	@echo "  make queue-clear   - Clear all jobs"
+	@echo ""
+	@echo "$(GREEN)📦 Package Management:$(RESET)"
+	@echo "  make composer      - Run composer command"
+	@echo "  make npm           - Run npm command"
+	@echo "  make yarn          - Run yarn command"
+	@echo "  make bun           - Run bun command"
+	@echo ""
+	@echo "$(GREEN)🗄️  Database:$(RESET)"
+	@echo "  make backup        - Backup database"
+	@echo "  make import        - Import latest SQL file"
+	@echo "  make db-shell      - Open database shell"
+	@echo "  make db-reset      - Reset database (fresh + seed)"
+	@echo ""
+	@echo "$(GREEN)🔧 Utilities:$(RESET)"
+	@echo "  make test          - Run PHPUnit tests"
+	@echo "  make pint          - Run Laravel Pint (code style)"
+	@echo "  make phpstan       - Run PHPStan (static analysis)"
+	@echo "  make ide-helper    - Generate IDE helper files"
 	@echo ""
 
-## Start containers
+## Container Management
 start:
 	@echo "$(CYAN)🚀 Starting {{PROJECT_NAME}}...$(RESET)"
 	@docker-compose up -d
 	@echo "$(GREEN)✅ {{PROJECT_NAME}} started!$(RESET)"
 	@echo "$(CYAN)🌐 App: http://localhost:{{APP_PORT}}$(RESET)"
+	@if [ "{{PHPMYADMIN_PORT}}" != "" ]; then echo "$(CYAN)🗄️  PHPMyAdmin: http://localhost:{{PHPMYADMIN_PORT}}$(RESET)"; fi
+	@if [ "{{MAILHOG_PORT}}" != "" ]; then echo "$(CYAN)📧 MailHog: http://localhost:{{MAILHOG_PORT}}$(RESET)"; fi
 
-## Stop containers
 stop:
 	@echo "$(CYAN)⏹️ Stopping {{PROJECT_NAME}}...$(RESET)"
 	@docker-compose down
 	@echo "$(GREEN)✅ {{PROJECT_NAME}} stopped!$(RESET)"
 
-## Restart containers
 restart: stop start
 
-## Build containers
 build:
 	@echo "$(CYAN)🔨 Building {{PROJECT_NAME}}...$(RESET)"
 	@docker-compose build --no-cache
 	@echo "$(GREEN)✅ Build complete!$(RESET)"
 
-## Show logs
 logs:
 	@docker-compose logs -f --tail=100
 
-## Open shell
-shell:
-	@docker-compose exec app /bin/bash
-
-## Run artisan commands
-artisan:
-	@if [ -z "$(CMD)" ]; then \
-		echo "$(YELLOW)Usage: make artisan CMD='command'$(RESET)"; \
-	else \
-		docker-compose exec app php artisan $(CMD); \
-	fi
-
-## Run composer commands
-composer:
-	@if [ -z "$(CMD)" ]; then \
-		echo "$(YELLOW)Usage: make composer CMD='command'$(RESET)"; \
-	else \
-		docker-compose exec app composer $(CMD); \
-	fi
-
-## Run npm commands
-npm:
-	@if [ -z "$(CMD)" ]; then \
-		echo "$(YELLOW)Usage: make npm CMD='command'$(RESET)"; \
-	else \
-		docker-compose exec app npm $(CMD); \
-	fi
-
-## Show status
 status:
 	@echo "$(CYAN)📊 {{PROJECT_NAME}} Status:$(RESET)"
 	@docker-compose ps
 
-## Backup database
+## Development
+shell:
+	@echo "$(CYAN)🐚 Opening application shell...$(RESET)"
+	@docker-compose exec app /bin/bash
+
+setup:
+	@echo "$(CYAN)🔧 Setting up Laravel application...$(RESET)"
+	@docker-compose exec app composer install --no-dev --optimize-autoloader
+	@docker-compose exec app php artisan key:generate --force
+	@docker-compose exec app php artisan storage:link
+	@docker-compose exec app php artisan config:cache
+	@docker-compose exec app php artisan route:cache
+	@docker-compose exec app php artisan view:cache
+	@docker-compose exec app npm install
+	@docker-compose exec app npm run build
+	@echo "$(GREEN)✅ Laravel setup complete!$(RESET)"
+
+fresh:
+	@echo "$(CYAN)🌱 Fresh Laravel installation with sample data...$(RESET)"
+	@docker-compose exec app php artisan migrate:fresh --seed --force
+	@docker-compose exec app php artisan db:seed --force
+	@make cache-clear
+	@echo "$(GREEN)✅ Fresh installation complete!$(RESET)"
+
+install-app:
+	@echo "$(CYAN)📦 Installing/updating dependencies...$(RESET)"
+	@docker-compose exec app composer install
+	@docker-compose exec app npm install
+	@echo "$(GREEN)✅ Dependencies updated!$(RESET)"
+
+## Laravel Commands
+artisan:
+	@if [ -z "$(CMD)" ]; then \
+		echo "$(YELLOW)Usage: make artisan CMD='command'$(RESET)"; \
+		echo "$(YELLOW)Example: make artisan CMD='make:controller UserController'$(RESET)"; \
+	else \
+		echo "$(CYAN)🎨 Running: php artisan $(CMD)$(RESET)"; \
+		docker-compose exec app php artisan $(CMD); \
+	fi
+
+migrate:
+	@echo "$(CYAN)🔄 Running database migrations...$(RESET)"
+	@docker-compose exec app php artisan migrate --force
+
+migrate-fresh:
+	@echo "$(CYAN)🆕 Fresh migrations with seeders...$(RESET)"
+	@docker-compose exec app php artisan migrate:fresh --seed --force
+
+seed:
+	@echo "$(CYAN)🌱 Running database seeders...$(RESET)"
+	@docker-compose exec app php artisan db:seed --force
+
+tinker:
+	@echo "$(CYAN)✨ Opening Laravel Tinker...$(RESET)"
+	@docker-compose exec app php artisan tinker
+
+## Performance & Cache
+cache-clear:
+	@echo "$(CYAN)🧹 Clearing all Laravel caches...$(RESET)"
+	@docker-compose exec app php artisan optimize:clear
+	@echo "$(GREEN)✅ All caches cleared!$(RESET)"
+
+optimize:
+	@echo "$(CYAN)⚡ Optimizing Laravel for production...$(RESET)"
+	@docker-compose exec app php artisan optimize
+	@docker-compose exec app composer dump-autoload --optimize
+	@echo "$(GREEN)✅ Laravel optimized!$(RESET)"
+
+config-cache:
+	@echo "$(CYAN)⚙️ Caching configuration...$(RESET)"
+	@docker-compose exec app php artisan config:cache
+
+route-cache:
+	@echo "$(CYAN)🛣️ Caching routes...$(RESET)"
+	@docker-compose exec app php artisan route:cache
+
+view-cache:
+	@echo "$(CYAN)👁️ Caching views...$(RESET)"
+	@docker-compose exec app php artisan view:cache
+
+## Queue Management
+queue-work:
+	@echo "$(CYAN)🚀 Starting queue worker...$(RESET)"
+	@docker-compose exec -d app php artisan queue:work --sleep=3 --tries=3 --max-time=3600
+
+queue-stop:
+	@echo "$(CYAN)⏹️ Stopping queue workers...$(RESET)"
+	@docker-compose exec app php artisan queue:restart
+
+queue-retry:
+	@echo "$(CYAN)🔄 Retrying failed jobs...$(RESET)"
+	@docker-compose exec app php artisan queue:retry all
+
+queue-clear:
+	@echo "$(CYAN)🗑️ Clearing all jobs...$(RESET)"
+	@docker-compose exec app php artisan queue:clear
+
+## Package Management
+composer:
+	@if [ -z "$(CMD)" ]; then \
+		echo "$(YELLOW)Usage: make composer CMD='command'$(RESET)"; \
+		echo "$(YELLOW)Example: make composer CMD='require laravel/sanctum'$(RESET)"; \
+	else \
+		echo "$(CYAN)📦 Running: composer $(CMD)$(RESET)"; \
+		docker-compose exec app composer $(CMD); \
+	fi
+
+npm:
+	@if [ -z "$(CMD)" ]; then \
+		echo "$(YELLOW)Usage: make npm CMD='command'$(RESET)"; \
+		echo "$(YELLOW)Example: make npm CMD='run dev'$(RESET)"; \
+	else \
+		echo "$(CYAN)📦 Running: npm $(CMD)$(RESET)"; \
+		docker-compose exec app npm $(CMD); \
+	fi
+
+yarn:
+	@if [ -z "$(CMD)" ]; then \
+		echo "$(YELLOW)Usage: make yarn CMD='command'$(RESET)"; \
+	else \
+		echo "$(CYAN)📦 Running: yarn $(CMD)$(RESET)"; \
+		docker-compose exec app yarn $(CMD); \
+	fi
+
+bun:
+	@if [ -z "$(CMD)" ]; then \
+		echo "$(YELLOW)Usage: make bun CMD='command'$(RESET)"; \
+	else \
+		echo "$(CYAN)� Running: bun $(CMD)$(RESET)"; \
+		docker-compose exec app bun $(CMD); \
+	fi
+
+## Database
 backup:
 	@echo "$(CYAN)💾 Creating database backup...$(RESET)"
 	@mkdir -p sqlback
 	@docker-compose exec db mysqldump -u root -ppassword {{PROJECT_NAME}} > sqlback/backup_$(shell date +%Y%m%d_%H%M%S).sql
 	@echo "$(GREEN)✅ Database backed up to sqlback/ folder$(RESET)"
-	@ls -la sqlback/
+	@ls -la sqlback/ | tail -5
 
-## Import SQL file
 import:
 	@echo "$(CYAN)📥 Importing latest SQL file...$(RESET)"
 	@if [ ! -d "sqlback" ]; then \
-		echo "$(YELLOW)❌ sqlback/ folder not found. Please create it and add SQL files.$(RESET)"; \
+		echo "$(RED)❌ sqlback/ folder not found. Please create it and add SQL files.$(RESET)"; \
 		exit 1; \
 	fi
 	@LATEST_SQL=$$(ls -t sqlback/*.sql 2>/dev/null | head -n1); \
 	if [ -z "$$LATEST_SQL" ]; then \
-		echo "$(YELLOW)❌ No SQL files found in sqlback/ folder$(RESET)"; \
+		echo "$(RED)❌ No SQL files found in sqlback/ folder$(RESET)"; \
 		exit 1; \
 	else \
 		echo "$(CYAN)📥 Importing: $$LATEST_SQL$(RESET)"; \
 		docker-compose exec -T db mysql -u root -ppassword {{PROJECT_NAME}} < "$$LATEST_SQL"; \
 		echo "$(GREEN)✅ SQL file imported successfully!$(RESET)"; \
 	fi
+
+db-shell:
+	@echo "$(CYAN)🗄️ Opening database shell...$(RESET)"
+	@docker-compose exec db mysql -u root -ppassword {{PROJECT_NAME}}
+
+db-reset:
+	@echo "$(CYAN)🔄 Resetting database...$(RESET)"
+	@make migrate-fresh
+	@echo "$(GREEN)✅ Database reset complete!$(RESET)"
+
+## Development Tools
+test:
+	@echo "$(CYAN)🧪 Running PHPUnit tests...$(RESET)"
+	@docker-compose exec app php artisan test
+
+pint:
+	@echo "$(CYAN)🎨 Running Laravel Pint (code formatting)...$(RESET)"
+	@docker-compose exec app ./vendor/bin/pint
+
+phpstan:
+	@echo "$(CYAN)🔍 Running PHPStan (static analysis)...$(RESET)"
+	@docker-compose exec app ./vendor/bin/phpstan analyse
+
+ide-helper:
+	@echo "$(CYAN)💡 Generating IDE helper files...$(RESET)"
+	@docker-compose exec app php artisan ide-helper:generate
+	@docker-compose exec app php artisan ide-helper:models --write
+	@docker-compose exec app php artisan ide-helper:meta
+	@echo "$(GREEN)✅ IDE helpers generated!$(RESET)"
+
+## Development Shortcuts
+dev:
+	@echo "$(CYAN)🔧 Starting development environment...$(RESET)"
+	@make start
+	@echo "$(YELLOW)⏱️ Waiting for containers to be ready...$(RESET)"
+	@sleep 5
+	@make install-app
+	@make cache-clear
+	@echo "$(GREEN)✅ Development environment ready!$(RESET)"
+	@echo "$(PURPLE)🚀 Happy coding!$(RESET)"
+
+prod:
+	@echo "$(CYAN)🚀 Preparing for production...$(RESET)"
+	@make setup
+	@make optimize
+	@make test
+	@echo "$(GREEN)✅ Production build complete!$(RESET)"
+
+## Laravel GodMode Integration
+godmode-status:
+	@echo "$(CYAN)📊 Laravel GodMode Status Check$(RESET)"
+	@echo "$(GREEN)Services:$(RESET)"
+	@docker-compose ps --format "table {{.Service}}\t{{.Status}}\t{{.Ports}}"
+	@echo ""
+	@echo "$(GREEN)Queue Workers:$(RESET)"
+	@docker-compose exec app php artisan queue:monitor 2>/dev/null || echo "No queue workers running"
+	@echo ""
+	@echo "$(GREEN)Cache Status:$(RESET)"
+	@docker-compose exec app php artisan config:show cache.default 2>/dev/null || echo "Cache driver: file"
+
+godmode-info:
+	@echo "$(CYAN)ℹ️  Laravel GodMode Project Info$(RESET)"
+	@echo "$(GREEN)Project:$(RESET) {{PROJECT_NAME}}"
+	@echo "$(GREEN)Laravel Version:$(RESET) $$(docker-compose exec app php artisan --version 2>/dev/null || echo 'Unknown')"
+	@echo "$(GREEN)PHP Version:$(RESET) $$(docker-compose exec app php -v | head -n1 || echo 'Unknown')"
+	@echo "$(GREEN)Composer Packages:$(RESET) $$(docker-compose exec app composer show --direct 2>/dev/null | wc -l || echo '0') packages"
+	@echo "$(GREEN)NPM Packages:$(RESET) $$(docker-compose exec app npm list --depth=0 2>/dev/null | grep -c '├──\\|└──' || echo '0') packages"

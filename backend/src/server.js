@@ -1,5 +1,5 @@
 // Load environment variables from root .env file
-require('dotenv').config({ path: '../.env' });
+require('dotenv').config({ path: '../../.env' });
 
 const express = require('express');
 const cors = require('cors');
@@ -11,6 +11,8 @@ const projectRoutes = require('./routes/projects');
 const templateRoutes = require('./routes/templates');
 const terminalRoutes = require('./routes/terminal');
 const envRoutes = require('./routes/env');
+const laravelRoutes = require('./routes/laravel');
+const servicesRoutes = require('./routes/services');
 
 const app = express();
 const server = http.createServer(app);
@@ -45,6 +47,8 @@ app.use('/api/projects', projectRoutes);
 app.use('/api/templates', templateRoutes);
 app.use('/api/terminal', terminalRoutes);
 app.use('/api/env', envRoutes);
+app.use('/api/laravel', laravelRoutes);
+app.use('/api/services', servicesRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
@@ -94,7 +98,7 @@ function handleWebSocketMessage(ws, data) {
   }
 }
 
-const PORT = process.env.BACKEND_PORT || process.env.PORT || 5000;
+const PORT = process.env.BACKEND_PORT || process.env.PORT || 5001;
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);

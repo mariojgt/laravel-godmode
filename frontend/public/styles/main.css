@@ -509,9 +509,15 @@ body {
 }
 
 .project-card:hover {
-    transform: translateY(-2px);
-    border-color: rgba(100, 255, 218, 0.3);
-    box-shadow: var(--shadow-lg);
+    transform: translateY(-4px);
+    border-color: #64FFDA;
+    box-shadow: 0 12px 40px rgba(100, 255, 218, 0.2);
+}
+
+.project-card.selected {
+    border-color: #64FFDA;
+    box-shadow: 0 8px 32px rgba(100, 255, 218, 0.3);
+    background: linear-gradient(135deg, rgba(100, 255, 218, 0.05) 0%, rgba(139, 92, 246, 0.05) 100%);
 }
 
 .project-header {

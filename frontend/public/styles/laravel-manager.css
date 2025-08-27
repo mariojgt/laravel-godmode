@@ -1,0 +1,512 @@
+/* Laravel Manager Styles */
+.laravel-manager {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border-radius: 16px;
+    padding: 0;
+    margin: 20px 0;
+    border: 1px solid rgba(100, 255, 218, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+}
+
+.laravel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    background: linear-gradient(90deg, rgba(100, 255, 218, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.laravel-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.laravel-icon {
+    font-size: 24px;
+    background: linear-gradient(135deg, #64FFDA 0%, #8B5CF6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: bold;
+}
+
+.laravel-title h3 {
+    margin: 0;
+    color: #ffffff;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.project-name {
+    background: rgba(100, 255, 218, 0.2);
+    color: #64FFDA;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.laravel-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.status-indicator.healthy {
+    background: #10B981;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+}
+
+.status-indicator.warning {
+    background: #F59E0B;
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+}
+
+.status-indicator.error {
+    background: #EF4444;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+}
+
+.status-text {
+    color: #E5E7EB;
+    font-size: 14px;
+}
+
+/* Laravel Tabs */
+.laravel-tabs {
+    display: flex;
+    background: rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    overflow-x: auto;
+}
+
+.tab-btn {
+    background: none;
+    border: none;
+    padding: 16px 20px;
+    color: #9CA3AF;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-bottom: 3px solid transparent;
+    white-space: nowrap;
+    font-weight: 500;
+}
+
+.tab-btn:hover {
+    color: #64FFDA;
+    background: rgba(100, 255, 218, 0.05);
+}
+
+.tab-btn.active {
+    color: #64FFDA;
+    border-bottom-color: #64FFDA;
+    background: rgba(100, 255, 218, 0.1);
+}
+
+/* Laravel Content */
+.laravel-content {
+    padding: 24px;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Services Grid */
+.services-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 16px;
+}
+
+.service-card {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+.service-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(100, 255, 218, 0.3);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+}
+
+.service-card.running {
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+.service-card.stopped {
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.service-icon {
+    font-size: 32px;
+    margin-bottom: 12px;
+}
+
+.service-info h4 {
+    margin: 0 0 8px 0;
+    color: #ffffff;
+    font-size: 16px;
+}
+
+.service-info p {
+    margin: 0 0 12px 0;
+    color: #9CA3AF;
+    font-size: 14px;
+}
+
+.service-status {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-running {
+    background: rgba(16, 185, 129, 0.2);
+    color: #10B981;
+}
+
+.status-stopped {
+    background: rgba(239, 68, 68, 0.2);
+    color: #EF4444;
+}
+
+/* Command Grid */
+.command-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.cmd-btn {
+    background: linear-gradient(135deg, rgba(100, 255, 218, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+    border: 1px solid rgba(100, 255, 218, 0.2);
+    border-radius: 12px;
+    padding: 16px 12px;
+    color: #ffffff;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    text-align: center;
+}
+
+.cmd-btn:hover {
+    transform: translateY(-2px);
+    border-color: #64FFDA;
+    box-shadow: 0 8px 25px rgba(100, 255, 218, 0.2);
+}
+
+.cmd-btn .icon {
+    font-size: 20px;
+}
+
+.cmd-btn span:last-child {
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* Output Content */
+.command-output {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    padding: 20px;
+}
+
+.output-content {
+    background: #0F172A;
+    border-radius: 8px;
+    padding: 16px;
+    border: 1px solid rgba(100, 255, 218, 0.1);
+}
+
+.output-content pre {
+    margin: 0;
+    color: #E5E7EB;
+    font-family: 'Fira Code', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+}
+
+/* Queue Panel */
+.queue-controls, .cache-panel, .database-panel {
+    margin-bottom: 24px;
+}
+
+.queue-actions, .cache-actions, .database-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+}
+
+.queue-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 16px;
+    margin-top: 20px;
+}
+
+.stat-card {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stat-value {
+    font-size: 28px;
+    font-weight: bold;
+    color: #64FFDA;
+    margin-bottom: 8px;
+}
+
+.stat-label {
+    color: #9CA3AF;
+    font-size: 14px;
+}
+
+/* Jobs List */
+.jobs-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.job-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.job-details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.job-name {
+    color: #ffffff;
+    font-weight: 500;
+}
+
+.job-queue {
+    color: #9CA3AF;
+    font-size: 12px;
+}
+
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-badge.pending {
+    background: rgba(245, 158, 11, 0.2);
+    color: #F59E0B;
+}
+
+.status-badge.processing {
+    background: rgba(59, 130, 246, 0.2);
+    color: #3B82F6;
+}
+
+.status-badge.completed {
+    background: rgba(16, 185, 129, 0.2);
+    color: #10B981;
+}
+
+.status-badge.failed {
+    background: rgba(239, 68, 68, 0.2);
+    color: #EF4444;
+}
+
+/* Buttons */
+.btn {
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+    color: white;
+}
+
+.btn-success:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+    color: white;
+}
+
+.btn-danger:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+    color: white;
+}
+
+.btn-warning:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+    color: white;
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: #E5E7EB;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(100, 255, 218, 0.3);
+}
+
+/* Logs */
+.logs-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.log-type-selector {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.log-type-selector select {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: #ffffff;
+    font-size: 14px;
+}
+
+.log-type-selector select option {
+    background: #1a1a2e;
+    color: #ffffff;
+}
+
+.logs-content {
+    background: #0F172A;
+    border-radius: 12px;
+    padding: 0;
+    border: 1px solid rgba(100, 255, 218, 0.1);
+    max-height: 400px;
+    overflow: hidden;
+}
+
+.log-output {
+    padding: 20px;
+    margin: 0;
+    color: #E5E7EB;
+    font-family: 'Fira Code', monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    overflow-y: auto;
+    max-height: 360px;
+}
+
+/* Loading states */
+.loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px;
+    color: #9CA3AF;
+}
+
+.no-jobs {
+    text-align: center;
+    padding: 40px;
+    color: #9CA3AF;
+}
+
+/* Info sections */
+.cache-info, .database-info {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    margin-top: 20px;
+}
+
+.cache-info p, .database-info p {
+    margin: 8px 0;
+    color: #E5E7EB;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .laravel-tabs {
+        overflow-x: auto;
+    }
+
+    .command-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .queue-actions, .cache-actions, .database-actions {
+        flex-direction: column;
+    }
+
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}

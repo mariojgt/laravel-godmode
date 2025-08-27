@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Laravel God Mode</title>
     <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/laravel-manager.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@300;400;500&display=swap" rel="stylesheet">
@@ -40,6 +41,11 @@
 
                 <div class="projects-grid" id="projects-grid">
                     <!-- Projects will be loaded here -->
+                </div>
+
+                <!-- Laravel Manager Panel -->
+                <div id="laravel-panel" style="display: none;">
+                    <!-- Laravel controls will be rendered here -->
                 </div>
             </div>
 
@@ -157,6 +163,7 @@
     <script src="js/components/modal.js"></script>
     <script src="js/components/project-card.js"></script>
     <script src="js/components/template-card.js"></script>
+    <script src="js/components/laravel-manager.js"></script>
     <script src="js/views/dashboard.js"></script>
     <script src="js/views/templates.js"></script>
     <script src="js/views/settings.js"></script>
