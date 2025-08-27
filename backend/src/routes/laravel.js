@@ -610,4 +610,340 @@ async function runScheduler(project) {
   }
 }
 
+// Supervisor Management Routes
+
+// Get supervisor status
+router.get('/:id/supervisor/status', async (req, res) => {
+  try {
+    const projects = await loadProjects();
+    const project = projects.find(p => p.id === req.params.id);
+
+    if (!project || project.template !== 'laravel') {
+      return res.status(404).json({ error: 'Laravel project not found' });
+    }
+
+    const supervisorStatus = await getSupervisorStatus(project);
+    res.json(supervisorStatus);
+  } catch (error) {
+    console.error('Failed to get supervisor status:', error);
+    res.status(500).json({ error: 'Failed to get supervisor status' });
+  }
+});
+
+// Get supervisor configuration
+router.get('/:id/supervisor/config', async (req, res) => {
+  try {
+    const projects = await loadProjects();
+    const project = projects.find(p => p.id === req.params.id);
+
+    if (!project || project.template !== 'laravel') {
+      return res.status(404).json({ error: 'Laravel project not found' });
+    }
+
+    const config = await getSupervisorConfig(project);
+    res.json({ config });
+  } catch (error) {
+    console.error('Failed to get supervisor config:', error);
+    res.status(500).json({ error: 'Failed to get supervisor config' });
+  }
+});
+
+// Save supervisor configuration
+router.put('/:id/supervisor/config', async (req, res) => {
+  try {
+    const { config } = req.body;
+    const projects = await loadProjects();
+    const project = projects.find(p => p.id === req.params.id);
+
+    if (!project || project.template !== 'laravel') {
+      return res.status(404).json({ error: 'Laravel project not found' });
+    }
+
+    const result = await saveSupervisorConfig(project, config);
+    res.json(result);
+  } catch (error) {
+    console.error('Failed to save supervisor config:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to save supervisor config',
+      details: error.message
+    });
+  }
+});
+
+// Toggle supervisor program (start/stop)
+router.post('/:id/supervisor/program/:program/toggle', async (req, res) => {
+  try {
+    const projects = await loadProjects();
+    const project = projects.find(p => p.id === req.params.id);
+    const programName = req.params.program;
+
+    if (!project || project.template !== 'laravel') {
+      return res.status(404).json({ error: 'Laravel project not found' });
+    }
+
+    const result = await toggleSupervisorProgram(project, programName);
+    res.json(result);
+  } catch (error) {
+    console.error('Failed to toggle supervisor program:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to toggle supervisor program',
+      details: error.message
+    });
+  }
+});
+
+// Restart supervisor program
+router.post('/:id/supervisor/program/:program/restart', async (req, res) => {
+  try {
+    const projects = await loadProjects();
+    const project = projects.find(p => p.id === req.params.id);
+    const programName = req.params.program;
+
+    if (!project || project.template !== 'laravel') {
+      return res.status(404).json({ error: 'Laravel project not found' });
+    }
+
+    const result = await restartSupervisorProgram(project, programName);
+    res.json(result);
+  } catch (error) {
+    console.error('Failed to restart supervisor program:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to restart supervisor program',
+      details: error.message
+    });
+  }
+});
+
+// Restart entire supervisor
+router.post('/:id/supervisor/restart', async (req, res) => {
+  try {
+    const projects = await loadProjects();
+    const project = projects.find(p => p.id === req.params.id);
+
+    if (!project || project.template !== 'laravel') {
+      return res.status(404).json({ error: 'Laravel project not found' });
+    }
+
+    const result = await restartSupervisor(project);
+    res.json(result);
+  } catch (error) {
+    console.error('Failed to restart supervisor:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to restart supervisor',
+      details: error.message
+    });
+  }
+});
+
+// Supervisor Helper Functions
+
+async function getSupervisorStatus(project) {
+  try {
+    // Get supervisor status - use spawn to handle stderr warnings properly
+    const { spawn } = require('child_process');
+
+    const statusOutput = await new Promise((resolve, reject) => {
+      const process = spawn('docker-compose', ['exec', '-T', 'app', 'supervisorctl', 'status'], {
+        cwd: project.path,
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      process.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+
+      process.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      process.on('close', (code) => {
+        // Accept exit codes 0 and 3 (3 is when some programs are stopped)
+        if (code === 0 || code === 3) {
+          resolve(stdout);
+        } else {
+          reject(new Error(`Command failed with code ${code}: ${stderr}`));
+        }
+      });
+
+      process.on('error', (err) => {
+        reject(err);
+      });
+
+      // Set timeout
+      setTimeout(() => {
+        process.kill();
+        reject(new Error('Command timeout'));
+      }, 10000);
+    });
+
+    const programs = [];
+    const lines = statusOutput.split('\n').filter(line => line.trim());
+
+    for (const line of lines) {
+      // Parse supervisor status output: "program_name RUNNING pid 123, uptime 1:23:45"
+      const match = line.match(/^(\S+)\s+(RUNNING|STOPPED|STARTING|STOPPING|BACKOFF|EXITED|FATAL|UNKNOWN)\s*(.*)$/);
+      if (match) {
+        const [, name, state, details] = match;
+        let pid = null;
+        let uptime = null;
+        let description = '';
+
+        // Extract PID and uptime from details
+        const pidMatch = details.match(/pid (\d+)/);
+        if (pidMatch) pid = pidMatch[1];
+
+        const uptimeMatch = details.match(/uptime (.+)/);
+        if (uptimeMatch) uptime = uptimeMatch[1];
+
+        programs.push({
+          name,
+          state,
+          pid,
+          uptime,
+          description
+        });
+      }
+    }
+
+    // Calculate stats
+    const stats = {
+      total: programs.length,
+      running: programs.filter(p => p.state === 'RUNNING').length,
+      stopped: programs.filter(p => p.state === 'STOPPED').length,
+      failed: programs.filter(p => ['FATAL', 'EXITED', 'BACKOFF'].includes(p.state)).length
+    };
+
+    return { programs, stats };
+  } catch (error) {
+    console.error('Error getting supervisor status:', error);
+    return {
+      programs: [],
+      stats: { total: 0, running: 0, stopped: 0, failed: 0 },
+      error: error.message
+    };
+  }
+}
+
+async function getSupervisorConfig(project) {
+  try {
+    // Read supervisor configuration file
+    const configPath = path.join(project.path, 'docker', 'supervisor.conf');
+    const config = await fs.readFile(configPath, 'utf8');
+    return config;
+  } catch (error) {
+    console.error('Error reading supervisor config:', error);
+    throw new Error(`Failed to read supervisor config: ${error.message}`);
+  }
+}
+
+async function saveSupervisorConfig(project, config) {
+  try {
+    // Save supervisor configuration file
+    const configPath = path.join(project.path, 'docker', 'supervisor.conf');
+    await fs.writeFile(configPath, config, 'utf8');
+
+    // Reload supervisor configuration
+    try {
+      await execAsync(
+        'docker-compose exec -T app supervisorctl reread',
+        { cwd: project.path, timeout: 10000 }
+      );
+
+      await execAsync(
+        'docker-compose exec -T app supervisorctl update',
+        { cwd: project.path, timeout: 15000 }
+      );
+    } catch (reloadError) {
+      console.warn('Failed to reload supervisor config automatically:', reloadError.message);
+    }
+
+    return {
+      success: true,
+      message: 'Supervisor configuration saved successfully',
+      timestamp: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('Error saving supervisor config:', error);
+    throw new Error(`Failed to save supervisor config: ${error.message}`);
+  }
+}
+
+async function toggleSupervisorProgram(project, programName) {
+  try {
+    // First check current status
+    const { stdout: statusOutput } = await execAsync(
+      `docker-compose exec -T app supervisorctl status ${programName}`,
+      { cwd: project.path, timeout: 5000 }
+    );
+
+    const isRunning = statusOutput.includes('RUNNING');
+    const action = isRunning ? 'stop' : 'start';
+
+    // Toggle the program
+    const { stdout: actionOutput } = await execAsync(
+      `docker-compose exec -T app supervisorctl ${action} ${programName}`,
+      { cwd: project.path, timeout: 15000 }
+    );
+
+    return {
+      success: true,
+      action,
+      program: programName,
+      output: actionOutput.trim(),
+      message: `Program ${programName} ${action}ed successfully`,
+      timestamp: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('Error toggling supervisor program:', error);
+    throw new Error(`Failed to toggle program ${programName}: ${error.message}`);
+  }
+}
+
+async function restartSupervisorProgram(project, programName) {
+  try {
+    const { stdout } = await execAsync(
+      `docker-compose exec -T app supervisorctl restart ${programName}`,
+      { cwd: project.path, timeout: 15000 }
+    );
+
+    return {
+      success: true,
+      program: programName,
+      output: stdout.trim(),
+      message: `Program ${programName} restarted successfully`,
+      timestamp: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('Error restarting supervisor program:', error);
+    throw new Error(`Failed to restart program ${programName}: ${error.message}`);
+  }
+}
+
+async function restartSupervisor(project) {
+  try {
+    // Restart all supervisor programs
+    const { stdout } = await execAsync(
+      'docker-compose exec -T app supervisorctl restart all',
+      { cwd: project.path, timeout: 30000 }
+    );
+
+    return {
+      success: true,
+      output: stdout.trim(),
+      message: 'Supervisor restarted successfully',
+      timestamp: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('Error restarting supervisor:', error);
+    throw new Error(`Failed to restart supervisor: ${error.message}`);
+  }
+}
+
 module.exports = router;

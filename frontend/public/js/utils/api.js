@@ -303,6 +303,40 @@ class API {
         return this.request(`/services/${projectId}/metrics`);
     }
 
+    // Supervisor management
+    async getSupervisorStatus(projectId) {
+        return this.request(`/laravel/${projectId}/supervisor/status`);
+    }
+
+    async getSupervisorConfig(projectId) {
+        return this.request(`/laravel/${projectId}/supervisor/config`);
+    }
+
+    async saveSupervisorConfig(projectId, config) {
+        return this.request(`/laravel/${projectId}/supervisor/config`, {
+            method: 'PUT',
+            body: JSON.stringify({ config })
+        });
+    }
+
+    async toggleSupervisorProgram(projectId, programName) {
+        return this.request(`/laravel/${projectId}/supervisor/program/${programName}/toggle`, {
+            method: 'POST'
+        });
+    }
+
+    async restartSupervisorProgram(projectId, programName) {
+        return this.request(`/laravel/${projectId}/supervisor/program/${programName}/restart`, {
+            method: 'POST'
+        });
+    }
+
+    async restartSupervisor(projectId) {
+        return this.request(`/laravel/${projectId}/supervisor/restart`, {
+            method: 'POST'
+        });
+    }
+
     // Generic get/post methods for flexibility
     async get(endpoint) {
         return this.request(endpoint);

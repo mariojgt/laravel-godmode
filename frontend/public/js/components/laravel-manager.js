@@ -24,6 +24,13 @@ class LaravelManager {
                 this.updateLaravelUI();
             }
         });
+
+        // Setup supervisor editor mode switching
+        document.addEventListener('change', (event) => {
+            if (event.target.name === 'supervisor-editor-mode') {
+                this.switchSupervisorEditorMode();
+            }
+        });
     }
 
     setCurrentProject(project) {
@@ -83,6 +90,7 @@ class LaravelManager {
                     <button class="tab-btn active" data-tab="services">Services</button>
                     <button class="tab-btn" data-tab="artisan">Artisan</button>
                     <button class="tab-btn" data-tab="queue">Queue</button>
+                    <button class="tab-btn" data-tab="supervisor">Supervisor</button>
                     <button class="tab-btn" data-tab="cache">Cache</button>
                     <button class="tab-btn" data-tab="database">Database</button>
                     <button class="tab-btn" data-tab="logs">Logs</button>
@@ -165,6 +173,73 @@ class LaravelManager {
                                 <div class="jobs-content">
                                     <div class="loading">Loading jobs...</div>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Supervisor Tab -->
+                    <div class="tab-content" id="supervisor-tab">
+                        <div class="supervisor-panel">
+                            <div class="supervisor-header">
+                                <h4>Supervisor Management</h4>
+                                <div class="supervisor-actions">
+                                    <button class="btn btn-primary" onclick="laravelManager.loadSupervisorStatus()">
+                                        <span class="icon">🔄</span>
+                                        Reload Status
+                                    </button>
+                                    <button class="btn btn-success" onclick="laravelManager.saveSupervisorConfig()">
+                                        <span class="icon">💾</span>
+                                        Save Config
+                                    </button>
+                                    <button class="btn btn-secondary" onclick="laravelManager.restartSupervisor()">
+                                        <span class="icon">🔃</span>
+                                        Restart Supervisor
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Supervisor Stats -->
+                            <div class="supervisor-stats" id="supervisor-stats">
+                                <div class="loading">Loading supervisor stats...</div>
+                            </div>
+
+                            <!-- Programs Grid -->
+                            <div class="supervisor-programs-section">
+                                <h5>Running Programs</h5>
+                                <div class="supervisor-programs-grid" id="supervisor-programs-grid">
+                                    <div class="loading">Loading supervisor programs...</div>
+                                </div>
+                            </div>
+
+                            <!-- Configuration Editor -->
+                            <div class="supervisor-config-section">
+                                <h5>Configuration Editor</h5>
+
+                                <!-- Editor Mode Toggle -->
+                                <div class="supervisor-editor-modes">
+                                    <label>
+                                        <input type="radio" name="supervisor-editor-mode" value="visual" checked>
+                                        <span>Visual Editor</span>
+                                    </label>
+                                    <label>
+                                        <input type="radio" name="supervisor-editor-mode" value="raw">
+                                        <span>Raw Config</span>
+                                    </label>
+                                </div>
+
+                                <!-- Visual Editor -->
+                                <div class="supervisor-visual-editor" id="supervisor-visual-editor">
+                                    <div class="visual-editor-programs" id="visual-editor-programs">
+                                        <!-- Programs will be loaded here -->
+                                    </div>
+                                    <button class="btn btn-primary add-program-btn" onclick="laravelManager.addNewProgram()">
+                                        <span class="icon">➕</span>
+                                        Add New Program
+                                    </button>
+                                </div>
+
+                                <!-- Raw Editor -->
+                                <textarea class="supervisor-raw-editor" id="supervisor-raw-editor" placeholder="Loading configuration..."></textarea>
                             </div>
                         </div>
                     </div>
@@ -290,6 +365,9 @@ class LaravelManager {
                 break;
             case 'queue':
                 this.loadQueueStatus();
+                break;
+            case 'supervisor':
+                this.loadSupervisorStatus();
                 break;
             case 'cache':
                 this.loadCacheStatus();
@@ -633,6 +711,328 @@ class LaravelManager {
             if (logOutput) {
                 logOutput.textContent = `Error loading logs: ${error.message}`;
             }
+        }
+    }
+
+    async loadSupervisorStatus() {
+        if (!this.currentProject) return;
+
+        try {
+            const response = await api.getSupervisorStatus(this.currentProject.id);
+            this.updateSupervisorGrid(response.programs);
+            this.updateSupervisorStats(response.stats);
+
+            // Also load the configuration on first load
+            this.loadSupervisorConfig();
+        } catch (error) {
+            console.error('Failed to load supervisor status:', error);
+            toast.error('Failed to load supervisor status');
+        }
+    }
+
+    updateSupervisorGrid(programs) {
+        const programsGrid = document.getElementById('supervisor-programs-grid');
+        if (!programsGrid) return;
+
+        programsGrid.innerHTML = programs.map(program => `
+            <div class="program-card">
+                <div class="program-header">
+                    <span class="program-name">${program.name}</span>
+                    <span class="program-status ${program.state.toLowerCase()}">${program.state}</span>
+                </div>
+                <div class="program-details">
+                    <small class="program-description">${program.description || 'No description'}</small>
+                    <div class="program-stats">
+                        <span>PID: ${program.pid || 'N/A'}</span>
+                        <span>Uptime: ${program.uptime || '0s'}</span>
+                    </div>
+                </div>
+                <div class="program-actions">
+                    <button class="btn btn-small ${program.state === 'RUNNING' ? 'btn-danger' : 'btn-success'}"
+                            onclick="laravelManager.toggleProgram('${program.name}')">
+                        ${program.state === 'RUNNING' ? 'Stop' : 'Start'}
+                    </button>
+                    <button class="btn btn-small btn-secondary" onclick="laravelManager.restartProgram('${program.name}')">
+                        Restart
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    updateSupervisorStats(stats) {
+        const statsContainer = document.getElementById('supervisor-stats');
+        if (!statsContainer) return;
+
+        statsContainer.innerHTML = `
+            <div class="stat-item">
+                <span class="stat-label">Total Programs:</span>
+                <span class="stat-value">${stats.total || 0}</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Running:</span>
+                <span class="stat-value running">${stats.running || 0}</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Stopped:</span>
+                <span class="stat-value stopped">${stats.stopped || 0}</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Failed:</span>
+                <span class="stat-value failed">${stats.failed || 0}</span>
+            </div>
+        `;
+    }
+
+    async loadSupervisorConfig() {
+        if (!this.currentProject) return;
+
+        try {
+            const response = await api.getSupervisorConfig(this.currentProject.id);
+            const rawEditor = document.getElementById('supervisor-raw-editor');
+            if (rawEditor) {
+                rawEditor.value = response.config;
+            }
+
+            // Parse and populate visual editor
+            this.populateVisualEditor(response.config);
+
+        } catch (error) {
+            console.error('Failed to load supervisor config:', error);
+            toast.error('Failed to load supervisor config');
+        }
+    }
+
+    populateVisualEditor(config) {
+        // Parse supervisor config and populate the visual editor form
+        const lines = config.split('\n');
+        let currentProgram = null;
+        const programs = {};
+
+        lines.forEach(line => {
+            line = line.trim();
+            if (line.startsWith('[program:')) {
+                currentProgram = line.match(/\[program:(.+)\]/)[1];
+                programs[currentProgram] = {};
+            } else if (currentProgram && line.includes('=')) {
+                const [key, value] = line.split('=').map(s => s.trim());
+                programs[currentProgram][key] = value;
+            }
+        });
+
+        this.renderVisualEditorPrograms(programs);
+    }
+
+    renderVisualEditorPrograms(programs) {
+        const container = document.getElementById('visual-editor-programs');
+        if (!container) return;
+
+        container.innerHTML = Object.entries(programs).map(([name, config]) => `
+            <div class="program-editor-card" data-program="${name}">
+                <div class="program-editor-header">
+                    <input type="text" value="${name}" class="program-name-input" onchange="laravelManager.updateProgramName(this, '${name}')">
+                    <button class="btn btn-small btn-danger" onclick="laravelManager.removeProgram('${name}')">Remove</button>
+                </div>
+                <div class="program-editor-form">
+                    <div class="form-row">
+                        <label>Command:</label>
+                        <input type="text" value="${config.command || ''}" onchange="laravelManager.updateProgramConfig('${name}', 'command', this.value)">
+                    </div>
+                    <div class="form-row">
+                        <label>Directory:</label>
+                        <input type="text" value="${config.directory || ''}" onchange="laravelManager.updateProgramConfig('${name}', 'directory', this.value)">
+                    </div>
+                    <div class="form-row">
+                        <label>User:</label>
+                        <input type="text" value="${config.user || ''}" onchange="laravelManager.updateProgramConfig('${name}', 'user', this.value)">
+                    </div>
+                    <div class="form-row">
+                        <label>Auto Start:</label>
+                        <select onchange="laravelManager.updateProgramConfig('${name}', 'autostart', this.value)">
+                            <option value="true" ${config.autostart === 'true' ? 'selected' : ''}>Yes</option>
+                            <option value="false" ${config.autostart === 'false' ? 'selected' : ''}>No</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <label>Auto Restart:</label>
+                        <select onchange="laravelManager.updateProgramConfig('${name}', 'autorestart', this.value)">
+                            <option value="true" ${config.autorestart === 'true' ? 'selected' : ''}>Yes</option>
+                            <option value="false" ${config.autorestart === 'false' ? 'selected' : ''}>No</option>
+                            <option value="unexpected" ${config.autorestart === 'unexpected' ? 'selected' : ''}>Unexpected Only</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    async saveSupervisorConfig() {
+        if (!this.currentProject) return;
+
+        const editorMode = document.querySelector('input[name="supervisor-editor-mode"]:checked').value;
+        let config;
+
+        if (editorMode === 'visual') {
+            config = this.generateConfigFromVisualEditor();
+        } else {
+            const rawEditor = document.getElementById('supervisor-raw-editor');
+            config = rawEditor ? rawEditor.value : '';
+        }
+
+        try {
+            await api.saveSupervisorConfig(this.currentProject.id, config);
+            toast.success('Supervisor configuration saved successfully');
+
+            // Reload status after saving
+            this.loadSupervisorStatus();
+        } catch (error) {
+            console.error('Failed to save supervisor config:', error);
+            toast.error('Failed to save supervisor config');
+        }
+    }
+
+    generateConfigFromVisualEditor() {
+        const programCards = document.querySelectorAll('.program-editor-card');
+        let config = '';
+
+        programCards.forEach(card => {
+            const programName = card.querySelector('.program-name-input').value;
+            const inputs = card.querySelectorAll('input, select');
+
+            config += `[program:${programName}]\n`;
+
+            inputs.forEach(input => {
+                if (input.classList.contains('program-name-input')) return;
+
+                const label = input.closest('.form-row').querySelector('label').textContent.toLowerCase().replace(' ', '');
+                const value = input.value;
+                if (value) {
+                    config += `${label}=${value}\n`;
+                }
+            });
+
+            config += '\n';
+        });
+
+        return config;
+    }
+
+    addNewProgram() {
+        const container = document.getElementById('visual-editor-programs');
+        if (!container) return;
+
+        const newProgramName = `new-program-${Date.now()}`;
+        const newProgramHtml = `
+            <div class="program-editor-card" data-program="${newProgramName}">
+                <div class="program-editor-header">
+                    <input type="text" value="${newProgramName}" class="program-name-input" onchange="laravelManager.updateProgramName(this, '${newProgramName}')">
+                    <button class="btn btn-small btn-danger" onclick="laravelManager.removeProgram('${newProgramName}')">Remove</button>
+                </div>
+                <div class="program-editor-form">
+                    <div class="form-row">
+                        <label>Command:</label>
+                        <input type="text" value="" onchange="laravelManager.updateProgramConfig('${newProgramName}', 'command', this.value)">
+                    </div>
+                    <div class="form-row">
+                        <label>Directory:</label>
+                        <input type="text" value="/var/www/html" onchange="laravelManager.updateProgramConfig('${newProgramName}', 'directory', this.value)">
+                    </div>
+                    <div class="form-row">
+                        <label>User:</label>
+                        <input type="text" value="www-data" onchange="laravelManager.updateProgramConfig('${newProgramName}', 'user', this.value)">
+                    </div>
+                    <div class="form-row">
+                        <label>Auto Start:</label>
+                        <select onchange="laravelManager.updateProgramConfig('${newProgramName}', 'autostart', this.value)">
+                            <option value="true" selected>Yes</option>
+                            <option value="false">No</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <label>Auto Restart:</label>
+                        <select onchange="laravelManager.updateProgramConfig('${newProgramName}', 'autorestart', this.value)">
+                            <option value="true" selected>Yes</option>
+                            <option value="false">No</option>
+                            <option value="unexpected">Unexpected Only</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        container.insertAdjacentHTML('beforeend', newProgramHtml);
+    }
+
+    removeProgram(programName) {
+        const card = document.querySelector(`[data-program="${programName}"]`);
+        if (card) {
+            card.remove();
+        }
+    }
+
+    updateProgramName(input, oldName) {
+        const card = input.closest('.program-editor-card');
+        if (card) {
+            card.setAttribute('data-program', input.value);
+        }
+    }
+
+    updateProgramConfig(programName, key, value) {
+        // This method is called when form fields change
+        // The actual config generation happens when saving
+        console.log(`Updated ${programName}.${key} = ${value}`);
+    }
+
+    async toggleProgram(programName) {
+        if (!this.currentProject) return;
+
+        try {
+            await api.toggleSupervisorProgram(this.currentProject.id, programName);
+            toast.success(`Program ${programName} toggled successfully`);
+            this.loadSupervisorStatus();
+        } catch (error) {
+            console.error('Failed to toggle program:', error);
+            toast.error(`Failed to toggle program ${programName}`);
+        }
+    }
+
+    async restartProgram(programName) {
+        if (!this.currentProject) return;
+
+        try {
+            await api.restartSupervisorProgram(this.currentProject.id, programName);
+            toast.success(`Program ${programName} restarted successfully`);
+            this.loadSupervisorStatus();
+        } catch (error) {
+            console.error('Failed to restart program:', error);
+            toast.error(`Failed to restart program ${programName}`);
+        }
+    }
+
+    async restartSupervisor() {
+        if (!this.currentProject) return;
+
+        try {
+            await api.restartSupervisor(this.currentProject.id);
+            toast.success('Supervisor restarted successfully');
+            setTimeout(() => this.loadSupervisorStatus(), 2000);
+        } catch (error) {
+            console.error('Failed to restart supervisor:', error);
+            toast.error('Failed to restart supervisor');
+        }
+    }
+
+    switchSupervisorEditorMode() {
+        const visualEditor = document.getElementById('supervisor-visual-editor');
+        const rawEditor = document.getElementById('supervisor-raw-editor');
+        const mode = document.querySelector('input[name="supervisor-editor-mode"]:checked').value;
+
+        if (mode === 'visual') {
+            visualEditor.style.display = 'block';
+            rawEditor.style.display = 'none';
+        } else {
+            visualEditor.style.display = 'none';
+            rawEditor.style.display = 'block';
         }
     }
 
