@@ -362,28 +362,48 @@ class LaravelManager {
     async runArtisanCommand(command, args = []) {
         if (!this.currentProject) return;
 
+        // Create operation for artisan command
+        const operationId = `artisan-${this.currentProject.id}-${Date.now()}`;
+        const operation = progressManager.startOperation(operationId, {
+            title: `⚡ Running Artisan Command`,
+            description: `Executing: php artisan ${command} ${args.join(' ')}`,
+            projectId: this.currentProject.id,
+            projectName: this.currentProject.name,
+            steps: ['Connecting to container', 'Executing command', 'Processing output']
+        });
+
         const outputElement = document.getElementById('artisan-output-content');
         if (outputElement) {
             outputElement.textContent = 'Running command...';
         }
 
         try {
+            progressManager.updateOperation(operationId, { currentStep: 0 });
+            progressManager.addLog(operationId, `Running: php artisan ${command} ${args.join(' ')}`, 'info');
+
             const response = await api.runArtisanCommand(this.currentProject.id, command, args);
+
+            progressManager.updateOperation(operationId, { currentStep: 1 });
+            progressManager.addLog(operationId, 'Command executed, processing output...', 'info');
 
             if (outputElement) {
                 outputElement.textContent = response.output || 'Command completed successfully.';
             }
 
             if (response.success) {
+                progressManager.addLog(operationId, 'Command completed successfully', 'success');
+                progressManager.completeOperation(operationId, true, `Artisan command completed: ${command}`);
                 toast.success(`Artisan command completed: ${command}`);
             } else {
-                toast.error(`Artisan command failed: ${command}`);
+                throw new Error(response.error || 'Command failed');
             }
         } catch (error) {
             console.error('Artisan command failed:', error);
             if (outputElement) {
                 outputElement.textContent = `Error: ${error.message}`;
             }
+            progressManager.addLog(operationId, `Error: ${error.message}`, 'error');
+            progressManager.completeOperation(operationId, false, 'Artisan command failed');
             toast.error('Failed to run Artisan command');
         }
     }
@@ -461,12 +481,33 @@ class LaravelManager {
     async startQueueWorker() {
         if (!this.currentProject) return;
 
+        // Create operation for queue worker
+        const operationId = `queue-start-${this.currentProject.id}-${Date.now()}`;
+        const operation = progressManager.startOperation(operationId, {
+            title: `▶️ Starting Queue Worker`,
+            description: 'Initializing Laravel queue worker...',
+            projectId: this.currentProject.id,
+            projectName: this.currentProject.name,
+            steps: ['Connecting to container', 'Starting worker process', 'Verifying worker status']
+        });
+
         try {
+            progressManager.updateOperation(operationId, { currentStep: 0 });
+            progressManager.addLog(operationId, 'Starting queue worker...', 'info');
+
             await api.startQueueWorker(this.currentProject.id);
+
+            progressManager.updateOperation(operationId, { currentStep: 1 });
+            progressManager.addLog(operationId, 'Queue worker started successfully', 'success');
+
+            progressManager.completeOperation(operationId, true, 'Queue worker is now running');
             toast.success('Queue worker started');
+
             setTimeout(() => this.loadQueueStatus(), 2000);
         } catch (error) {
             console.error('Failed to start queue worker:', error);
+            progressManager.addLog(operationId, `Error: ${error.message}`, 'error');
+            progressManager.completeOperation(operationId, false, 'Failed to start queue worker');
             toast.error('Failed to start queue worker');
         }
     }
@@ -487,18 +528,39 @@ class LaravelManager {
     async clearCache(types) {
         if (!this.currentProject) return;
 
+        // Create operation for cache clearing
+        const operationId = `cache-clear-${this.currentProject.id}-${Date.now()}`;
+        const operation = progressManager.startOperation(operationId, {
+            title: `🧹 Clearing Cache`,
+            description: `Clearing cache types: ${types.join(', ')}`,
+            projectId: this.currentProject.id,
+            projectName: this.currentProject.name,
+            steps: ['Connecting to container', 'Clearing cache', 'Verifying cache cleared']
+        });
+
         try {
+            progressManager.updateOperation(operationId, { currentStep: 0 });
+            progressManager.addLog(operationId, `Clearing cache types: ${types.join(', ')}`, 'info');
+
             const response = await api.clearCache(this.currentProject.id, types);
 
+            progressManager.updateOperation(operationId, { currentStep: 1 });
+
             if (response.success) {
+                progressManager.addLog(operationId, 'Cache cleared successfully', 'success');
+                progressManager.completeOperation(operationId, true, 'Cache cleared successfully');
                 toast.success('Cache cleared successfully');
             } else {
+                progressManager.addLog(operationId, 'Some cache types failed to clear', 'warning');
+                progressManager.completeOperation(operationId, true, 'Some cache types failed to clear');
                 toast.warning('Some cache types failed to clear');
             }
 
             this.loadCacheStatus();
         } catch (error) {
             console.error('Failed to clear cache:', error);
+            progressManager.addLog(operationId, `Error: ${error.message}`, 'error');
+            progressManager.completeOperation(operationId, false, 'Failed to clear cache');
             toast.error('Failed to clear cache');
         }
     }

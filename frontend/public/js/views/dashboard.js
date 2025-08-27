@@ -151,21 +151,66 @@ class Dashboard {
                 }
             }
 
+            // Start progress tracking for project creation
+            const operation = progressManager.createProjectOperation(
+                `temp-${Date.now()}`,
+                projectData.name,
+                'create'
+            );
+
             // Show loading
             if (submitBtn) {
                 submitBtn.textContent = 'Creating...';
                 submitBtn.disabled = true;
             }
 
-            await api.createProject(projectData);
+            progressManager.addLog(operation.id, 'Validating project configuration...', 'info');
+            progressManager.updateOperation(operation.id, { currentStep: 0 });
 
-            toast.success(`Project "${projectData.name}" created successfully`);
-            modalManager.close('create-project-modal');
+            setTimeout(() => {
+                progressManager.addLog(operation.id, 'Generating Docker configuration...', 'info');
+                progressManager.updateOperation(operation.id, { currentStep: 1 });
+            }, 1000);
 
-            // Reload projects to show the new one
-            await this.loadProjects();
+            setTimeout(() => {
+                progressManager.addLog(operation.id, 'Setting up project structure...', 'info');
+                progressManager.updateOperation(operation.id, { currentStep: 2 });
+            }, 2000);
+
+            const response = await api.createProject(projectData);
+
+            if (response.success) {
+                progressManager.updateOperation(operation.id, { currentStep: 3 });
+                progressManager.addLog(operation.id, 'Installing dependencies...', 'info');
+
+                setTimeout(() => {
+                    progressManager.updateOperation(operation.id, { currentStep: 4 });
+                    progressManager.addLog(operation.id, 'Starting containers...', 'info');
+                }, 1000);
+
+                setTimeout(() => {
+                    progressManager.completeOperation(operation.id, true, `Project "${projectData.name}" created successfully! 🎉`);
+                    modalManager.close('create-project-modal');
+                }, 2000);
+
+                // Reload projects to show the new one
+                setTimeout(() => {
+                    this.loadProjects();
+                }, 3000);
+            } else {
+                throw new Error(response.message || 'Project creation failed');
+            }
 
         } catch (error) {
+            // Complete operation with error
+            const operation = Array.from(progressManager.activeOperations.values())
+                .find(op => op.title.includes('Creating Project'));
+
+            if (operation) {
+                progressManager.addLog(operation.id, `Error: ${error.message}`, 'error');
+                progressManager.completeOperation(operation.id, false, 'Project creation failed');
+            }
+
             toast.error(`Failed to create project: ${error.message}`);
         } finally {
             // Reset button

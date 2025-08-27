@@ -32,6 +32,11 @@ class WebSocketManager {
                     const data = JSON.parse(event.data);
                     this.emit('message', data);
 
+                    // Handle progress operation messages
+                    if (data.type && data.type.startsWith('operation_')) {
+                        this.handleProgressMessage(data);
+                    }
+
                     // Emit specific event types
                     if (data.type) {
                         this.emit(data.type, data);
@@ -94,6 +99,13 @@ class WebSocketManager {
             sessionId,
             input
         });
+    }
+
+    handleProgressMessage(data) {
+        // Forward progress messages to progress manager
+        if (window.progressManager) {
+            window.progressManager.handleWebSocketMessage(data);
+        }
     }
 
     on(event, callback) {

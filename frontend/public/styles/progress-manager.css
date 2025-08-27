@@ -1,0 +1,413 @@
+/* Progress Manager Styles */
+.progress-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 400px;
+    z-index: 9999;
+    pointer-events: none;
+}
+
+.progress-notification {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    margin-bottom: 12px;
+    padding: 16px;
+    border-left: 4px solid #007bff;
+    transition: all 0.3s ease;
+    pointer-events: auto;
+    animation: slideInRight 0.3s ease;
+}
+
+.progress-notification.removing {
+    animation: slideOutRight 0.3s ease;
+    opacity: 0;
+    transform: translateX(100%);
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideOutRight {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+}
+
+/* Status variations */
+.progress-notification.status-running {
+    border-left-color: #007bff;
+}
+
+.progress-notification.status-completed {
+    border-left-color: #28a745;
+}
+
+.progress-notification.status-failed {
+    border-left-color: #dc3545;
+}
+
+.progress-notification.status-processing {
+    border-left-color: #ffc107;
+}
+
+/* Progress header */
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+}
+
+.progress-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+}
+
+.progress-icon {
+    font-size: 16px;
+    animation: spin 2s linear infinite;
+}
+
+.progress-notification.status-completed .progress-icon,
+.progress-notification.status-failed .progress-icon {
+    animation: none;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.operation-title {
+    font-weight: 600;
+    color: #333;
+    font-size: 14px;
+}
+
+.project-name {
+    background: #f8f9fa;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    color: #666;
+    font-weight: normal;
+}
+
+.progress-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.progress-duration {
+    font-size: 12px;
+    color: #666;
+    font-family: monospace;
+}
+
+.progress-close {
+    background: none;
+    border: none;
+    font-size: 18px;
+    color: #999;
+    cursor: pointer;
+    padding: 0;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.progress-close:hover {
+    background: #f8f9fa;
+    color: #666;
+}
+
+/* Progress description */
+.progress-description {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 12px;
+    line-height: 1.4;
+}
+
+/* Progress bar */
+.progress-bar-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.progress-bar {
+    flex: 1;
+    height: 6px;
+    background: #e9ecef;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #007bff, #0056b3);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+    animation: progressPulse 2s ease-in-out infinite;
+}
+
+@keyframes progressPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+}
+
+.progress-percentage {
+    font-size: 12px;
+    color: #666;
+    font-family: monospace;
+    min-width: 35px;
+    text-align: right;
+}
+
+/* Progress steps */
+.progress-steps {
+    margin-bottom: 8px;
+}
+
+.current-step {
+    font-size: 13px;
+    color: #495057;
+    background: #f8f9fa;
+    padding: 6px 10px;
+    border-radius: 4px;
+    border-left: 3px solid #007bff;
+}
+
+/* Progress logs */
+.progress-logs {
+    margin-top: 12px;
+    border-top: 1px solid #e9ecef;
+    padding-top: 12px;
+}
+
+.logs-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.logs-header span {
+    font-size: 12px;
+    font-weight: 600;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.logs-toggle {
+    background: none;
+    border: none;
+    font-size: 11px;
+    color: #007bff;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 3px;
+    transition: all 0.2s ease;
+}
+
+.logs-toggle:hover {
+    background: #f8f9fa;
+}
+
+.logs-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.progress-notification.logs-expanded .logs-content {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.log-entry {
+    display: flex;
+    gap: 8px;
+    padding: 3px 0;
+    font-size: 11px;
+    line-height: 1.3;
+}
+
+.log-time {
+    color: #999;
+    font-family: monospace;
+    flex-shrink: 0;
+    width: 60px;
+}
+
+.log-message {
+    color: #555;
+    flex: 1;
+}
+
+.log-entry.log-error .log-message {
+    color: #dc3545;
+}
+
+.log-entry.log-success .log-message {
+    color: #28a745;
+}
+
+.log-entry.log-warning .log-message {
+    color: #ffc107;
+}
+
+/* Project card operation progress */
+.operation-progress {
+    margin-top: 8px;
+    padding: 8px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    border-left: 3px solid #007bff;
+}
+
+.operation-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.operation-icon {
+    font-size: 12px;
+    animation: spin 2s linear infinite;
+}
+
+.operation-text {
+    font-size: 12px;
+    color: #666;
+    font-weight: 500;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .progress-container {
+        width: calc(100vw - 40px);
+        right: 20px;
+        left: 20px;
+    }
+
+    .progress-notification {
+        padding: 12px;
+    }
+
+    .progress-title {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+
+    .project-name {
+        align-self: flex-start;
+    }
+}
+
+/* Dark theme support */
+@media (prefers-color-scheme: dark) {
+    .progress-notification {
+        background: #2d3748;
+        color: #e2e8f0;
+    }
+
+    .operation-title {
+        color: #e2e8f0;
+    }
+
+    .project-name {
+        background: #4a5568;
+        color: #a0aec0;
+    }
+
+    .progress-description {
+        color: #a0aec0;
+    }
+
+    .progress-bar {
+        background: #4a5568;
+    }
+
+    .current-step {
+        background: #4a5568;
+        color: #e2e8f0;
+    }
+
+    .progress-logs {
+        border-top-color: #4a5568;
+    }
+
+    .logs-header span {
+        color: #a0aec0;
+    }
+
+    .log-message {
+        color: #cbd5e0;
+    }
+
+    .operation-progress {
+        background: #4a5568;
+    }
+
+    .operation-text {
+        color: #a0aec0;
+    }
+}
+
+/* Enhanced project card status styles */
+.project-status.status-starting {
+    background: #007bff;
+    color: white;
+    animation: pulse 2s infinite;
+}
+
+.project-status.status-stopping {
+    background: #6c757d;
+    color: white;
+    animation: pulse 2s infinite;
+}
+
+.project-status.status-building {
+    background: #ffc107;
+    color: #212529;
+    animation: pulse 2s infinite;
+}
+
+.project-status.status-processing {
+    background: #17a2b8;
+    color: white;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}

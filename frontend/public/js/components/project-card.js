@@ -221,23 +221,41 @@ class ProjectCard {
 class ProjectActions {
     async start(projectId) {
         try {
-            // Show immediate feedback
-            toast.info('Starting project containers...');
+            // Get project info for better feedback
+            const project = window.dashboard?.projects?.find(p => p.id === projectId);
+            const projectName = project?.name || 'Unknown Project';
 
-            // Update UI immediately to show starting status
-            const projectCard = document.querySelector(`[data-project-id="${projectId}"]`);
-            if (projectCard) {
-                const statusElement = projectCard.querySelector('.project-status');
-                if (statusElement) {
-                    statusElement.textContent = 'Starting...';
-                    statusElement.className = 'project-status status-starting';
-                }
+            // Start progress tracking
+            const operation = progressManager.createProjectOperation(projectId, projectName, 'start');
+
+            progressManager.addLog(operation.id, 'Initiating project startup...', 'info');
+            progressManager.updateOperation(operation.id, { currentStep: 0 });
+
+            // Call API
+            const response = await api.startProject(projectId);
+
+            if (response.success) {
+                progressManager.addLog(operation.id, 'Project startup initiated successfully', 'success');
+                progressManager.updateOperation(operation.id, { currentStep: 1 });
+
+                // Complete after a short delay to show progress
+                setTimeout(() => {
+                    progressManager.completeOperation(operation.id, true, 'Project started successfully! 🚀');
+                }, 2000);
+            } else {
+                throw new Error(response.message || 'Failed to start project');
             }
 
-            await api.startProject(projectId);
-            // Note: Real-time updates will come via WebSocket
-
         } catch (error) {
+            // Complete with error
+            const operation = Array.from(progressManager.activeOperations.values())
+                .find(op => op.projectId === projectId && op.title.includes('Starting'));
+
+            if (operation) {
+                progressManager.addLog(operation.id, `Error: ${error.message}`, 'error');
+                progressManager.completeOperation(operation.id, false, 'Failed to start project');
+            }
+
             toast.error(`Failed to start project: ${error.message}`);
             dashboard.loadProjects(); // Refresh on error
         }
@@ -245,23 +263,41 @@ class ProjectActions {
 
     async stop(projectId) {
         try {
-            // Show immediate feedback
-            toast.info('Stopping project containers...');
+            // Get project info for better feedback
+            const project = window.dashboard?.projects?.find(p => p.id === projectId);
+            const projectName = project?.name || 'Unknown Project';
 
-            // Update UI immediately to show stopping status
-            const projectCard = document.querySelector(`[data-project-id="${projectId}"]`);
-            if (projectCard) {
-                const statusElement = projectCard.querySelector('.project-status');
-                if (statusElement) {
-                    statusElement.textContent = 'Stopping...';
-                    statusElement.className = 'project-status status-stopping';
-                }
+            // Start progress tracking
+            const operation = progressManager.createProjectOperation(projectId, projectName, 'stop');
+
+            progressManager.addLog(operation.id, 'Initiating graceful shutdown...', 'info');
+            progressManager.updateOperation(operation.id, { currentStep: 0 });
+
+            // Call API
+            const response = await api.stopProject(projectId);
+
+            if (response.success) {
+                progressManager.addLog(operation.id, 'Stopping containers...', 'info');
+                progressManager.updateOperation(operation.id, { currentStep: 1 });
+
+                // Complete after a short delay
+                setTimeout(() => {
+                    progressManager.completeOperation(operation.id, true, 'Project stopped successfully! ⏹️');
+                }, 1500);
+            } else {
+                throw new Error(response.message || 'Failed to stop project');
             }
 
-            await api.stopProject(projectId);
-            // Note: Real-time updates will come via WebSocket
-
         } catch (error) {
+            // Complete with error
+            const operation = Array.from(progressManager.activeOperations.values())
+                .find(op => op.projectId === projectId && op.title.includes('Stopping'));
+
+            if (operation) {
+                progressManager.addLog(operation.id, `Error: ${error.message}`, 'error');
+                progressManager.completeOperation(operation.id, false, 'Failed to stop project');
+            }
+
             toast.error(`Failed to stop project: ${error.message}`);
             dashboard.loadProjects(); // Refresh on error
         }
@@ -273,11 +309,52 @@ class ProjectActions {
         }
 
         try {
-            toast.info('Rebuilding project containers...');
-            await api.rebuildProject(projectId);
-            toast.success('Project rebuilt successfully');
-            dashboard.loadProjects(); // Refresh projects
+            // Get project info for better feedback
+            const project = window.dashboard?.projects?.find(p => p.id === projectId);
+            const projectName = project?.name || 'Unknown Project';
+
+            // Start progress tracking
+            const operation = progressManager.createProjectOperation(projectId, projectName, 'rebuild');
+
+            progressManager.addLog(operation.id, 'Starting container rebuild process...', 'info');
+            progressManager.updateOperation(operation.id, { currentStep: 0 });
+
+            // Call API
+            const response = await api.rebuildProject(projectId);
+
+            if (response.success) {
+                progressManager.addLog(operation.id, 'Removing old containers...', 'info');
+                progressManager.updateOperation(operation.id, { currentStep: 1 });
+
+                // Simulate progress steps
+                setTimeout(() => {
+                    progressManager.addLog(operation.id, 'Rebuilding Docker images...', 'info');
+                    progressManager.updateOperation(operation.id, { currentStep: 2 });
+                }, 2000);
+
+                setTimeout(() => {
+                    progressManager.addLog(operation.id, 'Starting fresh containers...', 'info');
+                    progressManager.updateOperation(operation.id, { currentStep: 3 });
+                }, 4000);
+
+                setTimeout(() => {
+                    progressManager.completeOperation(operation.id, true, 'Project rebuilt successfully! 🔄');
+                    dashboard.loadProjects(); // Refresh projects
+                }, 6000);
+            } else {
+                throw new Error(response.message || 'Failed to rebuild project');
+            }
+
         } catch (error) {
+            // Complete with error
+            const operation = Array.from(progressManager.activeOperations.values())
+                .find(op => op.projectId === projectId && op.title.includes('Rebuilding'));
+
+            if (operation) {
+                progressManager.addLog(operation.id, `Error: ${error.message}`, 'error');
+                progressManager.completeOperation(operation.id, false, 'Failed to rebuild project');
+            }
+
             toast.error(`Failed to rebuild project: ${error.message}`);
         }
     }

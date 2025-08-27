@@ -18,6 +18,9 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
+// Store WebSocket server globally for broadcasting
+global.wss = wss;
+
 // CORS configuration
 const corsOptions = {
   origin: [
