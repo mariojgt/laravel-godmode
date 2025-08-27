@@ -741,47 +741,77 @@ router.post('/:id/supervisor/restart', async (req, res) => {
 
 // Supervisor Helper Functions
 
+// Helper function to execute supervisor commands with proper error handling
+async function execSupervisorCommand(project, command, args = []) {
+  const { spawn } = require('child_process');
+  
+  return new Promise((resolve, reject) => {
+    const fullArgs = ['exec', '-T', 'app', 'supervisorctl', command, ...args];
+    const process = spawn('docker-compose', fullArgs, {
+      cwd: project.path,
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+    
+    let stdout = '';
+    let stderr = '';
+    
+    process.stdout.on('data', (data) => {
+      stdout += data.toString();
+    });
+    
+    process.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
+    
+    process.on('close', (code) => {
+      // Define acceptable exit codes for different commands
+      const acceptableCodes = getAcceptableExitCodes(command, stdout);
+      
+      if (acceptableCodes.includes(code)) {
+        resolve({ stdout, stderr, code });
+      } else {
+        reject(new Error(`Command failed with code ${code}: ${stderr}`));
+      }
+    });
+    
+    process.on('error', (err) => {
+      reject(err);
+    });
+    
+    // Set timeout
+    setTimeout(() => {
+      process.kill();
+      reject(new Error('Command timeout'));
+    }, 15000);
+  });
+}
+
+// Helper function to determine acceptable exit codes based on command and output
+function getAcceptableExitCodes(command, stdout) {
+  switch (command) {
+    case 'status':
+      // 0 = all running, 3 = some stopped/failed
+      return [0, 3];
+    case 'start':
+    case 'stop':
+    case 'restart':
+      // 0 = success, 7 = program already in desired state or error (but we got output)
+      if (stdout && stdout.trim()) {
+        return [0, 7]; // If we got output, even error messages are useful
+      }
+      return [0];
+    case 'reread':
+    case 'update':
+      return [0];
+    default:
+      return [0, 3];
+  }
+}
+
 async function getSupervisorStatus(project) {
   try {
-    // Get supervisor status - use spawn to handle stderr warnings properly
-    const { spawn } = require('child_process');
-
-    const statusOutput = await new Promise((resolve, reject) => {
-      const process = spawn('docker-compose', ['exec', '-T', 'app', 'supervisorctl', 'status'], {
-        cwd: project.path,
-        stdio: ['pipe', 'pipe', 'pipe']
-      });
-
-      let stdout = '';
-      let stderr = '';
-
-      process.stdout.on('data', (data) => {
-        stdout += data.toString();
-      });
-
-      process.stderr.on('data', (data) => {
-        stderr += data.toString();
-      });
-
-      process.on('close', (code) => {
-        // Accept exit codes 0 and 3 (3 is when some programs are stopped)
-        if (code === 0 || code === 3) {
-          resolve(stdout);
-        } else {
-          reject(new Error(`Command failed with code ${code}: ${stderr}`));
-        }
-      });
-
-      process.on('error', (err) => {
-        reject(err);
-      });
-
-      // Set timeout
-      setTimeout(() => {
-        process.kill();
-        reject(new Error('Command timeout'));
-      }, 10000);
-    });
+    // Get supervisor status using the helper function
+    const { stdout: statusOutput } = await execSupervisorCommand(project, 'status');
 
     const programs = [];
     const lines = statusOutput.split('\n').filter(line => line.trim());
@@ -800,9 +830,7 @@ async function getSupervisorStatus(project) {
         if (pidMatch) pid = pidMatch[1];
 
         const uptimeMatch = details.match(/uptime (.+)/);
-        if (uptimeMatch) uptime = uptimeMatch[1];
-
-        programs.push({
+        if (uptimeMatch) uptime = uptimeMatch[1];        programs.push({
           name,
           state,
           pid,
@@ -851,15 +879,8 @@ async function saveSupervisorConfig(project, config) {
 
     // Reload supervisor configuration
     try {
-      await execAsync(
-        'docker-compose exec -T app supervisorctl reread',
-        { cwd: project.path, timeout: 10000 }
-      );
-
-      await execAsync(
-        'docker-compose exec -T app supervisorctl update',
-        { cwd: project.path, timeout: 15000 }
-      );
+      await execSupervisorCommand(project, 'reread');
+      await execSupervisorCommand(project, 'update');
     } catch (reloadError) {
       console.warn('Failed to reload supervisor config automatically:', reloadError.message);
     }
@@ -878,28 +899,37 @@ async function saveSupervisorConfig(project, config) {
 async function toggleSupervisorProgram(project, programName) {
   try {
     // First check current status
-    const { stdout: statusOutput } = await execAsync(
-      `docker-compose exec -T app supervisorctl status ${programName}`,
-      { cwd: project.path, timeout: 5000 }
-    );
+    const { stdout: statusOutput } = await execSupervisorCommand(project, 'status', [programName]);
 
     const isRunning = statusOutput.includes('RUNNING');
     const action = isRunning ? 'stop' : 'start';
 
     // Toggle the program
-    const { stdout: actionOutput } = await execAsync(
-      `docker-compose exec -T app supervisorctl ${action} ${programName}`,
-      { cwd: project.path, timeout: 15000 }
-    );
-
-    return {
-      success: true,
-      action,
-      program: programName,
-      output: actionOutput.trim(),
-      message: `Program ${programName} ${action}ed successfully`,
-      timestamp: new Date().toISOString()
-    };
+    try {
+      const { stdout: actionOutput, code } = await execSupervisorCommand(project, action, [programName]);
+      
+      return {
+        success: code === 0,
+        action,
+        program: programName,
+        output: actionOutput.trim(),
+        message: code === 0 
+          ? `Program ${programName} ${action}ed successfully`
+          : `Attempted to ${action} ${programName} - ${actionOutput.trim()}`,
+        timestamp: new Date().toISOString(),
+        exitCode: code
+      };
+    } catch (actionError) {
+      // If the action fails, still return useful information
+      return {
+        success: false,
+        action,
+        program: programName,
+        output: actionError.message,
+        message: `Failed to ${action} ${programName}: ${actionError.message}`,
+        timestamp: new Date().toISOString()
+      };
+    }
   } catch (error) {
     console.error('Error toggling supervisor program:', error);
     throw new Error(`Failed to toggle program ${programName}: ${error.message}`);
@@ -908,31 +938,34 @@ async function toggleSupervisorProgram(project, programName) {
 
 async function restartSupervisorProgram(project, programName) {
   try {
-    const { stdout } = await execAsync(
-      `docker-compose exec -T app supervisorctl restart ${programName}`,
-      { cwd: project.path, timeout: 15000 }
-    );
+    const { stdout, code } = await execSupervisorCommand(project, 'restart', [programName]);
 
     return {
-      success: true,
+      success: code === 0,
       program: programName,
       output: stdout.trim(),
-      message: `Program ${programName} restarted successfully`,
-      timestamp: new Date().toISOString()
+      message: code === 0 
+        ? `Program ${programName} restarted successfully`
+        : `Attempted to restart ${programName} - ${stdout.trim()}`,
+      timestamp: new Date().toISOString(),
+      exitCode: code
     };
   } catch (error) {
     console.error('Error restarting supervisor program:', error);
-    throw new Error(`Failed to restart program ${programName}: ${error.message}`);
+    return {
+      success: false,
+      program: programName,
+      output: error.message,
+      message: `Failed to restart ${programName}: ${error.message}`,
+      timestamp: new Date().toISOString()
+    };
   }
 }
 
 async function restartSupervisor(project) {
   try {
     // Restart all supervisor programs
-    const { stdout } = await execAsync(
-      'docker-compose exec -T app supervisorctl restart all',
-      { cwd: project.path, timeout: 30000 }
-    );
+    const { stdout } = await execSupervisorCommand(project, 'restart', ['all']);
 
     return {
       success: true,
