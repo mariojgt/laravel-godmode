@@ -927,41 +927,102 @@ body {
 
 /* Project Progress */
 .project-progress {
-    margin: var(--space-md) 0;
+    margin-top: 0.5rem;
 }
 
 .progress-bar {
     width: 100%;
-    height: 6px;
-    background: rgba(100, 255, 218, 0.1);
-    border-radius: 3px;
+    height: 4px;
+    background: var(--border-color);
+    border-radius: 2px;
     overflow: hidden;
-    margin-bottom: var(--space-xs);
 }
 
 .progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, var(--primary), var(--secondary));
-    border-radius: 3px;
+    background: var(--primary-color);
     animation: progress-animation 2s ease-in-out infinite;
 }
 
 @keyframes progress-animation {
-    0% { width: 0%; }
-    50% { width: 70%; }
-    100% { width: 100%; }
+    0%, 100% { width: 0%; }
+    50% { width: 100%; }
 }
 
 .progress-text {
-    font-size: 0.75rem;
-    color: var(--primary);
-    text-align: center;
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
 }
 
 .project-path {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+/* Command Log */
+.command-log {
+    margin-top: 0.5rem;
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.command-log-header {
+    padding: 0.5rem;
+    background: var(--border-color);
     font-size: 0.75rem;
-    color: rgba(203, 213, 225, 0.6);
-    font-family: var(--font-mono);
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.command-log-content {
+    max-height: 100px;
+    overflow-y: auto;
+}
+
+.command-entry {
+    padding: 0.4rem 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.75rem;
+    font-family: 'Fira Code', monospace;
+}
+
+.command-entry:last-child {
+    border-bottom: none;
+}
+
+.command-entry.info {
+    background: rgba(59, 130, 246, 0.1);
+    border-left: 3px solid #3b82f6;
+}
+
+.command-entry.success {
+    background: rgba(34, 197, 94, 0.1);
+    border-left: 3px solid #22c55e;
+}
+
+.command-entry.warning {
+    background: rgba(251, 191, 36, 0.1);
+    border-left: 3px solid #fbbf24;
+}
+
+.command-entry.error {
+    background: rgba(239, 68, 68, 0.1);
+    border-left: 3px solid #ef4444;
+}
+
+.command-name {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 0.2rem;
+}
+
+.command-output {
+    display: block;
+    color: var(--text-secondary);
+    line-height: 1.3;
 }
 
 /* Environment Editor */

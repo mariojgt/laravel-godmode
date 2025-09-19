@@ -572,10 +572,16 @@ async function createProjectAsync(project) {
   const projects = await loadProjects();
   const projectIndex = projects.findIndex(p => p.id === project.id);
 
-  if (projectIndex === -1) return;
+  if (projectIndex === -1) {
+    console.error('❌ Project not found in array:', project.id);
+    return;
+  }
 
   try {
     console.log(`🚀 Creating project: ${project.name}`);
+    console.log(`📁 Project path: ${project.path}`);
+    console.log(`🎨 Template: ${project.template}`);
+    console.log(`⚙️ Config:`, JSON.stringify(project.config, null, 2));
 
     // Update status and broadcast
     projects[projectIndex].status = 'creating';
@@ -584,17 +590,30 @@ async function createProjectAsync(project) {
     global.broadcastProjectUpdate && global.broadcastProjectUpdate(project.id, projects[projectIndex]);
 
     // Create project directory
+    console.log(`📁 Creating project directory: ${project.path}`);
     await fs.mkdir(project.path, { recursive: true });
 
     // Create src directory
     const srcPath = path.join(project.path, 'src');
+    console.log(`📁 Creating src directory: ${srcPath}`);
     await fs.mkdir(srcPath, { recursive: true });
 
     // Load template configuration
+    console.log(`📋 Loading template configuration...`);
     const templateConfigPath = path.join(TEMPLATES_DIR, project.template, 'config.json');
-    const templateConfig = JSON.parse(await fs.readFile(templateConfigPath, 'utf8'));
+    console.log(`📋 Template config path: ${templateConfigPath}`);
+
+    let templateConfig;
+    try {
+      templateConfig = JSON.parse(await fs.readFile(templateConfigPath, 'utf8'));
+      console.log(`✅ Template config loaded successfully`);
+    } catch (configError) {
+      console.error(`❌ Failed to load template config:`, configError);
+      throw new Error(`Template configuration not found: ${configError.message}`);
+    }
 
     // Generate project files from template
+    console.log(`🌱 Starting project file generation...`);
     projects[projectIndex].progress = 'Creating project files...';
     await saveProjects(projects);
     global.broadcastProjectUpdate && global.broadcastProjectUpdate(project.id, projects[projectIndex]);
@@ -602,6 +621,7 @@ async function createProjectAsync(project) {
     await generateProjectFromTemplate(project, templateConfig, srcPath);
 
     // Generate Docker configuration
+    console.log(`🐳 Starting Docker configuration generation...`);
     projects[projectIndex].progress = 'Setting up Docker...';
     await saveProjects(projects);
     global.broadcastProjectUpdate && global.broadcastProjectUpdate(project.id, projects[projectIndex]);
@@ -609,6 +629,7 @@ async function createProjectAsync(project) {
     await generateDockerConfig(project, templateConfig);
 
     // Install dependencies and setup project
+    console.log(`🔧 Starting project setup...`);
     projects[projectIndex].progress = 'Installing dependencies...';
     await saveProjects(projects);
     global.broadcastProjectUpdate && global.broadcastProjectUpdate(project.id, projects[projectIndex]);
@@ -616,6 +637,7 @@ async function createProjectAsync(project) {
     await setupProject(project, templateConfig);
 
     // Project created successfully
+    console.log(`✅ Project creation completed successfully: ${project.name}`);
     projects[projectIndex].status = 'ready';
     projects[projectIndex].progress = 'Project created successfully';
     delete projects[projectIndex].progress;
@@ -626,11 +648,32 @@ async function createProjectAsync(project) {
 
   } catch (error) {
     console.error('❌ Project creation failed:', error);
+    console.error('❌ Error stack:', error.stack);
+    console.error('❌ Error details:', {
+      projectName: project.name,
+      projectPath: project.path,
+      template: project.template,
+      errorMessage: error.message,
+      errorCode: error.code,
+      errorErrno: error.errno
+    });
 
+    // Update project status to error with detailed message
     projects[projectIndex].status = 'error';
-    projects[projectIndex].progress = `Error: ${error.message}`;
+    projects[projectIndex].progress = `Creation failed: ${error.message}`;
     await saveProjects(projects);
+
+    // Broadcast error to frontend
     global.broadcastProjectUpdate && global.broadcastProjectUpdate(project.id, projects[projectIndex]);
+    global.broadcastCommand && global.broadcastCommand(project.id, 'project creation', `Error: ${error.message}`, 'error');
+
+    // Log detailed error for debugging
+    console.error('Detailed error:', {
+      projectName: project.name,
+      projectPath: project.path,
+      template: project.template,
+      error: error.stack || error.message
+    });
   }
 }
 
@@ -640,16 +683,57 @@ async function generateProjectFromTemplate(project, templateConfig, srcPath) {
 
   projects[projectIndex].progress = 'Generating project files...';
   await saveProjects(projects);
+  global.broadcastProjectUpdate && global.broadcastProjectUpdate(project.id, projects[projectIndex]);
 
   if (project.template === 'laravel') {
     // Create Laravel project
-    console.log('Creating Laravel project...');
-    await execAsync(`cd "${srcPath}" && composer create-project laravel/laravel . --prefer-dist --no-dev`, {
-      cwd: srcPath
-    });
+    console.log('🌱 Creating Laravel project...');
+    console.log(`📁 Source path: ${srcPath}`);
+    projects[projectIndex].progress = 'Running: composer create-project laravel/laravel';
+    await saveProjects(projects);
+    global.broadcastProjectUpdate && global.broadcastProjectUpdate(project.id, projects[projectIndex]);
+    global.broadcastCommand && global.broadcastCommand(project.id, 'composer create-project laravel/laravel . --prefer-dist --no-dev', 'Starting Laravel project creation...', 'info');
+
+    try {
+      console.log(`🔍 Checking if composer is available...`);
+      await execAsync('composer --version', { timeout: 10000 });
+      console.log(`✅ Composer is available`);
+
+      console.log(`🔍 Checking source path exists: ${srcPath}`);
+      await fs.access(srcPath);
+      console.log(`✅ Source path exists and accessible`);
+
+      console.log(`🏃 Running composer create-project in: ${srcPath}`);
+      const command = `cd "${srcPath}" && composer create-project laravel/laravel . --prefer-dist --no-dev`;
+      console.log(`💻 Command: ${command}`);
+
+      await execAsync(command, {
+        cwd: srcPath,
+        timeout: 300000 // 5 minutes timeout
+      });
+
+      console.log('✅ Laravel project created successfully');
+      global.broadcastCommand && global.broadcastCommand(project.id, 'composer create-project', 'Laravel project created successfully', 'success');
+    } catch (error) {
+      console.error('❌ Failed to create Laravel project:', error);
+      console.error('❌ Composer error details:', {
+        code: error.code,
+        signal: error.signal,
+        stderr: error.stderr,
+        stdout: error.stdout,
+        cmd: error.cmd
+      });
+      global.broadcastCommand && global.broadcastCommand(project.id, 'composer create-project', `Failed to create Laravel project: ${error.message}`, 'error');
+      throw new Error(`Laravel project creation failed: ${error.message}`);
+    }
+
   } else if (project.template === 'nodejs') {
     // Create Node.js project
-    console.log('Creating Node.js project...');
+    console.log('🌱 Creating Node.js project...');
+    projects[projectIndex].progress = 'Creating Node.js project structure';
+    await saveProjects(projects);
+    global.broadcastProjectUpdate && global.broadcastProjectUpdate(project.id, projects[projectIndex]);
+    global.broadcastCommand && global.broadcastCommand(project.id, 'npm init', 'Creating package.json...', 'info');
 
     // Create package.json
     const packageJson = {
@@ -677,6 +761,9 @@ async function generateProjectFromTemplate(project, templateConfig, srcPath) {
       path.join(srcPath, 'package.json'),
       JSON.stringify(packageJson, null, 2)
     );
+
+    console.log('✅ Node.js project structure created');
+    global.broadcastCommand && global.broadcastCommand(project.id, 'package.json', 'package.json created successfully', 'success');
 
     // Create basic index.js
     const indexJs = `require('dotenv').config();
@@ -721,8 +808,11 @@ async function generateDockerConfig(project, templateConfig) {
   const projects = await loadProjects();
   const projectIndex = projects.findIndex(p => p.id === project.id);
 
+  console.log('🐳 Generating Docker configuration...');
   projects[projectIndex].progress = 'Generating Docker configuration...';
   await saveProjects(projects);
+  global.broadcastProjectUpdate && global.broadcastProjectUpdate(project.id, projects[projectIndex]);
+  global.broadcastCommand && global.broadcastCommand(project.id, 'docker setup', 'Generating Docker configuration files...', 'info');
 
   // Load template stubs
   const stubsPath = path.join(TEMPLATES_DIR, project.template, 'stubs');
@@ -739,22 +829,23 @@ async function generateDockerConfig(project, templateConfig) {
       let outputFile = stubFile.replace('.stub', '');
       let outputPath;
 
-      console.log(`Processing stub: ${stubFile} -> ${outputFile}`);
+      console.log(`📄 Processing stub: ${stubFile} -> ${outputFile}`);
+      global.broadcastCommand && global.broadcastCommand(project.id, `generate ${outputFile}`, `Creating ${outputFile}...`, 'info');
 
       // Main Docker files and Makefile go in project root
       if (outputFile === 'docker-compose.yml' || outputFile === 'Dockerfile' || outputFile === 'Makefile') {
         outputPath = path.join(project.path, outputFile);
-        console.log(`Root file: ${outputFile} -> ${outputPath}`);
+        console.log(`📁 Root file: ${outputFile} -> ${outputPath}`);
       }
       // Environment files go in src directory
       else if (outputFile === '.env') {
         outputPath = path.join(project.path, 'src', outputFile);
-        console.log(`Src file: ${outputFile} -> ${outputPath}`);
+        console.log(`📁 Src file: ${outputFile} -> ${outputPath}`);
       }
       // All other supporting config files go in docker directory
       else {
         outputPath = path.join(dockerPath, outputFile);
-        console.log(`Docker file: ${outputFile} -> ${outputPath}`);
+        console.log(`📁 Docker file: ${outputFile} -> ${outputPath}`);
       }
 
       // Replace template variables
@@ -762,8 +853,12 @@ async function generateDockerConfig(project, templateConfig) {
       await fs.writeFile(outputPath, processedContent);
 
       console.log(`✅ Generated: ${outputPath}`);
+      global.broadcastCommand && global.broadcastCommand(project.id, `${outputFile} created`, `Successfully created ${outputFile}`, 'success');
     }
   }
+
+  console.log('✅ Docker configuration generated successfully');
+  global.broadcastCommand && global.broadcastCommand(project.id, 'docker setup', 'Docker configuration completed successfully', 'success');
 }
 
 function replaceTemplateVariables(content, project, templateConfig) {
@@ -901,37 +996,72 @@ async function setupProject(project, templateConfig) {
 
   projects[projectIndex].progress = 'Setting up project...';
   await saveProjects(projects);
+  global.broadcastProjectUpdate && global.broadcastProjectUpdate(project.id, projects[projectIndex]);
 
   const srcPath = path.join(project.path, 'src');
 
   if (project.template === 'laravel') {
     // Generate Laravel .env file
+    console.log('📝 Generating Laravel .env file...');
+    projects[projectIndex].progress = 'Generating .env file';
+    await saveProjects(projects);
+    global.broadcastProjectUpdate && global.broadcastProjectUpdate(project.id, projects[projectIndex]);
+    global.broadcastCommand && global.broadcastCommand(project.id, 'generate .env', 'Creating Laravel environment file...', 'info');
+
     const envContent = generateLaravelEnv(project, templateConfig);
     await fs.writeFile(path.join(srcPath, '.env'), envContent);
 
+    console.log('✅ Laravel .env file created');
+    global.broadcastCommand && global.broadcastCommand(project.id, '.env file', 'Environment file created successfully', 'success');
+
     // Generate app key
+    console.log('🔑 Generating Laravel application key...');
     projects[projectIndex].progress = 'Generating application key...';
     await saveProjects(projects);
+    global.broadcastProjectUpdate && global.broadcastProjectUpdate(project.id, projects[projectIndex]);
+    global.broadcastCommand && global.broadcastCommand(project.id, 'php artisan key:generate --force', 'Generating Laravel application key...', 'info');
 
     try {
       await execAsync('php artisan key:generate --force', { cwd: srcPath });
+      console.log('✅ Laravel application key generated');
+      global.broadcastCommand && global.broadcastCommand(project.id, 'artisan key:generate', 'Application key generated successfully', 'success');
     } catch (error) {
-      console.warn('Could not generate Laravel key (artisan not available):', error.message);
+      console.warn('⚠️ Could not generate Laravel key (artisan not available):', error.message);
+      global.broadcastCommand && global.broadcastCommand(project.id, 'artisan key:generate', `Warning: Could not generate key - ${error.message}`, 'warning');
     }
 
   } else if (project.template === 'nodejs') {
     // Generate Node.js .env file
+    console.log('📝 Generating Node.js .env file...');
+    projects[projectIndex].progress = 'Generating .env file';
+    await saveProjects(projects);
+    global.broadcastProjectUpdate && global.broadcastProjectUpdate(project.id, projects[projectIndex]);
+    global.broadcastCommand && global.broadcastCommand(project.id, 'generate .env', 'Creating Node.js environment file...', 'info');
+
     const envContent = generateNodejsEnv(project, templateConfig);
     await fs.writeFile(path.join(srcPath, '.env'), envContent);
 
+    console.log('✅ Node.js .env file created');
+    global.broadcastCommand && global.broadcastCommand(project.id, '.env file', 'Environment file created successfully', 'success');
+
     // Install dependencies
+    console.log('📦 Installing Node.js dependencies...');
     projects[projectIndex].progress = 'Installing dependencies...';
     await saveProjects(projects);
+    global.broadcastProjectUpdate && global.broadcastProjectUpdate(project.id, projects[projectIndex]);
+    global.broadcastCommand && global.broadcastCommand(project.id, 'npm install', 'Installing Node.js dependencies...', 'info');
 
     try {
-      await execAsync('npm install', { cwd: srcPath });
+      await execAsync('npm install', {
+        cwd: srcPath,
+        timeout: 180000 // 3 minutes timeout
+      });
+      console.log('✅ Node.js dependencies installed');
+      global.broadcastCommand && global.broadcastCommand(project.id, 'npm install', 'Dependencies installed successfully', 'success');
     } catch (error) {
-      console.warn('Could not install npm dependencies:', error.message);
+      console.warn('⚠️ Could not install npm dependencies:', error.message);
+      global.broadcastCommand && global.broadcastCommand(project.id, 'npm install', `Warning: Could not install dependencies - ${error.message}`, 'warning');
+      // Don't throw error for npm install failures as the project can still work
     }
   }
 }

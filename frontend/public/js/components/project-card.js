@@ -20,6 +20,21 @@ class ProjectCard {
                     <div class="progress-fill"></div>
                 </div>
                 <div class="progress-text">${this.project.progress}</div>
+                ${this.project.commandLog ? `
+                    <div class="command-log">
+                        <div class="command-log-header">
+                            <span>Recent Commands:</span>
+                        </div>
+                        <div class="command-log-content">
+                            ${this.project.commandLog.slice(-3).map(cmd => `
+                                <div class="command-entry ${cmd.type}">
+                                    <span class="command-name">${cmd.command}</span>
+                                    <span class="command-output">${cmd.output}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
             </div>` : '';
 
         // Service status indicators

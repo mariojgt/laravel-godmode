@@ -9,6 +9,9 @@ class Dashboard {
         // Load projects when dashboard is shown
         this.loadProjects();
 
+        // Set up WebSocket listeners for real-time updates
+        this.setupWebSocketListeners();
+
         // Set up create project button
         const createBtn = document.getElementById('create-project-btn');
         if (createBtn) {
@@ -46,6 +49,73 @@ class Dashboard {
         setInterval(() => {
             this.loadProjects();
         }, 30000);
+    }
+
+    setupWebSocketListeners() {
+        if (window.wsManager) {
+            // Listen for project updates
+            wsManager.on('project_update', (data) => {
+                this.handleProjectUpdate(data);
+            });
+
+            // Listen for command output
+            wsManager.on('command_output', (data) => {
+                this.handleCommandOutput(data);
+            });
+        }
+    }
+
+    handleProjectUpdate(data) {
+        if (!data.projectId || !data.project) return;
+
+        // Find and update the project in our local array
+        const projectIndex = this.projects.findIndex(p => p.id === data.projectId);
+        if (projectIndex !== -1) {
+            this.projects[projectIndex] = data.project;
+            this.renderProjects(); // Re-render to show updated state
+
+            console.log(`📡 Received project update: ${data.project.name} - ${data.project.status}`);
+
+            // Show toast for status changes
+            if (data.project.status === 'ready') {
+                toast.success(`Project "${data.project.name}" created successfully!`);
+            } else if (data.project.status === 'error') {
+                toast.error(`Project "${data.project.name}" creation failed`);
+            }
+        }
+    }
+
+    handleCommandOutput(data) {
+        if (!data.projectId || !data.command) return;
+
+        // Find the project and add command to its log
+        const projectIndex = this.projects.findIndex(p => p.id === data.projectId);
+        if (projectIndex !== -1) {
+            const project = this.projects[projectIndex];
+
+            // Initialize command log if it doesn't exist
+            if (!project.commandLog) {
+                project.commandLog = [];
+            }
+
+            // Add new command entry
+            project.commandLog.push({
+                command: data.command,
+                output: data.output,
+                type: data.outputType || 'info',
+                timestamp: data.timestamp
+            });
+
+            // Keep only the last 10 commands to avoid memory issues
+            if (project.commandLog.length > 10) {
+                project.commandLog = project.commandLog.slice(-10);
+            }
+
+            // Re-render to show updated command log
+            this.renderProjects();
+
+            console.log(`📝 Command log: ${data.command} - ${data.output}`);
+        }
     }
 
     async loadProjects() {
@@ -164,51 +234,44 @@ class Dashboard {
                 submitBtn.disabled = true;
             }
 
-            progressManager.addLog(operation.id, 'Validating project configuration...', 'info');
-            progressManager.updateOperation(operation.id, { currentStep: 0 });
-
-            setTimeout(() => {
-                progressManager.addLog(operation.id, 'Generating Docker configuration...', 'info');
-                progressManager.updateOperation(operation.id, { currentStep: 1 });
-            }, 1000);
-
-            setTimeout(() => {
-                progressManager.addLog(operation.id, 'Setting up project structure...', 'info');
-                progressManager.updateOperation(operation.id, { currentStep: 2 });
-            }, 2000);
+            // Create the project via API - this will trigger real WebSocket updates
+            progressManager.addLog(operation.id, 'Starting project creation...', 'info');
 
             const response = await api.createProject(projectData);
 
-            if (response.success) {
-                progressManager.updateOperation(operation.id, { currentStep: 3 });
-                progressManager.addLog(operation.id, 'Installing dependencies...', 'info');
+            if (response && response.id) {
+                // Project creation started successfully
+                progressManager.addLog(operation.id, `Project "${projectData.name}" creation initiated`, 'success');
 
-                setTimeout(() => {
-                    progressManager.updateOperation(operation.id, { currentStep: 4 });
-                    progressManager.addLog(operation.id, 'Starting containers...', 'info');
-                }, 1000);
+                // Close modal immediately since we'll track progress via WebSocket
+                modalManager.close('create-project-modal');
 
+                // Complete the progress manager operation since WebSocket will handle real updates
                 setTimeout(() => {
-                    progressManager.completeOperation(operation.id, true, `Project "${projectData.name}" created successfully! 🎉`);
-                    modalManager.close('create-project-modal');
-                }, 2000);
+                    progressManager.completeOperation(operation.id, true, `Project creation started. Tracking real-time progress...`);
+                }, 500);
+
+                // The WebSocket listeners will handle real-time updates
+                // and show success/error toasts when appropriate
+                toast.info(`Creating project "${projectData.name}"... Check the project card for real-time progress.`);
 
                 // Reload projects to show the new one
-                setTimeout(() => {
-                    this.loadProjects();
-                }, 3000);
+                this.loadProjects();
+
             } else {
-                throw new Error(response.message || 'Project creation failed');
+                throw new Error(response?.message || 'Failed to start project creation');
             }
 
         } catch (error) {
-            // Complete operation with error
+            console.error('Failed to create project:', error);
+
+            // Complete operation with error only if there's a real API error
             const operation = Array.from(progressManager.activeOperations.values())
                 .find(op => op.title.includes('Creating Project'));
 
             if (operation) {
                 progressManager.addLog(operation.id, `Error: ${error.message}`, 'error');
-                progressManager.completeOperation(operation.id, false, 'Project creation failed');
+                progressManager.completeOperation(operation.id, false, 'Failed to start project creation');
             }
 
             toast.error(`Failed to create project: ${error.message}`);

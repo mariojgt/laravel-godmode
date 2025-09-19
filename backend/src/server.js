@@ -21,6 +21,51 @@ const wss = new WebSocketServer({ server });
 // Store WebSocket server globally for broadcasting
 global.wss = wss;
 
+// Broadcast functions for real-time updates
+global.broadcastProjectUpdate = function(projectId, projectData) {
+  if (!wss || !wss.clients) return;
+
+  const message = JSON.stringify({
+    type: 'project_update',
+    projectId: projectId,
+    project: projectData
+  });
+
+  wss.clients.forEach(client => {
+    if (client.readyState === client.OPEN) {
+      try {
+        client.send(message);
+        console.log(`📡 Broadcasted project update for: ${projectData.name} (${projectData.status})`);
+      } catch (error) {
+        console.error('WebSocket send error:', error);
+      }
+    }
+  });
+};
+
+global.broadcastCommand = function(projectId, command, output, type = 'info') {
+  if (!wss || !wss.clients) return;
+
+  const message = JSON.stringify({
+    type: 'command_output',
+    projectId: projectId,
+    command: command,
+    output: output,
+    outputType: type,
+    timestamp: new Date().toISOString()
+  });
+
+  wss.clients.forEach(client => {
+    if (client.readyState === client.OPEN) {
+      try {
+        client.send(message);
+      } catch (error) {
+        console.error('WebSocket send error:', error);
+      }
+    }
+  });
+};
+
 // CORS configuration
 const corsOptions = {
   origin: [
