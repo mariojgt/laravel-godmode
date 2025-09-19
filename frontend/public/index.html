@@ -72,6 +72,7 @@
                     <button class="settings-tab active" data-tab="general">General</button>
                     <button class="settings-tab" data-tab="domains">Domains</button>
                     <button class="settings-tab" data-tab="dependencies">Dependencies</button>
+                    <button class="settings-tab" data-tab="ngrok">Ngrok Tunnels</button>
                 </div>
 
                 <!-- General Settings Tab -->
@@ -262,6 +263,99 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Ngrok Settings Tab -->
+                <div id="ngrok-settings" class="settings-tab-content">
+                    <div class="ngrok-content">
+                        <div class="ngrok-header">
+                            <div class="ngrok-status">
+                                <div class="status-circle" id="ngrok-status-circle">🌐</div>
+                                <div class="status-text">
+                                    <h3>Ngrok Tunnels</h3>
+                                    <p id="ngrok-summary">Expose your local development server to the world</p>
+                                </div>
+                            </div>
+                            <div class="ngrok-actions">
+                                <button class="btn btn-primary" id="create-tunnel-btn">
+                                    <span class="btn-icon">🚀</span>
+                                    Create Tunnel
+                                </button>
+                                <button class="btn btn-warning" id="stop-all-tunnels-btn" style="display: none;">
+                                    <span class="btn-icon">⏹️</span>
+                                    Stop All
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Authentication Section -->
+                        <div class="ngrok-auth-section" id="ngrok-auth-section">
+                            <div class="auth-card">
+                                <h4>🔐 Ngrok Authentication Required</h4>
+                                <p>You need to authenticate ngrok with your auth token to create tunnels.</p>
+                                <form id="ngrok-auth-form">
+                                    <div class="form-group">
+                                        <label for="ngrok-token">Auth Token</label>
+                                        <input type="password" id="ngrok-token" name="authToken" placeholder="Your ngrok auth token" required>
+                                        <small class="form-help">
+                                            Get your free auth token from <a href="https://dashboard.ngrok.com/get-started/your-authtoken" target="_blank">ngrok dashboard</a>
+                                        </small>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Authenticate</button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Installation Section -->
+                        <div class="ngrok-install-section" id="ngrok-install-section" style="display: none;">
+                            <div class="install-card">
+                                <h4>📦 Ngrok Installation Required</h4>
+                                <p>Ngrok is not installed on your system. Please install it to continue.</p>
+                                <div class="install-steps">
+                                    <h5>Installation Steps:</h5>
+                                    <ol id="install-steps-list">
+                                        <!-- Install steps will be populated here -->
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Active Tunnels Section -->
+                        <div class="ngrok-tunnels-section" id="ngrok-tunnels-section" style="display: none;">
+                            <div class="tunnels-section">
+                                <h4 class="section-title">
+                                    <span class="section-icon">🌍</span>
+                                    Active Tunnels
+                                </h4>
+                                <div id="active-tunnels" class="tunnels-grid">
+                                    <!-- Active tunnels will be rendered here -->
+                                </div>
+                            </div>
+
+                            <!-- Quick Setup -->
+                            <div class="tunnels-section">
+                                <h4 class="section-title">
+                                    <span class="section-icon">⚡</span>
+                                    Quick Setup
+                                </h4>
+                                <div class="quick-tunnel-grid">
+                                    <div class="quick-tunnel-card">
+                                        <h5>How it works</h5>
+                                        <p>Ngrok creates secure tunnels to your localhost, making your local development server accessible via HTTPS from anywhere in the world.</p>
+                                    </div>
+                                    <div class="quick-tunnel-card">
+                                        <h5>Use Cases</h5>
+                                        <ul>
+                                            <li>Demo apps to clients</li>
+                                            <li>Test webhooks locally</li>
+                                            <li>Share development work</li>
+                                            <li>Mobile device testing</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </main>
 
@@ -408,6 +502,59 @@
             </div>
         </div>
 
+        <!-- Create Tunnel Modal -->
+        <div id="create-tunnel-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Create Ngrok Tunnel</h3>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="create-tunnel-form">
+                        <div class="form-group">
+                            <label for="tunnel-port">Local Port</label>
+                            <input type="number" id="tunnel-port" name="port" min="1" max="65535" placeholder="3000" required>
+                            <small class="form-help">The local port to expose (e.g., 3000, 8000, 5173)</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="tunnel-subdomain">Custom Subdomain (Optional)</label>
+                            <input type="text" id="tunnel-subdomain" name="subdomain" placeholder="myapp">
+                            <small class="form-help">Requires paid ngrok plan. Leave empty for random subdomain.</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="tunnel-region">Region</label>
+                            <select id="tunnel-region" name="region">
+                                <option value="us">United States</option>
+                                <option value="eu">Europe</option>
+                                <option value="ap">Asia Pacific</option>
+                                <option value="au">Australia</option>
+                                <option value="sa">South America</option>
+                                <option value="jp">Japan</option>
+                                <option value="in">India</option>
+                            </select>
+                            <small class="form-help">Choose the region closest to your users</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="tunnel-protocol">Protocol</label>
+                            <select id="tunnel-protocol" name="protocol">
+                                <option value="http">HTTP/HTTPS</option>
+                                <option value="tcp">TCP</option>
+                            </select>
+                            <small class="form-help">HTTP provides both HTTP and HTTPS endpoints</small>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-secondary" data-action="cancel">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Create Tunnel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
         <!-- Toast Notifications -->
         <div id="toast-container" class="toast-container"></div>
     </div>
@@ -428,6 +575,7 @@
     <script src="js/components/laravel-manager.js"></script>
     <script src="js/components/dependencies-checker.js"></script>
     <script src="js/components/domain-manager.js"></script>
+    <script src="js/components/ngrok-manager.js"></script>
     <script src="js/views/dashboard.js"></script>
     <script src="js/views/templates.js"></script>
     <script src="js/views/settings.js"></script>

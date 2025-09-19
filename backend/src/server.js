@@ -16,6 +16,7 @@ const servicesRoutes = require('./routes/services');
 const dependenciesRoutes = require('./routes/dependencies');
 const domainsRoutes = require('./routes/domains');
 const proxyRoutes = require('./routes/proxy');
+const ngrokRoutes = require('./routes/ngrok');
 
 const app = express();
 const server = http.createServer(app);
@@ -103,6 +104,7 @@ app.use('/api/services', servicesRoutes);
 app.use('/api/dependencies', dependenciesRoutes);
 app.use('/api/domains', domainsRoutes);
 app.use('/api/proxy', proxyRoutes);
+app.use('/api/ngrok', ngrokRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

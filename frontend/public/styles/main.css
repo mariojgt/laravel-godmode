@@ -2967,3 +2967,362 @@ body {
         gap: var(--space-xs);
     }
 }
+
+/* ===== NGROK MANAGEMENT STYLES ===== */
+
+/* Ngrok Authentication Status */
+.ngrok-auth-status {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.ngrok-auth-status.authenticated {
+    background: rgba(34, 197, 94, 0.1);
+    color: #22c55e;
+    border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.ngrok-auth-status.not-authenticated {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.ngrok-auth-status .status-icon {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+}
+
+/* Ngrok Authentication Form */
+.ngrok-auth-form {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.ngrok-auth-form input {
+    flex: 1;
+    min-width: 250px;
+    padding: 0.75rem;
+    border: 1px solid rgba(100, 255, 218, 0.2);
+    border-radius: 8px;
+    background: var(--background);
+    color: var(--text);
+    font-size: 0.9rem;
+}
+
+.ngrok-auth-form input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(100, 255, 218, 0.1);
+}
+
+.ngrok-auth-form input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+/* Ngrok Create Tunnel Section */
+.create-tunnel-section {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(100, 255, 218, 0.1);
+}
+
+.ngrok-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.ngrok-form .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.ngrok-form label {
+    font-weight: 500;
+    color: var(--text);
+    font-size: 0.875rem;
+}
+
+.ngrok-form input,
+.ngrok-form select {
+    padding: 0.75rem;
+    border: 1px solid rgba(100, 255, 218, 0.2);
+    border-radius: 8px;
+    background: var(--background);
+    color: var(--text);
+    font-size: 0.9rem;
+}
+
+.ngrok-form input:focus,
+.ngrok-form select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(100, 255, 218, 0.1);
+}
+
+/* Ngrok Tunnels Grid */
+.ngrok-tunnels-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.tunnel-card {
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(100, 255, 218, 0.2);
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.tunnel-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+}
+
+.tunnel-card:hover {
+    border-color: var(--primary);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(100, 255, 218, 0.15);
+}
+
+.tunnel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.tunnel-name {
+    font-weight: 600;
+    color: var(--text);
+    font-size: 1.1rem;
+    margin: 0;
+}
+
+.tunnel-status {
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.tunnel-status.active {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    box-shadow: 0 0 10px rgba(34, 197, 94, 0.2);
+}
+
+.tunnel-status.inactive {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* Tunnel Information */
+.tunnel-info {
+    margin-bottom: 1.5rem;
+}
+
+.tunnel-detail {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 0.75rem 0;
+    font-size: 0.9rem;
+}
+
+.tunnel-detail .label {
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 500;
+}
+
+.tunnel-detail .value {
+    color: var(--text);
+    font-family: 'Fira Code', monospace;
+    font-weight: 500;
+}
+
+/* Tunnel URL Display */
+.tunnel-url {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(100, 255, 218, 0.2);
+    border-radius: 8px;
+    margin: 1rem 0;
+    transition: all 0.2s ease;
+}
+
+.tunnel-url:hover {
+    border-color: rgba(100, 255, 218, 0.4);
+    background: rgba(15, 23, 42, 1);
+}
+
+.tunnel-url .url {
+    flex: 1;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.9rem;
+    color: var(--primary);
+    text-decoration: none;
+    word-break: break-all;
+}
+
+.tunnel-url .url:hover {
+    text-decoration: underline;
+}
+
+.copy-btn {
+    padding: 0.5rem 0.75rem;
+    background: rgba(100, 255, 218, 0.2);
+    color: var(--primary);
+    border: 1px solid rgba(100, 255, 218, 0.3);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.copy-btn:hover {
+    background: rgba(100, 255, 218, 0.3);
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(100, 255, 218, 0.2);
+}
+
+.copy-btn.copied {
+    background: rgba(34, 197, 94, 0.2);
+    color: #22c55e;
+    border-color: rgba(34, 197, 94, 0.3);
+}
+
+/* Tunnel Actions */
+.tunnel-actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+    margin-top: 1rem;
+}
+
+.stop-tunnel-btn {
+    padding: 0.75rem 1.25rem;
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stop-tunnel-btn:hover {
+    background: rgba(239, 68, 68, 0.3);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
+.stop-tunnel-btn:disabled {
+    background: rgba(107, 114, 128, 0.2);
+    color: #6b7280;
+    border-color: rgba(107, 114, 128, 0.3);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* No Tunnels State */
+.no-tunnels {
+    text-align: center;
+    padding: 3rem 1.5rem;
+    color: rgba(255, 255, 255, 0.5);
+    font-style: italic;
+    background: rgba(30, 41, 59, 0.3);
+    border: 2px dashed rgba(100, 255, 218, 0.2);
+    border-radius: 12px;
+    margin-top: 1.5rem;
+}
+
+.no-tunnels::before {
+    content: '🌐';
+    display: block;
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+/* Loading Spinner */
+.loading-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid transparent;
+    border-top: 2px solid currentColor;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 0.5rem;
+}
+
+/* Responsive Design for Ngrok */
+@media (max-width: 768px) {
+    .ngrok-tunnels-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .ngrok-form {
+        grid-template-columns: 1fr;
+    }
+
+    .ngrok-auth-form {
+        flex-direction: column;
+    }
+
+    .ngrok-auth-form input {
+        min-width: auto;
+    }
+
+    .tunnel-actions {
+        justify-content: center;
+    }
+
+    .tunnel-url {
+        flex-direction: column;
+        gap: 0.5rem;
+        text-align: center;
+    }
+
+    .copy-btn {
+        align-self: stretch;
+    }
+}

@@ -63,7 +63,7 @@ async function writeHostsFile(content, adminPassword = null) {
                         error: 'Invalid password or insufficient privileges'
                     };
                 }
-                
+
                 // Sudo failed, return instructions for manual setup
                 const instructions = generateManualInstructions(content, tempFile);
                 return {
@@ -83,7 +83,7 @@ async function writeHostsFile(content, adminPassword = null) {
 // Helper function to generate manual setup instructions
 function generateManualInstructions(content, tempFile) {
     const platform = process.platform;
-    
+
     if (platform === 'win32') {
         return {
             title: 'Administrator Access Required',
@@ -374,8 +374,8 @@ router.post('/', async (req, res) => {
         // Flush DNS cache
         flushDNSCache();
 
-        const successMessage = writeResult.method === 'direct' ? 
-            'Domain added successfully' : 
+        const successMessage = writeResult.method === 'direct' ?
+            'Domain added successfully' :
             writeResult.method === 'sudo_password' ?
             'Domain added successfully using your administrator password' :
             'Domain added successfully using elevated privileges';

@@ -605,7 +605,7 @@ class DomainManager {
                     <div class="instructions-content">
                         <h4>${instructions.title}</h4>
                         <p class="instructions-note">${instructions.note}</p>
-                        
+
                         <div class="steps-container">
                             <h5>📋 Follow these steps:</h5>
                             <ol class="instruction-steps">
