@@ -1,0 +1,9 @@
+{
+  "isRunning": true,
+  "port": 80,
+  "domains": {
+    "test.local": 7001,
+    "myapp.test": 8000,
+    "dev.test": 8000
+  }
+}

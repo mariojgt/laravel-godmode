@@ -14,6 +14,8 @@ const envRoutes = require('./routes/env');
 const laravelRoutes = require('./routes/laravel');
 const servicesRoutes = require('./routes/services');
 const dependenciesRoutes = require('./routes/dependencies');
+const domainsRoutes = require('./routes/domains');
+const proxyRoutes = require('./routes/proxy');
 
 const app = express();
 const server = http.createServer(app);
@@ -99,6 +101,8 @@ app.use('/api/env', envRoutes);
 app.use('/api/laravel', laravelRoutes);
 app.use('/api/services', servicesRoutes);
 app.use('/api/dependencies', dependenciesRoutes);
+app.use('/api/domains', domainsRoutes);
+app.use('/api/proxy', proxyRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

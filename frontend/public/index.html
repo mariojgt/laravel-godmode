@@ -70,6 +70,7 @@
                 <!-- Settings Tabs -->
                 <div class="settings-tabs">
                     <button class="settings-tab active" data-tab="general">General</button>
+                    <button class="settings-tab" data-tab="domains">Domains</button>
                     <button class="settings-tab" data-tab="dependencies">Dependencies</button>
                 </div>
 
@@ -96,6 +97,102 @@
                                     <option value="atom">Atom</option>
                                     <option value="cursor">Cursor</option>
                                 </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Domains Settings Tab -->
+                <div id="domains-settings" class="settings-tab-content">
+                    <div class="domains-content">
+                        <div class="domains-header">
+                            <div class="domains-status">
+                                <div class="status-circle" id="domains-status-circle">🌐</div>
+                                <div class="status-text">
+                                    <h3>Local Domains</h3>
+                                    <p id="domains-summary">Manage custom domains for local development</p>
+                                </div>
+                            </div>
+                            <button class="btn btn-primary" id="add-domain-btn">
+                                <span class="btn-icon">+</span>
+                                Add Domain
+                            </button>
+                        </div>
+
+                        <!-- Proxy Status Section -->
+                        <div class="proxy-section">
+                            <div class="proxy-header">
+                                <div class="proxy-status-indicator" id="proxy-status-indicator">
+                                    <span class="proxy-status stopped">🔴 Proxy Stopped</span>
+                                </div>
+                                <div class="proxy-controls">
+                                    <button class="btn btn-success btn-sm" id="start-proxy-btn">
+                                        <span class="btn-icon">⚡</span>
+                                        Start Auto-Proxy
+                                    </button>
+                                    <button class="btn btn-warning btn-sm" id="stop-proxy-btn" style="display: none;">
+                                        <span class="btn-icon">⏹️</span>
+                                        Stop Proxy
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="proxy-info">
+                                <p><strong>🚀 Auto-proxy:</strong> Access your domains without port numbers! When enabled, <code>myapp.test</code> works instead of <code>myapp.test:8000</code></p>
+                                <p><em>Note: Requires administrator privileges to bind to port 80</em></p>
+                            </div>
+                        </div>
+
+                        <div class="domains-sections">
+                            <!-- Active Domains -->
+                            <div class="domain-section">
+                                <h4 class="section-title">
+                                    <span class="section-icon">🌍</span>
+                                    Active Domains
+                                </h4>
+                                <div id="active-domains" class="domains-grid">
+                                    <!-- Active domains will be rendered here -->
+                                </div>
+                            </div>
+
+                            <!-- Quick Setup -->
+                            <div class="domain-section">
+                                <h4 class="section-title">
+                                    <span class="section-icon">⚡</span>
+                                    Quick Setup
+                                </h4>
+                                <div class="quick-setup-grid">
+                                    <div class="quick-setup-card">
+                                        <h5>How it works</h5>
+                                        <p>Add custom domains that point to 127.0.0.1 in your hosts file. This allows you to access your local projects using custom domains like app.test instead of localhost:8000.</p>
+                                    </div>
+                                    <div class="quick-setup-card">
+                                        <h5>Requirements</h5>
+                                        <ul>
+                                            <li>Admin/sudo access to modify hosts file</li>
+                                            <li>Domain name (e.g., myapp.test)</li>
+                                            <li>Running project to test</li>
+                                        </ul>
+                                    </div>
+                                    <div class="quick-setup-card">
+                                        <h5>Best Practices</h5>
+                                        <ul>
+                                            <li>Use .test or .local domains</li>
+                                            <li>Avoid real TLD extensions</li>
+                                            <li>Keep names simple and memorable</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Hosts File Info -->
+                            <div class="domain-section">
+                                <h4 class="section-title">
+                                    <span class="section-icon">📄</span>
+                                    System Information
+                                </h4>
+                                <div id="hosts-info" class="hosts-info-grid">
+                                    <!-- Hosts file info will be rendered here -->
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -247,6 +344,70 @@
             <p>Loading...</p>
         </div>
 
+        <!-- Add Domain Modal -->
+        <div id="add-domain-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Add Custom Domain</h3>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="add-domain-form">
+                        <div class="form-group">
+                            <label for="domain-name">Domain Name</label>
+                            <input type="text" id="domain-name" name="domain" placeholder="example.test" required>
+                            <small class="form-help">Use .test or .local domains for local development</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="domain-ip">IP Address</label>
+                            <input type="text" id="domain-ip" name="ip" value="127.0.0.1" required>
+                            <small class="form-help">Usually 127.0.0.1 for local development</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="domain-project">Link to Project (Optional)</label>
+                            <select id="domain-project" name="projectId">
+                                <option value="">Select a project</option>
+                            </select>
+                            <small class="form-help">Associate this domain with a specific project (port will be auto-detected)</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="domain-port">Port</label>
+                            <input type="number" id="domain-port" name="port" value="80" min="1" max="65535">
+                            <small class="form-help">Port number (auto-filled when selecting a project, use 80 for default HTTP)</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="domain-comment">Comment (Optional)</label>
+                            <input type="text" id="domain-comment" name="comment" placeholder="Description or notes">
+                        </div>
+
+                        <div class="form-group password-group">
+                            <label for="admin-password">Administrator Password</label>
+                            <input type="password" id="admin-password" name="adminPassword" placeholder="Enter your password for sudo access">
+                            <small class="form-help">
+                                <span class="security-note">🔒 Required to modify hosts file. Password is not stored and only used for this operation.</span>
+                            </small>
+                        </div>
+
+                        <div class="domain-suggestions" id="domain-suggestions">
+                            <h4>Suggestions:</h4>
+                            <div class="suggestions-list" id="suggestions-list">
+                                <!-- Domain suggestions will appear here -->
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-secondary" data-action="cancel">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Add Domain</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
         <!-- Toast Notifications -->
         <div id="toast-container" class="toast-container"></div>
     </div>
@@ -266,6 +427,7 @@
     <script src="js/components/template-card.js"></script>
     <script src="js/components/laravel-manager.js"></script>
     <script src="js/components/dependencies-checker.js"></script>
+    <script src="js/components/domain-manager.js"></script>
     <script src="js/views/dashboard.js"></script>
     <script src="js/views/templates.js"></script>
     <script src="js/views/settings.js"></script>
