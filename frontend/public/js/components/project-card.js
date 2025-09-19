@@ -13,8 +13,9 @@ class ProjectCard {
             .map(([name, port]) => `<span class="port-badge clickable" onclick="projectActions.editService('${this.project.id}', '${name}', ${port})">${name}: ${port}</span>`)
             .join('');
 
-        // Show progress if creating
-        const progressBar = this.project.status === 'creating' && this.project.progress ?
+        // Show progress if creating, starting, or rebuilding
+        const showProgress = ['creating', 'starting', 'rebuilding'].includes(this.project.status) && this.project.progress;
+        const progressBar = showProgress ?
             `<div class="project-progress">
                 <div class="progress-bar">
                     <div class="progress-fill"></div>
@@ -101,19 +102,26 @@ class ProjectCard {
 
     renderActionButtons() {
         const { status } = this.project;
+        const isOperating = ['creating', 'starting', 'rebuilding'].includes(status);
 
         let buttons = [];
 
         // Start/Stop buttons
         if (status === 'stopped' || status === 'ready') {
-            buttons.push(`<button class="btn btn-sm btn-primary" onclick="projectActions.start('${this.project.id}')">Start</button>`);
+            const disabled = isOperating ? 'disabled' : '';
+            buttons.push(`<button class="btn btn-sm btn-primary" onclick="projectActions.start('${this.project.id}')" ${disabled}>Start</button>`);
         } else if (status === 'running') {
             buttons.push(`<button class="btn btn-sm btn-secondary" onclick="projectActions.stop('${this.project.id}')">Stop</button>`);
+        } else if (status === 'starting') {
+            buttons.push(`<button class="btn btn-sm btn-primary" disabled>Starting...</button>`);
         }
 
         // Rebuild button for error status or general maintenance
         if (status === 'error' || status === 'stopped' || status === 'ready') {
-            buttons.push(`<button class="btn btn-sm btn-warning" onclick="projectActions.rebuild('${this.project.id}')" title="Force rebuild containers">🔄 Rebuild</button>`);
+            const disabled = isOperating ? 'disabled' : '';
+            buttons.push(`<button class="btn btn-sm btn-warning" onclick="projectActions.rebuild('${this.project.id}')" title="Force rebuild containers" ${disabled}>🔄 Rebuild</button>`);
+        } else if (status === 'rebuilding') {
+            buttons.push(`<button class="btn btn-sm btn-warning" disabled>🔄 Rebuilding...</button>`);
         }
 
         // Terminal button (only when running)
@@ -132,7 +140,7 @@ class ProjectCard {
         }
 
         // Delete button
-        if (status !== 'creating') {
+        if (!isOperating && status !== 'creating') {
             buttons.push(`<button class="btn btn-sm btn-danger" onclick="projectActions.delete('${this.project.id}')">Delete</button>`);
         }
 
@@ -144,6 +152,8 @@ class ProjectCard {
             running: 'Running',
             stopped: 'Stopped',
             creating: 'Creating',
+            starting: 'Starting',
+            rebuilding: 'Rebuilding',
             ready: 'Ready',
             error: 'Error'
         };
@@ -240,43 +250,47 @@ class ProjectActions {
             const project = window.dashboard?.projects?.find(p => p.id === projectId);
             const projectName = project?.name || 'Unknown Project';
 
-            // Start progress tracking
-            const operation = progressManager.createProjectOperation(projectId, projectName, 'start');
+            // Generate operation ID
+            const operationId = Date.now().toString();
 
-            progressManager.addLog(operation.id, 'Initiating project startup...', 'info');
-            progressManager.updateOperation(operation.id, { currentStep: 0 });
+            // Try to open live console, fallback to toast if it fails
+            try {
+                if (window.liveConsole && typeof window.liveConsole.open === 'function') {
+                    window.liveConsole.open(`Starting ${projectName}`, operationId);
+                } else {
+                    console.warn('Live console not available, using toast notifications');
+                    toast.info(`Starting ${projectName}...`);
+                }
+            } catch (consoleError) {
+                console.error('Live console error:', consoleError);
+                toast.info(`Starting ${projectName}...`);
+            }
 
             // Call API
-            const response = await api.startProject(projectId);
+            const response = await api.startProject(projectId, operationId);
 
-            if (response.success) {
-                progressManager.addLog(operation.id, 'Project startup initiated successfully', 'success');
-                progressManager.updateOperation(operation.id, { currentStep: 1 });
-
-                // Complete after a short delay to show progress
-                setTimeout(() => {
-                    progressManager.completeOperation(operation.id, true, 'Project started successfully! 🚀');
-                }, 2000);
-            } else {
+            if (!response.success) {
                 throw new Error(response.message || 'Failed to start project');
             }
 
         } catch (error) {
-            // Complete with error
-            const operation = Array.from(progressManager.activeOperations.values())
-                .find(op => op.projectId === projectId && op.title.includes('Starting'));
-
-            if (operation) {
-                progressManager.addLog(operation.id, `Error: ${error.message}`, 'error');
-                progressManager.completeOperation(operation.id, false, 'Failed to start project');
+            // Try to update live console, fallback to toast
+            try {
+                if (window.liveConsole && typeof window.liveConsole.addLogLine === 'function') {
+                    window.liveConsole.addLogLine(`Error: ${error.message}`, 'error');
+                    window.liveConsole.handleOperationComplete({
+                        success: false,
+                        message: 'Failed to start project'
+                    });
+                }
+            } catch (consoleError) {
+                console.error('Live console error during error handling:', consoleError);
             }
 
             toast.error(`Failed to start project: ${error.message}`);
             dashboard.loadProjects(); // Refresh on error
         }
-    }
-
-    async stop(projectId) {
+    }    async stop(projectId) {
         try {
             // Get project info for better feedback
             const project = window.dashboard?.projects?.find(p => p.id === projectId);
@@ -328,53 +342,46 @@ class ProjectActions {
             const project = window.dashboard?.projects?.find(p => p.id === projectId);
             const projectName = project?.name || 'Unknown Project';
 
-            // Start progress tracking
-            const operation = progressManager.createProjectOperation(projectId, projectName, 'rebuild');
+            // Generate operation ID
+            const operationId = Date.now().toString();
 
-            progressManager.addLog(operation.id, 'Starting container rebuild process...', 'info');
-            progressManager.updateOperation(operation.id, { currentStep: 0 });
+            // Try to open live console, fallback to toast if it fails
+            try {
+                if (window.liveConsole && typeof window.liveConsole.open === 'function') {
+                    window.liveConsole.open(`Rebuilding ${projectName}`, operationId);
+                } else {
+                    console.warn('Live console not available, using toast notifications');
+                    toast.info(`Rebuilding ${projectName}...`);
+                }
+            } catch (consoleError) {
+                console.error('Live console error:', consoleError);
+                toast.info(`Rebuilding ${projectName}...`);
+            }
 
             // Call API
-            const response = await api.rebuildProject(projectId);
+            const response = await api.rebuildProject(projectId, operationId);
 
-            if (response.success) {
-                progressManager.addLog(operation.id, 'Removing old containers...', 'info');
-                progressManager.updateOperation(operation.id, { currentStep: 1 });
-
-                // Simulate progress steps
-                setTimeout(() => {
-                    progressManager.addLog(operation.id, 'Rebuilding Docker images...', 'info');
-                    progressManager.updateOperation(operation.id, { currentStep: 2 });
-                }, 2000);
-
-                setTimeout(() => {
-                    progressManager.addLog(operation.id, 'Starting fresh containers...', 'info');
-                    progressManager.updateOperation(operation.id, { currentStep: 3 });
-                }, 4000);
-
-                setTimeout(() => {
-                    progressManager.completeOperation(operation.id, true, 'Project rebuilt successfully! 🔄');
-                    dashboard.loadProjects(); // Refresh projects
-                }, 6000);
-            } else {
+            if (!response.success) {
                 throw new Error(response.message || 'Failed to rebuild project');
             }
 
         } catch (error) {
-            // Complete with error
-            const operation = Array.from(progressManager.activeOperations.values())
-                .find(op => op.projectId === projectId && op.title.includes('Rebuilding'));
-
-            if (operation) {
-                progressManager.addLog(operation.id, `Error: ${error.message}`, 'error');
-                progressManager.completeOperation(operation.id, false, 'Failed to rebuild project');
+            // Try to update live console, fallback to toast
+            try {
+                if (window.liveConsole && typeof window.liveConsole.addLogLine === 'function') {
+                    window.liveConsole.addLogLine(`Error: ${error.message}`, 'error');
+                    window.liveConsole.handleOperationComplete({
+                        success: false,
+                        message: 'Failed to rebuild project'
+                    });
+                }
+            } catch (consoleError) {
+                console.error('Live console error during error handling:', consoleError);
             }
 
             toast.error(`Failed to rebuild project: ${error.message}`);
         }
-    }
-
-    async delete(projectId) {
+    }    async delete(projectId) {
         if (!confirm('Are you sure you want to delete this project? This action cannot be undone.')) {
             return;
         }

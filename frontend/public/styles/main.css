@@ -776,12 +776,135 @@ body {
 
 /* Terminal */
 .terminal-container {
-    background: #000;
-    border-radius: var(--radius-md);
-    padding: var(--space-sm);
+    background: #1a1a1a;
+    color: #fff;
+    border-radius: 4px;
+    padding: 1rem;
     height: 400px;
-    overflow: hidden;
-    font-family: var(--font-mono);
+    overflow-y: auto;
+}
+
+/* Live Console */
+.live-console-container {
+    background: #0d1117;
+    color: #c9d1d9;
+    border-radius: 8px;
+    border: 1px solid #30363d;
+    height: 500px;
+    display: flex;
+    flex-direction: column;
+    font-family: 'Fira Code', 'Consolas', 'Monaco', monospace;
+    font-size: 13px;
+}
+
+.live-console-status {
+    background: #161b22;
+    border-bottom: 1px solid #30363d;
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 500;
+}
+
+.status-text {
+    color: #7c3aed;
+}
+
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #10b981;
+    animation: pulse-indicator 2s infinite;
+}
+
+.status-indicator.connecting {
+    background: #f59e0b;
+}
+
+.status-indicator.error {
+    background: #ef4444;
+    animation: none;
+}
+
+@keyframes pulse-indicator {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.live-console-output {
+    flex: 1;
+    padding: 1rem;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: #0d1117;
+}
+
+.console-line {
+    margin-bottom: 0.25rem;
+    padding: 0.25rem 0;
+    line-height: 1.4;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+}
+
+.console-line.info {
+    color: #58a6ff;
+}
+
+.console-line.success {
+    color: #56d364;
+}
+
+.console-line.warning {
+    color: #d29922;
+}
+
+.console-line.error {
+    color: #f85149;
+    font-weight: 500;
+}
+
+.console-line.command {
+    color: #f0f6fc;
+    background: rgba(56, 139, 253, 0.1);
+    border-left: 3px solid #58a6ff;
+    padding-left: 0.75rem;
+    margin: 0.5rem 0;
+}
+
+.console-timestamp {
+    color: #7d8590;
+    font-size: 11px;
+    margin-right: 0.5rem;
+}
+
+.console-line:hover {
+    background: rgba(177, 186, 196, 0.04);
+}
+
+.modal-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.live-console-output::-webkit-scrollbar {
+    width: 8px;
+}
+
+.live-console-output::-webkit-scrollbar-track {
+    background: #161b22;
+}
+
+.live-console-output::-webkit-scrollbar-thumb {
+    background: #30363d;
+    border-radius: 4px;
+}
+
+.live-console-output::-webkit-scrollbar-thumb:hover {
+    background: #484f58;
 }
 
 /* Toast Notifications */

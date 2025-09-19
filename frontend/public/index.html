@@ -143,6 +143,30 @@
             </div>
         </div>
 
+        <!-- Live Console Modal -->
+        <div id="live-console-modal" class="modal">
+            <div class="modal-content modal-large">
+                <div class="modal-header">
+                    <h3>Live Console - <span id="live-console-project-name"></span></h3>
+                    <div class="modal-actions">
+                        <button id="live-console-clear" class="btn btn-xs btn-secondary">Clear</button>
+                        <button class="modal-close">&times;</button>
+                    </div>
+                </div>
+                <div class="modal-body">
+                    <div id="live-console-container" class="live-console-container">
+                        <div id="live-console-status" class="live-console-status">
+                            <span class="status-text">Connecting...</span>
+                            <div class="status-indicator"></div>
+                        </div>
+                        <div id="live-console-output" class="live-console-output">
+                            <!-- Live logs will appear here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Loading Overlay -->
         <div id="loading-overlay" class="loading-overlay">
             <div class="loading-spinner"></div>
@@ -160,6 +184,7 @@
     </script>
     <script src="js/utils/api.js"></script>
     <script src="js/utils/websocket.js"></script>
+    <script src="js/utils/live-console.js"></script>
     <script src="js/utils/toast.js"></script>
     <script src="js/components/modal.js"></script>
     <script src="js/components/progress-manager.js"></script>

@@ -280,6 +280,9 @@ router.post('/:id/start', async (req, res) => {
       return res.status(404).json({ error: 'Project not found' });
     }
 
+    // Get operation ID from request or generate one
+    const operationId = req.body.operationId || `start-${project.id}-${Date.now()}`;
+
     // Update status immediately and broadcast
     project.status = 'starting';
     project.progress = 'Starting containers...';
@@ -287,12 +290,12 @@ router.post('/:id/start', async (req, res) => {
     global.broadcastProjectUpdate && global.broadcastProjectUpdate(project.id, project);
 
     // Start project asynchronously with real make command
-    startProjectAsync(project);
+    startProjectAsync(project, operationId);
 
     res.json({
       success: true,
       message: 'Project start initiated',
-      operationId: `start-${project.id}`
+      operationId: operationId
     });
   } catch (error) {
     console.error('Failed to start project:', error);
@@ -346,6 +349,9 @@ router.post('/:id/rebuild', async (req, res) => {
       return res.status(404).json({ error: 'Project not found' });
     }
 
+    // Get operation ID from request or generate one
+    const operationId = req.body.operationId || `rebuild-${project.id}-${Date.now()}`;
+
     // Update status immediately and broadcast
     project.status = 'rebuilding';
     project.progress = 'Rebuilding containers...';
@@ -353,12 +359,12 @@ router.post('/:id/rebuild', async (req, res) => {
     global.broadcastProjectUpdate && global.broadcastProjectUpdate(project.id, project);
 
     // Rebuild project asynchronously with real make command
-    rebuildProjectAsync(project);
+    rebuildProjectAsync(project, operationId);
 
     res.json({
       success: true,
       message: 'Project rebuild initiated',
-      operationId: `rebuild-${project.id}`
+      operationId: operationId
     });
   } catch (error) {
     console.error('Failed to rebuild project:', error);
@@ -1194,20 +1200,80 @@ async function startProjectAsync(project) {
 
   try {
     console.log(`🚀 Starting project: ${project.name}`);
+    const operationId = `start-${project.id}`;
 
-    projects[projectIndex].progress = 'Checking Docker setup...';
+    // Broadcast operation start
+    global.broadcastCommand && global.broadcastCommand(project.id, 'project start', 'Initializing project startup...', 'info');
+
+    projects[projectIndex].status = 'starting';
+    projects[projectIndex].progress = 'Starting containers...';
     await saveProjects(projects);
     global.broadcastProjectUpdate && global.broadcastProjectUpdate(project.id, projects[projectIndex]);
 
-    await startProject(project);
+    // Check if Makefile exists, use make command if available
+    const makefilePath = path.join(project.path, 'Makefile');
+    const hasMakefile = await fs.access(makefilePath).then(() => true).catch(() => false);
 
-    projects[projectIndex].status = 'running';
+    if (hasMakefile) {
+      console.log(`📋 Using Makefile for project startup: ${project.name}`);
+      global.broadcastCommand && global.broadcastCommand(project.id, 'make start', 'Using Makefile for startup process...', 'info');
+
+      // Use make start command for better feedback
+      await executeCommandWithLogs('make start', project.path, operationId);
+
+    } else {
+      console.log(`🐳 Using docker-compose for project startup: ${project.name}`);
+      global.broadcastCommand && global.broadcastCommand(project.id, 'docker-compose up', 'Using docker-compose for startup...', 'info');
+
+      // Fallback to docker-compose with detailed logging
+      projects[projectIndex].progress = 'Cleaning up previous instances...';
+      await saveProjects(projects);
+      global.broadcastProjectUpdate && global.broadcastProjectUpdate(project.id, projects[projectIndex]);
+      global.broadcastCommand && global.broadcastCommand(project.id, 'docker system prune', 'Cleaning up Docker system...', 'info');
+
+      // Clean up any potential cached layers first
+      await executeCommandWithLogs('docker system prune -f', project.path, operationId);
+
+      projects[projectIndex].progress = 'Building and starting containers...';
+      await saveProjects(projects);
+      global.broadcastProjectUpdate && global.broadcastProjectUpdate(project.id, projects[projectIndex]);
+      global.broadcastCommand && global.broadcastCommand(project.id, 'docker-compose up -d --build', 'Building and starting containers...', 'info');
+
+      // Build and start containers with detailed logging
+      try {
+        await executeCommandWithLogs('docker-compose up -d --build', project.path, operationId);
+      } catch (error) {
+        // If build fails, try without cache
+        console.warn('Build failed, retrying without cache...');
+        global.broadcastCommand && global.broadcastCommand(project.id, 'docker-compose rebuild', 'Build failed, retrying without cache...', 'warning');
+
+        projects[projectIndex].progress = 'Rebuilding without cache...';
+        await saveProjects(projects);
+        global.broadcastProjectUpdate && global.broadcastProjectUpdate(project.id, projects[projectIndex]);
+
+        await executeCommandWithLogs('docker-compose build --no-cache', project.path, operationId);
+        await executeCommandWithLogs('docker-compose up -d', project.path, operationId);
+      }
+    }
+
+    // Wait for containers to stabilize
+    projects[projectIndex].progress = 'Waiting for containers to be ready...';
+    await saveProjects(projects);
+    global.broadcastProjectUpdate && global.broadcastProjectUpdate(project.id, projects[projectIndex]);
+    global.broadcastCommand && global.broadcastCommand(project.id, 'container health check', 'Waiting for containers to be ready...', 'info');
+
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
+    // Verify containers are running
+    const finalStatus = await getProjectStatus(project);
+    projects[projectIndex].status = finalStatus === 'running' ? 'running' : 'stopped';
     projects[projectIndex].progress = 'Project started successfully';
     delete projects[projectIndex].progress;
     await saveProjects(projects);
     global.broadcastProjectUpdate && global.broadcastProjectUpdate(project.id, projects[projectIndex]);
 
     console.log(`✅ Project started: ${project.name}`);
+    global.broadcastCommand && global.broadcastCommand(project.id, 'project start', `✅ Project "${project.name}" started successfully!`, 'success');
 
   } catch (error) {
     console.error('❌ Project start failed:', error);
@@ -1216,6 +1282,7 @@ async function startProjectAsync(project) {
     projects[projectIndex].progress = `Start failed: ${error.message}`;
     await saveProjects(projects);
     global.broadcastProjectUpdate && global.broadcastProjectUpdate(project.id, projects[projectIndex]);
+    global.broadcastCommand && global.broadcastCommand(project.id, 'project start', `❌ Failed to start project: ${error.message}`, 'error');
   }
 }
 
@@ -1348,7 +1415,7 @@ function broadcastOperationComplete(operationId, success, message) {
   }
 }
 
-async function startProjectAsync(project) {
+async function startProjectAsync(project, operationId) {
   const projects = await loadProjects();
   const projectIndex = projects.findIndex(p => p.id === project.id);
 
@@ -1356,7 +1423,6 @@ async function startProjectAsync(project) {
 
   try {
     console.log(`🚀 Starting project: ${project.name}`);
-    const operationId = `start-${project.id}`;
 
     // Broadcast operation start
     broadcastOperationLog(operationId, 'info', 'Initializing project startup...');
@@ -1411,7 +1477,6 @@ async function startProjectAsync(project) {
   } catch (error) {
     console.error('❌ Project start failed:', error);
 
-    const operationId = `start-${project.id}`;
     broadcastOperationLog(operationId, 'error', `❌ Startup failed: ${error.message}`);
     broadcastOperationComplete(operationId, false, 'Project startup failed');
 
@@ -1482,7 +1547,7 @@ async function stopProjectAsync(project) {
   }
 }
 
-async function rebuildProjectAsync(project) {
+async function rebuildProjectAsync(project, operationId) {
   const projects = await loadProjects();
   const projectIndex = projects.findIndex(p => p.id === project.id);
 
@@ -1490,7 +1555,6 @@ async function rebuildProjectAsync(project) {
 
   try {
     console.log(`🔄 Rebuilding project: ${project.name}`);
-    const operationId = `rebuild-${project.id}`;
 
     // Broadcast operation start
     broadcastOperationLog(operationId, 'info', 'Initializing project rebuild...');
@@ -1571,7 +1635,6 @@ async function rebuildProjectAsync(project) {
   } catch (error) {
     console.error('❌ Project rebuild failed:', error);
 
-    const operationId = `rebuild-${project.id}`;
     broadcastOperationLog(operationId, 'error', `❌ Rebuild failed: ${error.message}`);
     broadcastOperationComplete(operationId, false, 'Project rebuild failed');
 

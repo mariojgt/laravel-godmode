@@ -71,16 +71,27 @@ class Dashboard {
         // Find and update the project in our local array
         const projectIndex = this.projects.findIndex(p => p.id === data.projectId);
         if (projectIndex !== -1) {
+            const oldProject = this.projects[projectIndex];
             this.projects[projectIndex] = data.project;
             this.renderProjects(); // Re-render to show updated state
 
             console.log(`📡 Received project update: ${data.project.name} - ${data.project.status}`);
 
             // Show toast for status changes
-            if (data.project.status === 'ready') {
+            if (data.project.status === 'ready' && oldProject.status === 'creating') {
                 toast.success(`Project "${data.project.name}" created successfully!`);
+            } else if (data.project.status === 'running' && oldProject.status === 'starting') {
+                toast.success(`Project "${data.project.name}" started successfully!`);
+            } else if (data.project.status === 'running' && oldProject.status === 'rebuilding') {
+                toast.success(`Project "${data.project.name}" rebuilt successfully!`);
             } else if (data.project.status === 'error') {
-                toast.error(`Project "${data.project.name}" creation failed`);
+                if (oldProject.status === 'creating') {
+                    toast.error(`Project "${data.project.name}" creation failed`);
+                } else if (oldProject.status === 'starting') {
+                    toast.error(`Project "${data.project.name}" failed to start`);
+                } else if (oldProject.status === 'rebuilding') {
+                    toast.error(`Project "${data.project.name}" rebuild failed`);
+                }
             }
         }
     }

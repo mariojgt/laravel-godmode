@@ -82,9 +82,10 @@ class API {
         });
     }
 
-    async startProject(id) {
+    async startProject(id, operationId) {
         return this.request(`/projects/${id}/start`, {
-            method: 'POST'
+            method: 'POST',
+            body: JSON.stringify({ operationId })
         });
     }
 
@@ -94,9 +95,10 @@ class API {
         });
     }
 
-    async rebuildProject(id) {
+    async rebuildProject(id, operationId) {
         return this.request(`/projects/${id}/rebuild`, {
-            method: 'POST'
+            method: 'POST',
+            body: JSON.stringify({ operationId })
         });
     }
 
