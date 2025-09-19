@@ -245,7 +245,7 @@ Once installation is complete, your application will be available at:
    ```bash
    # Using the web interface (recommended)
    Click "Create New Project" → Choose "Laravel" → Configure & Create
-   
+
    # Or using the command line
    make laravel-new NAME=my-awesome-project
    ```
@@ -949,12 +949,12 @@ DEBUG_MODE=true
   --primary-color: #3b82f6;
   --secondary-color: #8b5cf6;
   --accent-color: #06d6a0;
-  
+
   /* Status Colors */
   --success-color: #10b981;
   --warning-color: #f59e0b;
   --error-color: #ef4444;
-  
+
   /* Dark Theme */
   --bg-primary: #0f172a;
   --bg-secondary: #1e293b;
@@ -1367,7 +1367,7 @@ make check
 
 # Expected output:
 # ✅ Backend: Healthy and responding
-# ✅ Frontend: Healthy and responding  
+# ✅ Frontend: Healthy and responding
 # ✅ Internet: Connected
 ```
 
@@ -1696,11 +1696,11 @@ Laravel God Mode is open-source software licensed under the [MIT License](LICENS
 
 ### 🎯 **What this means for you:**
 
-✅ **Commercial Use** - Use in commercial projects  
-✅ **Modification** - Modify the source code  
-✅ **Distribution** - Distribute copies of the software  
-✅ **Private Use** - Use for personal/private projects  
-✅ **Patent Grant** - Express grant of patent rights from contributors  
+✅ **Commercial Use** - Use in commercial projects
+✅ **Modification** - Modify the source code
+✅ **Distribution** - Distribute copies of the software
+✅ **Private Use** - Use for personal/private projects
+✅ **Patent Grant** - Express grant of patent rights from contributors
 
 ⚠️ **Requirements**:
 - Include the original license and copyright notice
