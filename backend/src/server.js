@@ -13,6 +13,7 @@ const terminalRoutes = require('./routes/terminal');
 const envRoutes = require('./routes/env');
 const laravelRoutes = require('./routes/laravel');
 const servicesRoutes = require('./routes/services');
+const dependenciesRoutes = require('./routes/dependencies');
 
 const app = express();
 const server = http.createServer(app);
@@ -97,6 +98,7 @@ app.use('/api/terminal', terminalRoutes);
 app.use('/api/env', envRoutes);
 app.use('/api/laravel', laravelRoutes);
 app.use('/api/services', servicesRoutes);
+app.use('/api/dependencies', dependenciesRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

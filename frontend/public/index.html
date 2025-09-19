@@ -67,27 +67,101 @@
                     <h2>Settings</h2>
                 </div>
 
-                <div class="settings-content">
-                    <div class="setting-group">
-                        <h3>General</h3>
-                        <div class="setting-item">
-                            <label>Auto-start projects</label>
-                            <input type="checkbox" id="auto-start">
+                <!-- Settings Tabs -->
+                <div class="settings-tabs">
+                    <button class="settings-tab active" data-tab="general">General</button>
+                    <button class="settings-tab" data-tab="dependencies">Dependencies</button>
+                </div>
+
+                <!-- General Settings Tab -->
+                <div id="general-settings" class="settings-tab-content active">
+                    <div class="settings-content">
+                        <div class="setting-group">
+                            <h3>General</h3>
+                            <div class="setting-item">
+                                <label>Auto-start projects</label>
+                                <input type="checkbox" id="auto-start">
+                            </div>
+                        </div>
+
+                        <div class="setting-group">
+                            <h3>Development</h3>
+                            <div class="setting-item">
+                                <label for="preferred-editor">Preferred Code Editor</label>
+                                <select id="preferred-editor">
+                                    <option value="vscode">Visual Studio Code</option>
+                                    <option value="webstorm">WebStorm</option>
+                                    <option value="phpstorm">PhpStorm</option>
+                                    <option value="sublime">Sublime Text</option>
+                                    <option value="atom">Atom</option>
+                                    <option value="cursor">Cursor</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
+                </div>
 
-                    <div class="setting-group">
-                        <h3>Development</h3>
-                        <div class="setting-item">
-                            <label for="preferred-editor">Preferred Code Editor</label>
-                            <select id="preferred-editor">
-                                <option value="vscode">Visual Studio Code</option>
-                                <option value="webstorm">WebStorm</option>
-                                <option value="phpstorm">PhpStorm</option>
-                                <option value="sublime">Sublime Text</option>
-                                <option value="atom">Atom</option>
-                                <option value="cursor">Cursor</option>
-                            </select>
+                <!-- Dependencies Settings Tab -->
+                <div id="dependencies-settings" class="settings-tab-content">
+                    <div class="dependencies-content">
+                        <div class="dependencies-header">
+                            <div class="dependencies-status">
+                                <div class="status-circle" id="overall-status-circle"></div>
+                                <div class="status-text">
+                                    <h3>System Dependencies</h3>
+                                    <p id="status-summary">Checking dependencies...</p>
+                                </div>
+                            </div>
+                            <button class="btn btn-primary" id="check-dependencies-btn">
+                                <span class="btn-icon">🔄</span>
+                                Check Dependencies
+                            </button>
+                        </div>
+
+                        <div class="dependencies-sections">
+                            <!-- Required Dependencies -->
+                            <div class="dependency-section">
+                                <h4 class="section-title">
+                                    <span class="section-icon">🔥</span>
+                                    Required Dependencies
+                                </h4>
+                                <div id="required-dependencies" class="dependencies-grid">
+                                    <!-- Required dependencies will be rendered here -->
+                                </div>
+                            </div>
+
+                            <!-- Recommended Dependencies -->
+                            <div class="dependency-section">
+                                <h4 class="section-title">
+                                    <span class="section-icon">⭐</span>
+                                    Recommended Dependencies
+                                </h4>
+                                <div id="recommended-dependencies" class="dependencies-grid">
+                                    <!-- Recommended dependencies will be rendered here -->
+                                </div>
+                            </div>
+
+                            <!-- Port Status -->
+                            <div class="dependency-section">
+                                <h4 class="section-title">
+                                    <span class="section-icon">🌐</span>
+                                    Port Status
+                                </h4>
+                                <div id="port-status" class="port-status-grid">
+                                    <!-- Port status will be rendered here -->
+                                </div>
+                            </div>
+
+                            <!-- System Information -->
+                            <div class="dependency-section">
+                                <h4 class="section-title">
+                                    <span class="section-icon">💻</span>
+                                    System Information
+                                </h4>
+                                <div id="system-info" class="system-info-grid">
+                                    <!-- System info will be rendered here -->
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -191,6 +265,7 @@
     <script src="js/components/project-card.js"></script>
     <script src="js/components/template-card.js"></script>
     <script src="js/components/laravel-manager.js"></script>
+    <script src="js/components/dependencies-checker.js"></script>
     <script src="js/views/dashboard.js"></script>
     <script src="js/views/templates.js"></script>
     <script src="js/views/settings.js"></script>

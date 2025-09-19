@@ -1,1 +1,71 @@
-[]
+[
+  {
+    "id": "51251c39-e3d2-42a3-9898-68d7e7c992e7",
+    "name": "TheDevRealm",
+    "template": "laravel",
+    "config": {
+      "versions": {
+        "php": "8.3",
+        "node": "18"
+      },
+      "packageManagers": {
+        "bun": true
+      },
+      "services": {
+        "redis": true,
+        "phpmyadmin": true,
+        "mailhog": true
+      },
+      "ports": {
+        "app": 7001,
+        "vite": 5173,
+        "phpmyadmin": 7002,
+        "mailhog": 8025,
+        "redis": 6379
+      }
+    },
+    "status": "stopped",
+    "createdAt": "2025-07-29T18:12:06.477Z",
+    "ports": {
+      "app": 7001,
+      "vite": 5173,
+      "phpmyadmin": 7002,
+      "mailhog": 8025,
+      "redis": 6379
+    },
+    "path": "/Users/mariotarosso/Documents/laravel-godmode/projects/TheDevRealm"
+  },
+  {
+    "id": "9c419156-a5e0-4c12-ba5f-a4cef9d93a7c",
+    "name": "mag",
+    "template": "laravel",
+    "config": {
+      "versions": {
+        "php": "8.3",
+        "node": "18"
+      },
+      "packageManagers": {},
+      "services": {
+        "phpmyadmin": true
+      },
+      "ports": {
+        "app": 8000,
+        "vite": 5173,
+        "phpmyadmin": 8080,
+        "mailhog": 8025,
+        "redis": 6379
+      }
+    },
+    "status": "stopped",
+    "createdAt": "2025-09-14T16:06:16.303Z",
+    "ports": {
+      "app": 8000,
+      "vite": 5173,
+      "phpmyadmin": 8080,
+      "mailhog": 8025,
+      "redis": 6379
+    },
+    "path": "/Users/mariotarosso/Documents/laravel-godmode/projects/mag",
+    "progress": "Checking project configuration..."
+  }
+]

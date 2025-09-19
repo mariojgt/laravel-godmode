@@ -1,70 +1,19 @@
-FROM php:{{PHP_VERSION}}-fpm-alpine
+# Use ServersideUp Laravel-optimized image with all extensions pre-installed
+FROM serversideup/php:{{PHP_VERSION}}-fpm-nginx
 
-# Install system dependencies including WebP support
-RUN apk add --no-cache \
-    git \
-    curl \
-    libpng-dev \
-    oniguruma-dev \
-    libxml2-dev \
-    libzip-dev \
-    libwebp-dev \
-    libjpeg-turbo-dev \
-    freetype-dev \
-    zip \
-    unzip \
+# Install additional tools only if needed
+RUN apt-get update && apt-get install -y \
     supervisor \
     mysql-client \
-    nodejs \
-    npm \
-    bash
+    && rm -rf /var/lib/apt/lists/*
 
-# Install Bun via npm (if enabled) - more reliable than curl install
-RUN if [ "{{INSTALL_BUN}}" = "true" ]; then \
-    npm install -g bun; \
-    fi
-
-# Install pnpm (if enabled)
-RUN if [ "{{INSTALL_PNPM}}" = "true" ]; then \
-    npm install -g pnpm; \
-    fi
-
-# Configure and install GD extension with WebP support
-RUN docker-php-ext-configure gd \
-    --with-freetype \
-    --with-jpeg \
-    --with-webp
-
-# Install PHP extensions
-RUN docker-php-ext-install \
-    pdo_mysql \
-    mbstring \
-    exif \
-    pcntl \
-    bcmath \
-    gd \
-    zip
-
-# Install Redis extension
-RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS \
-    && pecl install redis \
-    && docker-php-ext-enable redis \
-    && apk del .build-deps
-
-# Install Composer
+# Install Composer and optional package managers
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+RUN if [ "{{INSTALL_BUN}}" = "true" ]; then npm install -g bun; fi \
+    && if [ "{{INSTALL_PNPM}}" = "true" ]; then npm install -g pnpm; fi
 
-# Create application user (handle existing GID gracefully)
-RUN if ! getent group 1000 >/dev/null 2>&1; then \
-    addgroup -g 1000 www; \
-    else \
-    addgroup www; \
-    fi && \
-    if ! getent passwd 1000 >/dev/null 2>&1; then \
-    adduser -u 1000 -G www -s /bin/sh -D www; \
-    else \
-    adduser -G www -s /bin/sh -D www; \
-    fi
+# Create application user (ServersideUp images use www-data by default)
+# Skip user creation as the image already has proper user setup
 
 # Set working directory
 WORKDIR /var/www/html
@@ -75,15 +24,31 @@ RUN mkdir -p /var/log/supervisor
 # Copy supervisor configuration
 COPY docker/supervisor.conf /etc/supervisor/conf.d/laravel.conf
 
-# Copy application files from src directory
+# Copy composer files first for better caching
+COPY src/composer.json src/composer.lock* ./
+
+# Install Composer dependencies (this layer gets cached unless dependencies change)
+RUN if [ -f composer.json ]; then \
+    composer install --no-dev --optimize-autoloader --no-interaction --no-scripts; \
+    fi
+
+# Copy package.json files for Node dependencies caching
+COPY src/package*.json src/bun.lock* src/pnpm-lock.yaml* ./
+
+# Install Node dependencies if package.json exists (cached layer)
+RUN if [ -f package.json ]; then \
+    npm ci --no-audit --no-fund 2>/dev/null || npm install --no-audit --no-fund; \
+    fi
+
+# Now copy the rest of the application files (benefits from above caches)
 COPY src/ /var/www/html/
 
-# Set permissions
-RUN chown -R www:www /var/www/html \
+# Set permissions (use www-data user from ServersideUp image)
+RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html/storage \
     && chmod -R 755 /var/www/html/bootstrap/cache
 
-# Install Laravel dependencies if composer.json exists (skip discovery to avoid DB connection)
+# Re-run composer install to ensure any new files are handled (mostly cache hit)
 RUN if [ -f composer.json ]; then \
     composer install --no-dev --optimize-autoloader --no-interaction --no-scripts; \
     fi

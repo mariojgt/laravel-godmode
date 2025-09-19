@@ -1762,3 +1762,541 @@ body {
         flex-direction: column;
     }
 }
+
+/* ===== DEPENDENCIES STYLES ===== */
+
+/* Settings Tabs */
+.settings-tabs {
+    display: flex;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-lg);
+    border-bottom: 1px solid rgba(100, 255, 218, 0.1);
+}
+
+.settings-tab {
+    padding: var(--space-sm) var(--space-md);
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: var(--transition);
+}
+
+.settings-tab:hover {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.settings-tab.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+}
+
+.settings-tab-content {
+    display: none;
+}
+
+.settings-tab-content.active {
+    display: block;
+}
+
+/* Dependencies Header */
+.dependencies-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-lg);
+    padding: var(--space-lg);
+    background: rgba(30, 41, 59, 0.5);
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(100, 255, 218, 0.1);
+}
+
+.dependencies-status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+}
+
+.status-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: white;
+    transition: var(--transition);
+}
+
+.status-circle.healthy {
+    background: linear-gradient(135deg, var(--success), #10b981);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.status-circle.warning {
+    background: linear-gradient(135deg, var(--warning), #f59e0b);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.status-circle.error {
+    background: linear-gradient(135deg, var(--error), #dc2626);
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+}
+
+.status-circle.checking {
+    background: linear-gradient(135deg, var(--info), #3b82f6);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    animation: pulse 2s infinite;
+}
+
+.status-text h3 {
+    margin: 0 0 var(--space-xs) 0;
+    color: var(--text);
+    font-size: 1.25rem;
+}
+
+.status-text p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.875rem;
+}
+
+/* Dependencies Sections */
+.dependencies-sections {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+}
+
+.dependency-section {
+    background: rgba(30, 41, 59, 0.3);
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(100, 255, 218, 0.1);
+    padding: var(--space-lg);
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-md);
+    color: var(--text);
+    font-size: 1.125rem;
+    font-weight: 600;
+}
+
+.section-icon {
+    font-size: 1.25rem;
+}
+
+/* Dependencies Grid */
+.dependencies-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: var(--space-md);
+}
+
+.dependency-card {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(100, 255, 218, 0.1);
+    border-radius: var(--radius-lg);
+    padding: var(--space-md);
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+}
+
+.dependency-card:hover {
+    border-color: rgba(100, 255, 218, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.dependency-card.installed {
+    border-color: rgba(34, 197, 94, 0.3);
+}
+
+.dependency-card.missing {
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.dependency-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-sm);
+}
+
+.dependency-info {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.dependency-icon {
+    font-size: 1.5rem;
+}
+
+.dependency-name {
+    font-weight: 600;
+    color: var(--text);
+    margin: 0;
+}
+
+.dependency-category {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.dependency-status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.dependency-status.installed {
+    color: var(--success);
+}
+
+.dependency-status.missing {
+    color: var(--error);
+}
+
+.dependency-status.warning {
+    color: var(--warning);
+}
+
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.dependency-description {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.875rem;
+    margin: var(--space-sm) 0;
+    line-height: 1.4;
+}
+
+.dependency-version {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: var(--space-sm) 0;
+    padding: var(--space-xs) 0;
+    border-top: 1px solid rgba(100, 255, 218, 0.1);
+    font-size: 0.875rem;
+}
+
+.version-current {
+    color: var(--success);
+    font-family: 'Fira Code', monospace;
+}
+
+.version-expected {
+    color: rgba(255, 255, 255, 0.5);
+    font-family: 'Fira Code', monospace;
+}
+
+.dependency-actions {
+    display: flex;
+    gap: var(--space-xs);
+    margin-top: var(--space-md);
+}
+
+.install-btn {
+    flex: 1;
+    padding: var(--space-xs) var(--space-sm);
+    background: rgba(34, 197, 94, 0.2);
+    border: 1px solid var(--success);
+    color: var(--success);
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.install-btn:hover {
+    background: rgba(34, 197, 94, 0.3);
+    transform: translateY(-1px);
+}
+
+.install-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.check-btn {
+    padding: var(--space-xs) var(--space-sm);
+    background: rgba(59, 130, 246, 0.2);
+    border: 1px solid var(--info);
+    color: var(--info);
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.check-btn:hover {
+    background: rgba(59, 130, 246, 0.3);
+    transform: translateY(-1px);
+}
+
+/* Port Status Grid */
+.port-status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--space-md);
+}
+
+.port-card {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(100, 255, 218, 0.1);
+    border-radius: var(--radius-lg);
+    padding: var(--space-md);
+    transition: var(--transition);
+}
+
+.port-card:hover {
+    border-color: rgba(100, 255, 218, 0.3);
+    transform: translateY(-2px);
+}
+
+.port-card.in-use {
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+.port-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-sm);
+}
+
+.port-number {
+    font-family: 'Fira Code', monospace;
+    font-weight: 600;
+    color: var(--primary);
+    font-size: 1.125rem;
+}
+
+.port-status-indicator {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.port-status-indicator.available {
+    color: var(--success);
+}
+
+.port-status-indicator.in-use {
+    color: var(--warning);
+}
+
+.port-service {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.875rem;
+}
+
+/* System Info Grid */
+.system-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--space-md);
+}
+
+.system-info-card {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(100, 255, 218, 0.1);
+    border-radius: var(--radius-lg);
+    padding: var(--space-md);
+    text-align: center;
+}
+
+.system-info-label {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: var(--space-xs);
+}
+
+.system-info-value {
+    color: var(--text);
+    font-weight: 600;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.875rem;
+}
+
+/* Installation Modal */
+.install-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: var(--transition);
+}
+
+.install-modal.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.install-modal-content {
+    background: var(--surface);
+    border: 1px solid rgba(100, 255, 218, 0.2);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.install-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-lg);
+    padding-bottom: var(--space-md);
+    border-bottom: 1px solid rgba(100, 255, 218, 0.1);
+}
+
+.install-modal-title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin: 0;
+    color: var(--text);
+    font-size: 1.25rem;
+}
+
+.install-methods {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+
+.install-method {
+    background: rgba(30, 41, 59, 0.5);
+    border: 1px solid rgba(100, 255, 218, 0.1);
+    border-radius: var(--radius-lg);
+    padding: var(--space-md);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.install-method:hover {
+    border-color: rgba(100, 255, 218, 0.3);
+    background: rgba(30, 41, 59, 0.7);
+}
+
+.install-method.selected {
+    border-color: var(--primary);
+    background: rgba(100, 255, 218, 0.1);
+}
+
+.method-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-sm);
+}
+
+.method-name {
+    font-weight: 600;
+    color: var(--text);
+}
+
+.method-command {
+    font-family: 'Fira Code', monospace;
+    background: rgba(0, 0, 0, 0.3);
+    padding: var(--space-sm);
+    border-radius: var(--radius-sm);
+    margin-top: var(--space-sm);
+    color: var(--primary);
+    font-size: 0.875rem;
+    border: 1px solid rgba(100, 255, 218, 0.2);
+    position: relative;
+}
+
+.copy-command-btn {
+    position: absolute;
+    top: var(--space-xs);
+    right: var(--space-xs);
+    background: rgba(100, 255, 218, 0.2);
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.copy-command-btn:hover {
+    background: rgba(100, 255, 218, 0.3);
+}
+
+/* Responsive adjustments for dependencies */
+@media (max-width: 768px) {
+    .dependencies-header {
+        flex-direction: column;
+        gap: var(--space-md);
+        text-align: center;
+    }
+
+    .dependencies-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .port-status-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .system-info-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .settings-tabs {
+        flex-wrap: wrap;
+    }
+
+    .install-modal-content {
+        margin: var(--space-md);
+        width: calc(100% - 2 * var(--space-md));
+    }
+}
+
+@media (max-width: 480px) {
+    .system-info-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .dependency-actions {
+        flex-direction: column;
+    }
+}
