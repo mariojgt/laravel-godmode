@@ -58,7 +58,7 @@ class NgrokManager {
 
         // Modal close handlers
         document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('modal-close') || 
+            if (e.target.classList.contains('modal-close') ||
                 (e.target.classList.contains('modal') && e.target.id === 'create-tunnel-modal')) {
                 this.closeModals();
             }
@@ -324,7 +324,7 @@ class NgrokManager {
         const modal = document.getElementById('create-tunnel-modal');
         if (modal) {
             modal.style.display = 'flex';
-            
+
             // Pre-fill port from running projects
             this.populatePortSuggestions();
         }
@@ -334,7 +334,7 @@ class NgrokManager {
         try {
             const projects = await api.get('/projects');
             const portInput = document.getElementById('tunnel-port');
-            
+
             if (Array.isArray(projects) && projects.length > 0 && portInput) {
                 // Find first running project port
                 const runningProject = projects.find(p => p.status === 'running');
@@ -360,7 +360,7 @@ class NgrokManager {
 
         try {
             toast.info('Creating tunnel... This may take a few seconds.');
-            
+
             const response = await api.post('/ngrok/tunnels', data);
 
             if (response.success) {

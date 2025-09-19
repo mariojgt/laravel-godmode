@@ -10,6 +10,7 @@ stderr_logfile_maxbytes=10MB
 stdout_logfile_backups=3
 stderr_logfile_backups=3
 user=root
+environment=LARAVEL_SAIL="1"
 
 [program:laravel-horizon]
 command=php /var/www/html/artisan horizon
@@ -17,7 +18,7 @@ autostart=false
 autorestart=true
 stopasgroup=true
 killasgroup=true
-user=www
+user=www-data
 numprocs=1
 redirect_stderr=true
 stdout_logfile=/var/log/supervisor/horizon.log
@@ -32,7 +33,7 @@ autostart=false
 autorestart=true
 stopasgroup=true
 killasgroup=true
-user=www
+user=www-data
 numprocs=1
 redirect_stderr=true
 stdout_logfile=/var/log/supervisor/laravel-queue.log
@@ -45,7 +46,7 @@ priority=20
 command=bash -c "while [ true ]; do (php /var/www/html/artisan schedule:run --verbose --no-interaction &); sleep 60; done"
 autostart=false
 autorestart=true
-user=www
+user=www-data
 redirect_stderr=true
 stdout_logfile=/var/log/supervisor/laravel-schedule.log
 stdout_logfile_maxbytes=10MB

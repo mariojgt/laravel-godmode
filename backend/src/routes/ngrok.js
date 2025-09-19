@@ -66,10 +66,10 @@ async function authenticateNgrok(authToken) {
         await saveNgrokConfig();
         return { success: true, message: 'Ngrok authenticated successfully' };
     } catch (error) {
-        return { 
-            success: false, 
+        return {
+            success: false,
             error: 'Failed to authenticate ngrok',
-            details: error.message 
+            details: error.message
         };
     }
 }
@@ -86,11 +86,11 @@ async function createTunnel(port, options = {}) {
 
         // Build ngrok command
         let command = ['ngrok', protocol, port.toString()];
-        
+
         if (subdomain) {
             command.push('--subdomain', subdomain);
         }
-        
+
         if (region) {
             command.push('--region', region);
         }
@@ -138,7 +138,7 @@ async function createTunnel(port, options = {}) {
         ngrokProcess.stderr.on('data', (data) => {
             const error = data.toString();
             console.error('Ngrok stderr:', error);
-            
+
             if (!setupComplete) {
                 reject(new Error(`Ngrok error: ${error}`));
             }
@@ -147,15 +147,15 @@ async function createTunnel(port, options = {}) {
         // Handle process exit
         ngrokProcess.on('close', (code) => {
             console.log(`Ngrok process exited with code ${code}`);
-            
+
             if (activeTunnels.has(name)) {
                 const tunnel = activeTunnels.get(name);
                 tunnel.status = 'stopped';
                 activeTunnels.delete(name);
             }
-            
+
             ngrokProcesses.delete(name);
-            
+
             if (!setupComplete) {
                 reject(new Error(`Ngrok process exited with code ${code}`));
             }
@@ -187,11 +187,11 @@ function stopTunnel(tunnelId) {
             process.kill('SIGTERM');
             ngrokProcesses.delete(tunnelId);
         }
-        
+
         if (activeTunnels.has(tunnelId)) {
             activeTunnels.delete(tunnelId);
         }
-        
+
         return { success: true, message: 'Tunnel stopped successfully' };
     } catch (error) {
         return { success: false, error: error.message };
@@ -206,7 +206,7 @@ loadNgrokConfig();
 // Get ngrok status and configuration
 router.get('/status', async (req, res) => {
     const installation = checkNgrokInstallation();
-    
+
     res.json({
         success: true,
         data: {
@@ -241,7 +241,7 @@ router.post('/auth', async (req, res) => {
         }
 
         const result = await authenticateNgrok(authToken);
-        
+
         if (result.success) {
             res.json(result);
         } else {
@@ -321,7 +321,7 @@ router.delete('/tunnels/:tunnelId', (req, res) => {
     try {
         const { tunnelId } = req.params;
         const result = stopTunnel(tunnelId);
-        
+
         if (result.success) {
             res.json(result);
         } else {
@@ -341,7 +341,7 @@ router.delete('/tunnels/:tunnelId', (req, res) => {
 router.post('/stop-all', (req, res) => {
     try {
         let stoppedCount = 0;
-        
+
         for (const [tunnelId] of activeTunnels) {
             const result = stopTunnel(tunnelId);
             if (result.success) {

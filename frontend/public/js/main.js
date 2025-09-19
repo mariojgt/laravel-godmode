@@ -62,7 +62,16 @@ class App {
                 }
                 break;
             case 'settings':
-                // Settings are loaded on init
+                // Initialize settings tabs if not already done
+                if (window.settings && !window.settingsInitialized) {
+                    settings.init();
+                    window.settingsInitialized = true;
+                }
+
+                // Initialize ngrok manager if on ngrok tab
+                if (window.NgrokManager && !window.ngrokManager) {
+                    window.ngrokManager = new NgrokManager();
+                }
                 break;
         }
     }

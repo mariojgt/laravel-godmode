@@ -1,5 +1,6 @@
 server {
     listen 80;
+    server_name localhost;
     index index.php index.html;
     error_log  /var/log/nginx/error.log;
     access_log /var/log/nginx/access.log;
@@ -45,11 +46,16 @@ server {
         include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
         fastcgi_param PATH_INFO $fastcgi_path_info;
+        fastcgi_param REQUEST_URI $request_uri;
+        fastcgi_param QUERY_STRING $query_string;
+        fastcgi_param REQUEST_METHOD $request_method;
+        fastcgi_param CONTENT_TYPE $content_type;
+        fastcgi_param CONTENT_LENGTH $content_length;
 
         # Timeout settings
         fastcgi_read_timeout 300;
         fastcgi_send_timeout 300;
-        fastcgi_connect_timeout 300;
+        fastcgi_connect_timeout 60;
 
         # Buffer settings
         fastcgi_buffer_size 32k;
@@ -68,8 +74,21 @@ server {
         try_files $uri $uri/ /index.php?$query_string;
     }
 
+    # PHP-FPM status and ping endpoints for debugging
+    location ~ ^/(fpm-status|fpm-ping)$ {
+        access_log off;
+        allow 127.0.0.1;
+        allow 172.16.0.0/12;
+        allow 10.0.0.0/8;
+        allow 192.168.0.0/16;
+        deny all;
+        fastcgi_pass app:9000;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+    }
+
     # Handle Vite HMR and assets in development
-    location ~ ^/(@@vite|@@id|node_modules|@vite|src)/ {
+    location ~ ^/(@@vite|@@id|@vite|@fs|node_modules|src)/ {
         proxy_pass http://app:5173;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
@@ -79,6 +98,7 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_cache_bypass $http_upgrade;
+        proxy_read_timeout 86400;
     }
 
     # Handle Vite WebSocket for HMR
