@@ -14,6 +14,7 @@ services:
     platform: linux/amd64
     volumes:
       - ./src:/var/www/html
+      - ./docker/php.ini:/usr/local/etc/php/php.ini
     working_dir: /var/www/html
     depends_on:
       - db{{REDIS_DEPENDS}}
@@ -25,6 +26,7 @@ services:
       - APP_DEBUG=true
       - PHP_VERSION={{PHP_VERSION}}
       - NODE_VERSION={{NODE_VERSION}}
+      - PHP_MEMORY_LIMIT=512M
     ports:
       - "{{VITE_PORT}}:5173"
 
