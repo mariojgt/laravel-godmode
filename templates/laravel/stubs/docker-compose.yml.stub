@@ -57,6 +57,7 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
       - ./docker/mysql.cnf:/etc/mysql/conf.d/custom.cnf
+      - ./docker/mysql-client.cnf:/etc/mysql/conf.d/mysql-client.cnf
     networks:
       - {{PROJECT_NAME}}_network
     restart: unless-stopped
