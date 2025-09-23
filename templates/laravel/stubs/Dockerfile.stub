@@ -63,20 +63,20 @@ RUN echo '[global]' > /usr/local/etc/php-fpm.conf && \
 COPY docker/supervisor.conf /etc/supervisor/conf.d/laravel.conf
 
 # Copy composer files first for better caching
-COPY src/composer.json src/composer.lock* ./
+# COPY src/composer.json src/composer.lock* ./
 
 # Install Composer dependencies (this layer gets cached unless dependencies change)
-RUN if [ -f composer.json ]; then \
-    composer install --no-dev --optimize-autoloader --no-interaction --no-scripts; \
-    fi
+# RUN if [ -f composer.json ]; then \
+#     composer install --no-dev --optimize-autoloader --no-interaction --no-scripts; \
+#     fi
 
 # Copy package.json files for Node dependencies caching
-COPY src/package*.json src/bun.lock* src/pnpm-lock.yaml* ./
+# COPY src/package*.json src/bun.lock* src/pnpm-lock.yaml* ./
 
 # Install Node dependencies if package.json exists (cached layer)
-RUN if [ -f package.json ]; then \
-    npm ci --no-audit --no-fund 2>/dev/null || npm install --no-audit --no-fund; \
-    fi
+# RUN if [ -f package.json ]; then \
+#     npm ci --no-audit --no-fund 2>/dev/null || npm install --no-audit --no-fund; \
+#     fi
 
 # Now copy the rest of the application files (benefits from above caches)
 COPY src/ /var/www/html/
