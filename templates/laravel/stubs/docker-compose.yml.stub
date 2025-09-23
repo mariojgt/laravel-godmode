@@ -26,7 +26,7 @@ services:
       - APP_DEBUG=true
       - PHP_VERSION={{PHP_VERSION}}
       - NODE_VERSION={{NODE_VERSION}}
-      - PHP_MEMORY_LIMIT=512M
+      - PHP_MEMORY_LIMIT=1024M
     ports:
       - "{{VITE_PORT}}:5173"
 
