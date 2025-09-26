@@ -247,10 +247,33 @@ import:
 		echo "$(RED)❌ No SQL files found in sqlback/ folder$(RESET)"; \
 		exit 1; \
 	else \
-		echo "$(CYAN)📥 Importing: $$LATEST_SQL$(RESET)"; \
-		docker-compose exec -T db mysql -u root -ppassword {{PROJECT_NAME}} < "$$LATEST_SQL"; \
+		DB_NAME=$$(docker-compose exec -T db mysql -u root -ppassword -e "SHOW DATABASES;" 2>/dev/null | grep -v -E "^(Database|information_schema|performance_schema|mysql|sys)$$" | head -n1 | tr -d '\r'); \
+		if [ -z "$$DB_NAME" ]; then \
+			echo "$(RED)❌ No application database found$(RESET)"; \
+			exit 1; \
+		fi; \
+		echo "$(CYAN)📥 Importing: $$LATEST_SQL into database: $$DB_NAME$(RESET)"; \
+		docker-compose exec -T db mysql -u root -ppassword "$$DB_NAME" < "$$LATEST_SQL"; \
 		echo "$(GREEN)✅ SQL file imported successfully!$(RESET)"; \
 	fi
+
+db-drop:
+	@echo "$(YELLOW)🗑️ Dropping and recreating database...$(RESET)"
+	@DB_NAME=$$(docker-compose exec -T db mysql -u root -ppassword -e "SHOW DATABASES;" 2>/dev/null | grep -v -E "^(Database|information_schema|performance_schema|mysql|sys)$$" | head -n1 | tr -d '\r'); \
+	if [ -z "$$DB_NAME" ]; then \
+		echo "$(RED)❌ No application database found$(RESET)"; \
+		exit 1; \
+	else \
+		echo "$(YELLOW)🗑️ Dropping database: $$DB_NAME$(RESET)"; \
+		docker-compose exec -T db mysql -u root -ppassword -e "DROP DATABASE IF EXISTS \`$$DB_NAME\`; CREATE DATABASE \`$$DB_NAME\`;" 2>/dev/null; \
+		echo "$(GREEN)✅ Database $$DB_NAME dropped and recreated successfully!$(RESET)"; \
+	fi
+
+refresh:
+	@echo "$(CYAN)🔄 Refreshing database (drop tables + import)...$(RESET)"
+	@make db-drop
+	@make import
+	@echo "$(GREEN)✅ Database refreshed successfully!$(RESET)"
 
 db-shell:
 	@echo "$(CYAN)🗄️ Opening database shell...$(RESET)"
