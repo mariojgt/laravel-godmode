@@ -12,6 +12,12 @@ server {
     add_header X-XSS-Protection "1; mode=block" always;
     add_header Referrer-Policy "no-referrer-when-downgrade" always;
 
+    # CORS headers for development - Allow specific origin with credentials
+    add_header Access-Control-Allow-Origin "http://localhost:3000" always;
+    add_header Access-Control-Allow-Credentials "true" always;
+    add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH" always;
+    add_header Access-Control-Allow-Headers "Origin, Content-Type, Accept, Authorization, X-Requested-With, X-CSRF-Token" always;
+
     # Client settings
     client_max_body_size 100M;
     client_body_timeout 60s;
@@ -32,10 +38,23 @@ server {
         application/xml+rss
         application/json;
 
-    # Handle Laravel routes
+    # Handle OPTIONS requests for CORS preflight
     location / {
+        if ($request_method = 'OPTIONS') {
+            add_header Access-Control-Allow-Origin "http://localhost:3000";
+            add_header Access-Control-Allow-Credentials "true";
+            add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS, PATCH";
+            add_header Access-Control-Allow-Headers "Origin, Content-Type, Accept, Authorization, X-Requested-With, X-CSRF-Token";
+            add_header Content-Length 0;
+            add_header Content-Type "text/plain charset=UTF-8";
+            return 204;
+        }
+
         try_files $uri $uri/ /index.php?$query_string;
     }
+
+    # Allow all vendor endpoints (place BEFORE the general vendor block)
+    # Removed - handled by global CORS and main location block
 
     # Handle PHP files
     location ~ \.php$ {
@@ -111,33 +130,34 @@ server {
         proxy_set_header Origin $http_origin;
     }
 
-    # Deny access to hidden files and sensitive directories
-    location ~ /\. {
-        deny all;
-        access_log off;
-        log_not_found off;
-    }
+    # Comment out ALL restrictive blocks for development
+    # location ~ /\. {
+    #     deny all;
+    #     access_log off;
+    #     log_not_found off;
+    # }
 
-    location ~ ^/(\.env|\.git|\.gitignore|\.gitattributes|composer\.(json|lock)|package\.(json|lock)|phpunit\.xml|\.editorconfig)$ {
-        deny all;
-        access_log off;
-        log_not_found off;
-    }
+    # location ~ ^/(\.env|\.git|\.gitignore|\.gitattributes|composer\.(json|lock)|package\.(json|lock)|phpunit\.xml|\.editorconfig)$ {
+    #     deny all;
+    #     access_log off;
+    #     log_not_found off;
+    # }
 
-    # Deny access to vendor and node_modules via web
-    location ~ ^/(vendor|node_modules)/ {
-        deny all;
-        access_log off;
-        log_not_found off;
-    }
+    # Comment out or remove the vendor deny block for development
+    # location ~ ^/(vendor|node_modules)/ {
+    #     # This will be overridden by the more specific vendor location above
+    #     deny all;
+    #     access_log off;
+    #     log_not_found off;
+    # }
 
-    # Block common attack patterns
-    location ~* (wp-config\.php|wp-admin|wp-login\.php|xmlrpc\.php) {
-        return 404;
-    }
+    # Comment out attack pattern blocks for development
+    # location ~* (wp-config\.php|wp-admin|wp-login\.php|xmlrpc\.php) {
+    #     return 404;
+    # }
 
-    # Prevent execution of scripts in uploads directory
-    location ~* ^/storage/.*\.(php|pl|py|jsp|asp|sh|cgi)$ {
-        return 403;
-    }
+    # Comment out script execution prevention for development
+    # location ~* ^/storage/.*\.(php|pl|py|jsp|asp|sh|cgi)$ {
+    #     return 403;
+    # }
 }
