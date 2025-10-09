@@ -12,6 +12,8 @@ services:
         - INSTALL_PNPM={{INSTALL_PNPM}}
     container_name: {{PROJECT_NAME}}_app
     platform: linux/amd64
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./src:/var/www/html
       - ./docker/php.ini:/usr/local/etc/php/php.ini
