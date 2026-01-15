@@ -99,6 +99,25 @@ class TemplateActions {
             </div>
         `;
 
+        // Installation Info
+        if (template.install) {
+            html += `<div class="config-section">`;
+            html += `<h5 class="config-section-title">📦 Installation Method</h5>`;
+            
+            if (template.install.requirements && template.install.requirements.length > 0) {
+                 const reqs = template.install.requirements.map(r => this.capitalizeFirst(r)).join(', ');
+                 html += `<p class="config-section-desc" style="margin-bottom: 0.5rem;">Requires: <span style="color: var(--warning);">${reqs}</span></p>`;
+            }
+
+            if (template.install.command) {
+                 html += `<div style="background: rgba(15, 23, 42, 0.5); padding: 0.75rem; border-radius: 0.5rem; border: 1px solid rgba(148, 163, 184, 0.1);">
+                    <div style="font-size: 0.75rem; color: rgba(148, 163, 184, 0.7); margin-bottom: 0.25rem;">Command to run:</div>
+                    <code style="font-family: 'Fira Code', monospace; font-size: 0.875rem; color: #a5b4fc;">${template.install.command}</code>
+                 </div>`;
+            }
+            html += `</div>`;
+        }
+
         // Version selections
         if (template.versions) {
             html += `<div class="config-section">`;

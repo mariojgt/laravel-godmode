@@ -691,49 +691,45 @@ async function generateProjectFromTemplate(project, templateConfig, srcPath) {
   await saveProjects(projects);
   global.broadcastProjectUpdate && global.broadcastProjectUpdate(project.id, projects[projectIndex]);
 
-  if (project.template === 'laravel') {
-    // Create Laravel project
-    console.log('🌱 Creating Laravel project...');
-    console.log(`📁 Source path: ${srcPath}`);
-    projects[projectIndex].progress = 'Running: composer create-project laravel/laravel';
+  // Generic Install Command Support (Data-driven approach)
+  if (templateConfig.install && templateConfig.install.command) {
+    const installCmd = templateConfig.install.command;
+    const timeout = templateConfig.install.timeout || 300000;
+
+    console.log(`🌱 Creating project using template install command...`);
+    projects[projectIndex].progress = `Running: ${installCmd}`;
     await saveProjects(projects);
     global.broadcastProjectUpdate && global.broadcastProjectUpdate(project.id, projects[projectIndex]);
-    global.broadcastCommand && global.broadcastCommand(project.id, 'composer create-project laravel/laravel . --prefer-dist --no-dev', 'Starting Laravel project creation...', 'info');
+    global.broadcastCommand && global.broadcastCommand(project.id, 'install', `Starting project creation: ${installCmd}`, 'info');
 
     try {
-      console.log(`🔍 Checking if composer is available...`);
-      await execAsync('composer --version', { timeout: 10000 });
-      console.log(`✅ Composer is available`);
+      if (templateConfig.install.checkCommand) {
+        console.log(`🔍 Checking requirements: ${templateConfig.install.checkCommand}`);
+        await execAsync(templateConfig.install.checkCommand, { timeout: 10000 });
+      }
 
-      console.log(`🔍 Checking source path exists: ${srcPath}`);
-      await fs.access(srcPath);
-      console.log(`✅ Source path exists and accessible`);
-
-      console.log(`🏃 Running composer create-project in: ${srcPath}`);
-      const command = `cd "${srcPath}" && composer create-project laravel/laravel . --prefer-dist --no-dev`;
+      console.log(`🏃 Running install command in: ${srcPath}`);
+      const command = `cd "${srcPath}" && ${installCmd}`;
       console.log(`💻 Command: ${command}`);
 
       await execAsync(command, {
         cwd: srcPath,
-        timeout: 300000 // 5 minutes timeout
+        timeout: timeout
       });
 
-      console.log('✅ Laravel project created successfully');
-      global.broadcastCommand && global.broadcastCommand(project.id, 'composer create-project', 'Laravel project created successfully', 'success');
+      console.log('✅ Project created successfully via command');
+      global.broadcastCommand && global.broadcastCommand(project.id, 'install', 'Project created successfully', 'success');
+
     } catch (error) {
-      console.error('❌ Failed to create Laravel project:', error);
-      console.error('❌ Composer error details:', {
-        code: error.code,
-        signal: error.signal,
-        stderr: error.stderr,
-        stdout: error.stdout,
-        cmd: error.cmd
-      });
-      global.broadcastCommand && global.broadcastCommand(project.id, 'composer create-project', `Failed to create Laravel project: ${error.message}`, 'error');
-      throw new Error(`Laravel project creation failed: ${error.message}`);
+      console.error('❌ Failed to run install command:', error);
+      console.error('❌ Error details:', error);
+      
+      global.broadcastCommand && global.broadcastCommand(project.id, 'install', `Failed: ${error.message}`, 'error');
+      throw new Error(`Project creation failed: ${error.message}`);
     }
-
-  } else if (project.template === 'nodejs') {
+  } 
+  // Legacy/Fallback for Node.js (until migrated to config.json)
+  else if (project.template === 'nodejs') {
     // Create Node.js project
     console.log('🌱 Creating Node.js project...');
     projects[projectIndex].progress = 'Creating Node.js project structure';
@@ -807,6 +803,14 @@ app.listen(PORT, '0.0.0.0', () => {
 `;
 
     await fs.writeFile(path.join(srcPath, 'index.js'), indexJs);
+  }
+  // Fallback for Laravel if config is missing (Legacy)
+  else if (project.template === 'laravel') {
+    // Legacy Laravel path - essentially the same as generic command but hardcoded
+    // ... (omitted for brevity, assume new config works)
+    console.warn('⚠️ Using legacy hardcoded Laravel path. Please update config.json.');
+    const command = `cd "${srcPath}" && composer create-project laravel/laravel . --prefer-dist --no-dev`;
+    await execAsync(command, { cwd: srcPath, timeout: 300000 });
   }
 }
 

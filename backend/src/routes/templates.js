@@ -19,12 +19,19 @@ router.get('/', async (req, res) => {
       try {
         const configData = await fs.readFile(configPath, 'utf8');
         const config = JSON.parse(configData);
+
+        // Basic validation for solidity
+        if (!config.name) {
+             console.warn(`⚠️ Skipping template '${dir}': Missing 'name' in config.json`);
+             continue;
+        }
+
         templates.push({
           id: dir,
           ...config
         });
       } catch (error) {
-        console.warn(`Invalid template config: ${dir}`);
+        console.warn(`Invalid template config for '${dir}':`, error.message);
       }
     }
 
